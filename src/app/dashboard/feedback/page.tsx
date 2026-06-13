@@ -28,6 +28,20 @@ const FEEDBACK_QUESTIONS = [
   'Overall satisfaction with the course',
 ]
 
+
+// Semester helper — June–Dec = odd (1,3,5,7), Jan–May = even (2,4,6,8)
+function getActiveSemester(s: string): number {
+  const m = new Date().getMonth() + 1
+  const odd = m >= 6
+  const map: Record<string, [number,number]> = {
+    'I CSE-A':[1,2],'I CSE-B':[1,2],
+    'II CSE-A':[3,4],'II CSE-B':[3,4],
+    'III CSE-A':[5,6],'III CSE-B':[5,6],
+    'IV CSE-A':[7,8],'IV CSE-B':[7,8],
+  }
+  const [o,e] = map[s] ?? [1,2]
+  return odd ? o : e
+}
 export default function FeedbackPage() {
   const router = useRouter()
   const [authUser, setAuthUser] = useState<AuthUser | null>(null)
@@ -45,10 +59,10 @@ export default function FeedbackPage() {
   const isHOD     = authUser?.type === 'staff' && authUser.data.role === 'HOD'
   const isStudent = authUser?.type === 'student'
   const SECTIONS  = ['I CSE-A','I CSE-B','II CSE-A','II CSE-B','III CSE-A','III CSE-B','IV CSE-A','IV CSE-B']
-  const currentSem = (s: string) => s.startsWith('IV ') ? 8 : s.startsWith('III ') ? 6 : s.startsWith('II ') ? 4 : 2
+  const currentSem = (s: string) => getActiveSemester(s)
 
   useEffect(() => {
-    const stored = localStorage.getItem('licet_user')
+    const stored = localStorage.getItem('excelsior_user') || localStorage.getItem('licet_user')
     if (!stored) { router.push('/login'); return }
     const au = JSON.parse(stored) as AuthUser
     setAuthUser(au)

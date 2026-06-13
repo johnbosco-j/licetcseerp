@@ -41,7 +41,7 @@ export function AttendanceAnalysisModule() {
   const isFaculty = authUser?.type === 'staff'
 
   useEffect(() => {
-    const stored = localStorage.getItem('licet_user')
+    const stored = localStorage.getItem('excelsior_user') || localStorage.getItem('licet_user')
     if (!stored) { router.push('/login'); return }
     const au = JSON.parse(stored) as AuthUser
     setAuthUser(au)
@@ -85,7 +85,7 @@ export function AttendanceAnalysisModule() {
     setStudents(result)
 
     // Load subject-wise attendance for this date
-    const currentSem = (sec: string) => sec.startsWith('IV ') ? 8 : sec.startsWith('III ') ? 6 : sec.startsWith('II ') ? 4 : 2
+    const currentSem = (sec: string) => getActiveSemester(sec)
     const { data: subs } = await supabase.from('subjects')
       .select('id, code, name').eq('section', section).eq('semester', currentSem(section))
 

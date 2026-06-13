@@ -67,7 +67,7 @@ export function AnalyticsModule() {
   const SECTIONS  = ['I CSE-A','I CSE-B','II CSE-A','II CSE-B','III CSE-A','III CSE-B','IV CSE-A','IV CSE-B']
 
   useEffect(() => {
-    const stored = localStorage.getItem('licet_user')
+    const stored = localStorage.getItem('excelsior_user') || localStorage.getItem('licet_user')
     if (!stored) { router.push('/login'); return }
     const au = JSON.parse(stored) as AuthUser
     setAuthUser(au)

@@ -133,11 +133,11 @@ export function MarksModule() {
 
   const SECTIONS = ['I CSE-A','I CSE-B','II CSE-A','II CSE-B','III CSE-A','III CSE-B','IV CSE-A','IV CSE-B']
   const currentSem = (section: string) =>
-    section.startsWith('IV ') ? 8 : section.startsWith('III ') ? 6 : section.startsWith('II ') ? 4 : 2
+    getActiveSemester(section)
 
   // Auth
   useEffect(() => {
-    const stored = localStorage.getItem('licet_user')
+    const stored = localStorage.getItem('excelsior_user') || localStorage.getItem('licet_user')
     if (!stored) { router.push('/login'); return }
     const au = JSON.parse(stored) as AuthUser
     setAuthUser(au)

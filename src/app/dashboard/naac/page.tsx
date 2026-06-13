@@ -157,7 +157,7 @@ export default function NAACPage() {
   const isHOD = authUser?.type === 'staff' && authUser.data.role === 'HOD'
 
   useEffect(() => {
-    const stored = localStorage.getItem('licet_user')
+    const stored = localStorage.getItem('excelsior_user') || localStorage.getItem('licet_user')
     if (!stored) { router.push('/login'); return }
     const au = JSON.parse(stored) as AuthUser
     setAuthUser(au)

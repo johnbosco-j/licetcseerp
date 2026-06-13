@@ -13,11 +13,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "LICET CSE–ERP — LICET CSE",
-  description: "Department Management System — Loyola-ICAM College of Engineering and Technology, Department of Computer Science and Engineering",
+  title: "LICET CSE",
+  description: "Loyola-ICAM College of Engineering & Technology — Dept. of Computer Science",
   openGraph: {
-    title: "LICET CSE–ERP — LICET CSE",
-    description: "LICET CSE Department Management System",
+    title: "LICET CSE",
+    description: "Loyola-ICAM College of Engineering & Technology — Dept. of Computer Science",
     siteName: "LICET CSE–ERP",
   },
 };
@@ -30,9 +30,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <link rel="icon" type="image/png" href="/licet-logo.png" />
-        <link rel="apple-touch-icon" href="/licet-logo.png" />
-        <link rel="shortcut icon" href="/licet-logo.png" />
+        <link rel="icon" type="image/png" href="/images.png" />
+        <link rel="apple-touch-icon" href="/images.png" />
+        <link rel="shortcut icon" href="/images.png" />
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         {children}

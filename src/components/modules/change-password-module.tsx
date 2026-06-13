@@ -20,7 +20,7 @@ export function ChangePasswordModule() {
   const [success, setSuccess]       = useState(false)
 
   useEffect(() => {
-    const stored = localStorage.getItem('licet_user')
+    const stored = localStorage.getItem('excelsior_user') || localStorage.getItem('licet_user')
     if (!stored) { router.push('/login'); return }
     setAuthUser(JSON.parse(stored) as AuthUser)
   }, [router])

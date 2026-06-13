@@ -32,7 +32,7 @@ export default function FinancePage() {
   const DEPT  = '00000000-0000-0000-0000-000000000001'
 
   useEffect(() => {
-    const stored = localStorage.getItem('licet_user')
+    const stored = localStorage.getItem('excelsior_user') || localStorage.getItem('licet_user')
     if (!stored) { router.push('/login'); return }
     const au = JSON.parse(stored) as AuthUser
     setAuthUser(au)

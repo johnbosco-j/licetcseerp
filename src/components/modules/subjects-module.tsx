@@ -482,10 +482,10 @@ export function SubjectsModule() {
   const isFaculty = authUser?.type === 'staff' && authUser.data.role === 'PROFESSOR'
   const isStudent = authUser?.type === 'student'
   const SECTIONS  = ['I CSE-A','I CSE-B','II CSE-A','II CSE-B','III CSE-A','III CSE-B','IV CSE-A','IV CSE-B']
-  const currentSem = (s: string) => s.startsWith('IV ') ? 7 : s.startsWith('III ') ? 5 : s.startsWith('II ') ? 3 : 1
+  const currentSem = (s: string) => getActiveSemester(s)
 
   useEffect(() => {
-    const stored = localStorage.getItem('licet_user')
+    const stored = localStorage.getItem('excelsior_user') || localStorage.getItem('excelsior_user') || localStorage.getItem('licet_user')
     if (!stored) { router.push('/login'); return }
     const au = JSON.parse(stored) as AuthUser
     setAuthUser(au)
@@ -502,15 +502,19 @@ export function SubjectsModule() {
   // Load subjects
   useEffect(() => {
     if (!authUser) return
-    let section = selectedSection
-    if (isStudent) section = (authUser.data as { section?: string })?.section ?? ''
-
+    const section = isStudent
+      ? (authUser.data as { section?: string })?.section ?? ''
+      : selectedSection
     const sem = currentSem(section)
+    console.log('[SUBJECTS] section:', section, 'sem:', sem)
     supabase.from('subjects').select('*')
       .eq('section', section).eq('semester', sem)
       .order('code')
-      .then(({ data }) => { if (data) setSubjects(data) })
-  }, [authUser, selectedSection, isStudent])
+      .then(({ data, error }) => {
+        console.log('[SUBJECTS] results:', data?.length, 'error:', error)
+        if (data) setSubjects(data)
+      })
+  }, [authUser, selectedSection])
 
   // Load faculty assignments from marks table (faculty_id used as proxy)
   useEffect(() => {

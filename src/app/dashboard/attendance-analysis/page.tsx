@@ -27,6 +27,20 @@ interface StudentDayStatus {
   partialAbsent: boolean
 }
 
+
+// Semester helper — June–Dec = odd (1,3,5,7), Jan–May = even (2,4,6,8)
+function getActiveSemester(s: string): number {
+  const m = new Date().getMonth() + 1
+  const odd = m >= 6
+  const map: Record<string, [number,number]> = {
+    'I CSE-A':[1,2],'I CSE-B':[1,2],
+    'II CSE-A':[3,4],'II CSE-B':[3,4],
+    'III CSE-A':[5,6],'III CSE-B':[5,6],
+    'IV CSE-A':[7,8],'IV CSE-B':[7,8],
+  }
+  const [o,e] = map[s] ?? [1,2]
+  return odd ? o : e
+}
 export default function AttendanceAnalysisPage() {
   const router = useRouter()
   const [authUser, setAuthUser]   = useState<AuthUser | null>(null)
@@ -41,7 +55,7 @@ export default function AttendanceAnalysisPage() {
   const isFaculty = authUser?.type === 'staff'
 
   useEffect(() => {
-    const stored = localStorage.getItem('licet_user')
+    const stored = localStorage.getItem('excelsior_user') || localStorage.getItem('licet_user')
     if (!stored) { router.push('/login'); return }
     const au = JSON.parse(stored) as AuthUser
     setAuthUser(au)
@@ -85,7 +99,7 @@ export default function AttendanceAnalysisPage() {
     setStudents(result)
 
     // Load subject-wise attendance for this date
-    const currentSem = (sec: string) => sec.startsWith('IV ') ? 8 : sec.startsWith('III ') ? 6 : sec.startsWith('II ') ? 4 : 2
+    const currentSem = (sec: string) => getActiveSemester(sec)
     const { data: subs } = await supabase.from('subjects')
       .select('id, code, name').eq('section', section).eq('semester', currentSem(section))
 

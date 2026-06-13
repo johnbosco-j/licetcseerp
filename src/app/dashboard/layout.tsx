@@ -1,8 +1,9 @@
 "use client"
+import React from "react"
 
 import { useEffect, useState } from "react"
 import { useRouter, usePathname } from "next/navigation"
-import {
+import { 
   AlertCircle, Activity, Star, ClipboardCheck, PieChart, Key, FileText,
   PenTool, CalendarDays, BookOpen, MessageSquare, Wallet, AlertTriangle,
   Package, Heart, Award, ShieldCheck, Bell, Briefcase, TrendingUp,
@@ -11,6 +12,7 @@ import {
 } from "lucide-react"
 import type { AuthUser } from "@/lib/auth"
 import { getAllowedModules } from "@/lib/roles"
+import { toTitleCase } from "@/lib/utils"
 import { Inter, Crimson_Text } from "next/font/google"
 
 const serif = Crimson_Text({ subsets: ["latin"], weight: ["400", "600"] })
@@ -68,6 +70,23 @@ const ROLE_CONFIG: Record<string, { label: string; bg: string; color: string }> 
   HOD:       { label: "Head of Department", bg: "#722F37", color: "#FFFFFF" },
   PROFESSOR: { label: "Faculty",            bg: "#E7E5E0", color: "#57534E" },
   STUDENT:   { label: "Student",            bg: "#F5F5F0", color: "#78716C" },
+}
+
+
+// Logo with text fallback if SVG fails to load
+function LogoBadge({ size = 30 }: { size?: number }) {
+  const [err, setErr] = React.useState(false)
+  if (err) return (
+    <div style={{
+      width: size, height: size, borderRadius: '50%',
+      background: '#1d3557', color: '#fff',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: size * 0.28, fontWeight: 800, letterSpacing: '0.02em',
+      flexShrink: 0,
+    }}>L</div>
+  )
+  return <img src="/images.png" alt="LICET" onError={() => setErr(true)}
+    style={{ width: size, height: size, objectFit: 'contain', flexShrink: 0 }} />
 }
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -166,7 +185,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             flexShrink: 0,
             padding: "3px",
           }}>
-            <img src="/licet-logo.png" alt="LICET" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+            <img src="/images.png" alt="LICET" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
           </div>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>

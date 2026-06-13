@@ -6,7 +6,7 @@ export const NAV_HOD_IDS = [
   "analytics","finance","inventory","placements","leaves","events",
   "documents","feedback","grievances","notices","alerts","appraisal",
   "attendance-analysis","change-password","editor","examination",
-  "naac","promotion","reports"
+  "naac","promotion","curriculum","reports"
 ]
 
 export const NAV_FACULTY_IDS = [

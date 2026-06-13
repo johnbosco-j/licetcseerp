@@ -77,7 +77,7 @@ export default function LoginPage() {
           {/* Logo */}
           <div className="flex items-center gap-5">
             <div className="flex-shrink-0 rounded-xl bg-white p-2.5 shadow-lg" style={{ width: '64px', height: '64px' }}>
-              <img src="/licet-logo.png" alt="LICET Logo" className="w-full h-full object-contain" />
+              <img src="/images.png" alt="LICET Logo" className="w-full h-full object-contain" />
             </div>
             <div>
               <p className="text-[10px] font-semibold tracking-[0.25em] uppercase mb-0.5" style={{ color: '#c9a84c' }}>
@@ -140,7 +140,7 @@ export default function LoginPage() {
           {/* Mobile logo */}
           <div className="flex lg:hidden items-center gap-3 mb-10 justify-center">
             <div className="flex-shrink-0 rounded-lg bg-white p-1.5 shadow-sm border" style={{ width: '44px', height: '44px', borderColor: '#e2e8f0' }}>
-              <img src="/licet-logo.png" alt="LICET" className="w-full h-full object-contain" />
+              <img src="/images.png" alt="LICET" className="w-full h-full object-contain" />
             </div>
             <div>
               <p className="font-bold text-sm" style={{ color: '#0a1628' }}>LICET CSE&ndash;ERP</p>

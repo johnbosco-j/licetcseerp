@@ -1,4 +1,6 @@
 "use client"
+// @ts-ignore
+import CurriculumModule from "@/components/modules/curriculum-module"
 
 export const dynamic = "force-dynamic"
 
@@ -466,6 +468,20 @@ const CO_MAPPING: Record<string, string[]> = {
   ],
 }
 
+
+// Semester helper — June–Dec = odd (1,3,5,7), Jan–May = even (2,4,6,8)
+function getActiveSemester(s: string): number {
+  const m = new Date().getMonth() + 1
+  const odd = m >= 6
+  const map: Record<string, [number,number]> = {
+    'I CSE-A':[1,2],'I CSE-B':[1,2],
+    'II CSE-A':[3,4],'II CSE-B':[3,4],
+    'III CSE-A':[5,6],'III CSE-B':[5,6],
+    'IV CSE-A':[7,8],'IV CSE-B':[7,8],
+  }
+  const [o,e] = map[s] ?? [1,2]
+  return odd ? o : e
+}
 export default function SubjectsPage() {
   const router = useRouter()
   const [authUser, setAuthUser]   = useState<AuthUser | null>(null)
@@ -477,15 +493,16 @@ export default function SubjectsPage() {
   const [selectedSection, setSelectedSection] = useState('II CSE-A')
   const [saving, setSaving]       = useState<string | null>(null)
   const [saveMsg, setSaveMsg]     = useState('')
+  const [activeTab, setActiveTab]  = useState<'view'|'manage'>('view')
 
   const isHOD     = authUser?.type === 'staff' && authUser.data.role === 'HOD'
   const isFaculty = authUser?.type === 'staff' && authUser.data.role === 'PROFESSOR'
   const isStudent = authUser?.type === 'student'
   const SECTIONS  = ['I CSE-A','I CSE-B','II CSE-A','II CSE-B','III CSE-A','III CSE-B','IV CSE-A','IV CSE-B']
-  const currentSem = (s: string) => s.startsWith('IV ') ? 8 : s.startsWith('III ') ? 6 : s.startsWith('II ') ? 4 : 2
+  const currentSem = (s: string) => getActiveSemester(s)
 
   useEffect(() => {
-    const stored = localStorage.getItem('licet_user')
+    const stored = localStorage.getItem('excelsior_user') || localStorage.getItem('excelsior_user') || localStorage.getItem('excelsior_user') || localStorage.getItem('licet_user')
     if (!stored) { router.push('/login'); return }
     const au = JSON.parse(stored) as AuthUser
     setAuthUser(au)
@@ -568,201 +585,163 @@ export default function SubjectsPage() {
         </p>
       </div>
 
-      {/* Section selector */}
-      {!isStudent && (
-        <div className="flex flex-wrap gap-2">
-          {SECTIONS.map(s => (
-            <button key={s} onClick={() => setSelectedSection(s)}
-              className={`font-mono text-xs px-3 py-1.5 rounded border transition-all ${selectedSection === s ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:border-primary/50'}`}>
-              {s}
+      {isHOD && (
+        <div style={{display:'flex',borderBottom:'1px solid #e5e7eb'}}>
+          {(['view','manage'] as const).map(tab => (
+            <button key={tab} onClick={() => setActiveTab(tab)} style={{
+              fontFamily:'monospace',fontSize:'12px',padding:'8px 20px',
+              borderBottom: activeTab===tab ? '2px solid #722F37' : '2px solid transparent',
+              color: activeTab===tab ? '#722F37' : '#6b7280',
+              fontWeight: activeTab===tab ? 600 : 400,
+              background:'none',border:'none',cursor:'pointer',
+            }}>
+              {tab === 'view' ? '// VIEW SUBJECTS' : '// MANAGE SUBJECTS'}
             </button>
           ))}
         </div>
       )}
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {[
-          { label: 'Total Subjects', value: subjects.length },
-          { label: 'Theory',         value: subjects.filter(s => creditType(s) === 'THEORY').length },
-          { label: 'Lab + Theory',   value: subjects.filter(s => creditType(s) === 'LAB+THEORY').length },
-          { label: 'Total Credits',  value: subjects.reduce((sum, s) => sum + Number(s.credits), 0) },
-        ].map(({ label, value }) => (
-          <div key={label} className="bg-card border border-border rounded-lg p-4">
-            <p className="font-mono text-xs text-muted-foreground mb-1">{label}</p>
-            <p className="text-2xl font-bold">{value}</p>
-          </div>
-        ))}
-      </div>
-
-      {saveMsg && (
-        <div className="font-mono text-xs text-green-500 bg-green-500/10 border border-green-500/20 px-4 py-2 rounded">
-          {saveMsg}
-        </div>
-      )}
-
-      {/* Subject cards */}
-      <div className="space-y-3">
-        {subjects.length === 0 ? (
-          <div className="bg-card border border-border rounded-lg p-12 text-center">
-            <BookOpen className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
-            <p className="font-mono text-sm text-muted-foreground">No subjects found</p>
-          </div>
-        ) : subjects.map(subject => {
-          const ct = creditType(subject)
-          const cos = CO_MAPPING[subject.code] ?? []
-          const assignedFacultyId = assignments[subject.id]
-          const assignedFaculty = faculty.find(f => f.id === assignedFacultyId)
-          const isExpanded = expanded === subject.id
-
-          return (
-            <div key={subject.id} className="bg-card border border-border rounded-lg overflow-hidden hover:border-primary/30 transition-all">
-              <div className="flex items-center gap-4 px-6 py-4 cursor-pointer"
-                onClick={() => setExpanded(isExpanded ? null : subject.id)}>
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <BookOpen className="w-4 h-4 text-primary" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-mono text-xs text-muted-foreground">{subject.code}</span>
-                    <span className={`font-mono text-xs px-1.5 py-0.5 border rounded ${typeColor[ct]}`}>{ct}</span>
-                    <span className="font-mono text-xs text-muted-foreground">{subject.credits} credits</span>
-                  </div>
-                  <p className="font-medium text-sm mt-0.5">{subject.name}</p>
-                  {assignedFaculty && (
-                    <p className="font-mono text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
-                      <Users className="w-3 h-3" />
-                      {assignedFaculty.full_name}
-                    </p>
-                  )}
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="text-right hidden sm:block">
-                    <p className="font-mono text-xs text-muted-foreground">{semLabel(subject.semester ?? 0)}</p>
-                    <p className="font-mono text-xs text-muted-foreground">{displaySection}</p>
-                  </div>
-                  {isExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
-                </div>
-              </div>
-
-              {isExpanded && (
-                <div className="px-6 pb-6 space-y-4 border-t border-border pt-4">
-                  {/* Faculty assignment — HOD only */}
-                  {isHOD && (
-                    <div className="space-y-2">
-                      <label className="font-mono text-xs text-primary">// FACULTY ASSIGNMENT</label>
-                      <div className="flex items-center gap-3">
-                        <select
-                          value={assignedFacultyId ?? ''}
-                          onChange={e => assignFaculty(subject.id, e.target.value)}
-                          className="flex-1 h-10 px-3 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none">
-                          <option value="">— Unassigned —</option>
-                          {USERS.filter(u => u.role !== 'HOD').map(u => (
-                            <option key={u.email} value={faculty.find(f => f.email === u.email)?.id ?? ''}>
-                              {u.name} ({u.email})
-                            </option>
-                          ))}
-                        </select>
-                        {saving === subject.id && <Loader2 className="w-4 h-4 animate-spin text-primary" />}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Course outcomes */}
-                  {cos.length > 0 && (
-                    <div className="space-y-2">
-                      <label className="font-mono text-xs text-primary">// COURSE OUTCOMES</label>
-                      <div className="space-y-1">
-                        {cos.map((co, i) => (
-                          <div key={i} className="flex items-start gap-3 py-1.5 border-b border-border last:border-0">
-                            <span className="font-mono text-xs text-primary font-bold w-8 flex-shrink-0">CO{i+1}</span>
-                            <span className="font-mono text-xs text-muted-foreground">{co}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Assessment pattern */}
-                  <div className="space-y-2">
-                    <label className="font-mono text-xs text-primary">// ASSESSMENT PATTERN</label>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      {ct === 'THEORY' && (
-                        <>
-                          <div className="bg-accent rounded p-3 text-center">
-                            <p className="font-mono text-xs text-muted-foreground">CIA (Internal)</p>
-                            <p className="text-lg font-bold">40</p>
-                            <p className="font-mono text-xs text-muted-foreground">marks</p>
-                          </div>
-                          <div className="bg-accent rounded p-3 text-center">
-                            <p className="font-mono text-xs text-muted-foreground">SEE (External)</p>
-                            <p className="text-lg font-bold">60</p>
-                            <p className="font-mono text-xs text-muted-foreground">marks</p>
-                          </div>
-                          <div className="bg-accent rounded p-3 text-center">
-                            <p className="font-mono text-xs text-muted-foreground">CT /30 → 20%</p>
-                            <p className="text-lg font-bold">×2</p>
-                            <p className="font-mono text-xs text-muted-foreground">CIA1+CIA2</p>
-                          </div>
-                          <div className="bg-accent rounded p-3 text-center">
-                            <p className="font-mono text-xs text-muted-foreground">CAT /60 → 40%</p>
-                            <p className="text-lg font-bold">×2</p>
-                            <p className="font-mono text-xs text-muted-foreground">CIA1+CIA2</p>
-                          </div>
-                        </>
-                      )}
-                      {ct === 'LAB' && (
-                        <>
-                          <div className="bg-accent rounded p-3 text-center">
-                            <p className="font-mono text-xs text-muted-foreground">CIA (Internal)</p>
-                            <p className="text-lg font-bold">60</p>
-                            <p className="font-mono text-xs text-muted-foreground">marks</p>
-                          </div>
-                          <div className="bg-accent rounded p-3 text-center">
-                            <p className="font-mono text-xs text-muted-foreground">SEE (External)</p>
-                            <p className="text-lg font-bold">40</p>
-                            <p className="font-mono text-xs text-muted-foreground">marks</p>
-                          </div>
-                          <div className="bg-accent rounded p-3 text-center">
-                            <p className="font-mono text-xs text-muted-foreground">Experiments</p>
-                            <p className="text-lg font-bold">25%</p>
-                          </div>
-                          <div className="bg-accent rounded p-3 text-center">
-                            <p className="font-mono text-xs text-muted-foreground">Record+Viva+Lab</p>
-                            <p className="text-lg font-bold">75%</p>
-                          </div>
-                        </>
-                      )}
-                      {ct === 'LAB+THEORY' && (
-                        <>
-                          <div className="bg-accent rounded p-3 text-center">
-                            <p className="font-mono text-xs text-muted-foreground">CIA (Internal)</p>
-                            <p className="text-lg font-bold">50</p>
-                            <p className="font-mono text-xs text-muted-foreground">marks</p>
-                          </div>
-                          <div className="bg-accent rounded p-3 text-center">
-                            <p className="font-mono text-xs text-muted-foreground">SEE (External)</p>
-                            <p className="text-lg font-bold">50</p>
-                            <p className="font-mono text-xs text-muted-foreground">marks</p>
-                          </div>
-                          <div className="bg-accent rounded p-3 text-center">
-                            <p className="font-mono text-xs text-muted-foreground">Theory Component</p>
-                            <p className="text-lg font-bold">CT+CAT</p>
-                          </div>
-                          <div className="bg-accent rounded p-3 text-center">
-                            <p className="font-mono text-xs text-muted-foreground">Lab Component</p>
-                            <p className="text-lg font-bold">Practical</p>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
+      {isHOD && activeTab === 'manage' ? (
+        <CurriculumModule />
+      ) : (
+        <>
+          {!isStudent && (
+            <div className="flex flex-wrap gap-2">
+              {SECTIONS.map(s => (
+                <button key={s} onClick={() => setSelectedSection(s)}
+                  className={`font-mono text-xs px-3 py-1.5 rounded border transition-all ${selectedSection === s ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:border-primary/50'}`}>
+                  {s}
+                </button>
+              ))}
             </div>
-          )
-        })}
-      </div>
+          )}
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {[
+              { label: 'Total Subjects', value: subjects.length },
+              { label: 'Theory',         value: subjects.filter(s => creditType(s) === 'THEORY').length },
+              { label: 'Lab + Theory',   value: subjects.filter(s => creditType(s) === 'LAB+THEORY').length },
+              { label: 'Total Credits',  value: subjects.reduce((sum, s) => sum + Number(s.credits), 0) },
+            ].map(({ label, value }) => (
+              <div key={label} className="bg-card border border-border rounded-lg p-4">
+                <p className="font-mono text-xs text-muted-foreground mb-1">{label}</p>
+                <p className="text-2xl font-bold">{value}</p>
+              </div>
+            ))}
+          </div>
+
+          {saveMsg && (
+            <div className="font-mono text-xs text-green-500 bg-green-500/10 border border-green-500/20 px-4 py-2 rounded">
+              {saveMsg}
+            </div>
+          )}
+
+          <div className="space-y-3">
+            {subjects.length === 0 ? (
+              <div className="bg-card border border-border rounded-lg p-12 text-center">
+                <BookOpen className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+                <p className="font-mono text-sm text-muted-foreground">No subjects found</p>
+              </div>
+            ) : subjects.map(subject => {
+              const ct = creditType(subject)
+              const cos = CO_MAPPING[subject.code] ?? []
+              const assignedFacultyId = assignments[subject.id]
+              const assignedFaculty = faculty.find(f => f.id === assignedFacultyId)
+              const isExpanded = expanded === subject.id
+              return (
+                <div key={subject.id} className="bg-card border border-border rounded-lg overflow-hidden hover:border-primary/30 transition-all">
+                  <div className="flex items-center gap-4 px-6 py-4 cursor-pointer"
+                    onClick={() => setExpanded(isExpanded ? null : subject.id)}>
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <BookOpen className="w-4 h-4 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-mono text-xs text-muted-foreground">{subject.code}</span>
+                        <span className={`font-mono text-xs px-1.5 py-0.5 border rounded ${typeColor[ct]}`}>{ct}</span>
+                        <span className="font-mono text-xs text-muted-foreground">{subject.credits} credits</span>
+                      </div>
+                      <p className="font-medium text-sm mt-0.5">{subject.name}</p>
+                      {assignedFaculty && (
+                        <p className="font-mono text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+                          <Users className="w-3 h-3" />
+                          {assignedFaculty.full_name}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="text-right hidden sm:block">
+                        <p className="font-mono text-xs text-muted-foreground">{semLabel(subject.semester ?? 0)}</p>
+                        <p className="font-mono text-xs text-muted-foreground">{displaySection}</p>
+                      </div>
+                      {isExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                    </div>
+                  </div>
+                  {isExpanded && (
+                    <div className="px-6 pb-6 space-y-4 border-t border-border pt-4">
+                      {isHOD && (
+                        <div className="space-y-2">
+                          <label className="font-mono text-xs text-primary">// FACULTY ASSIGNMENT</label>
+                          <div className="flex items-center gap-3">
+                            <select
+                              value={assignedFacultyId ?? ''}
+                              onChange={e => assignFaculty(subject.id, e.target.value)}
+                              className="flex-1 h-10 px-3 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none">
+                              <option value="">— Unassigned —</option>
+                              {USERS.filter(u => u.role !== 'HOD').map(u => (
+                                <option key={u.email} value={faculty.find(f => f.email === u.email)?.id ?? ''}>
+                                  {u.name} ({u.email})
+                                </option>
+                              ))}
+                            </select>
+                            {saving === subject.id && <Loader2 className="w-4 h-4 animate-spin text-primary" />}
+                          </div>
+                        </div>
+                      )}
+                      {cos.length > 0 && (
+                        <div className="space-y-2">
+                          <label className="font-mono text-xs text-primary">// COURSE OUTCOMES</label>
+                          <div className="space-y-1">
+                            {cos.map((co, i) => (
+                              <div key={i} className="flex items-start gap-3 py-1.5 border-b border-border last:border-0">
+                                <span className="font-mono text-xs text-primary font-bold w-8 flex-shrink-0">CO{i+1}</span>
+                                <span className="font-mono text-xs text-muted-foreground">{co}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      <div className="space-y-2">
+                        <label className="font-mono text-xs text-primary">// ASSESSMENT PATTERN</label>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                          {ct === 'THEORY' && (<>
+                            <div className="bg-accent rounded p-3 text-center"><p className="font-mono text-xs text-muted-foreground">CIA (Internal)</p><p className="text-lg font-bold">40</p><p className="font-mono text-xs text-muted-foreground">marks</p></div>
+                            <div className="bg-accent rounded p-3 text-center"><p className="font-mono text-xs text-muted-foreground">SEE (External)</p><p className="text-lg font-bold">60</p><p className="font-mono text-xs text-muted-foreground">marks</p></div>
+                            <div className="bg-accent rounded p-3 text-center"><p className="font-mono text-xs text-muted-foreground">CT /30 → 20%</p><p className="text-lg font-bold">×2</p><p className="font-mono text-xs text-muted-foreground">CIA1+CIA2</p></div>
+                            <div className="bg-accent rounded p-3 text-center"><p className="font-mono text-xs text-muted-foreground">CAT /60 → 40%</p><p className="text-lg font-bold">×2</p><p className="font-mono text-xs text-muted-foreground">CIA1+CIA2</p></div>
+                          </>)}
+                          {ct === 'LAB' && (<>
+                            <div className="bg-accent rounded p-3 text-center"><p className="font-mono text-xs text-muted-foreground">CIA (Internal)</p><p className="text-lg font-bold">60</p><p className="font-mono text-xs text-muted-foreground">marks</p></div>
+                            <div className="bg-accent rounded p-3 text-center"><p className="font-mono text-xs text-muted-foreground">SEE (External)</p><p className="text-lg font-bold">40</p><p className="font-mono text-xs text-muted-foreground">marks</p></div>
+                            <div className="bg-accent rounded p-3 text-center"><p className="font-mono text-xs text-muted-foreground">Experiments</p><p className="text-lg font-bold">25%</p></div>
+                            <div className="bg-accent rounded p-3 text-center"><p className="font-mono text-xs text-muted-foreground">Record+Viva+Lab</p><p className="text-lg font-bold">75%</p></div>
+                          </>)}
+                          {ct === 'LAB+THEORY' && (<>
+                            <div className="bg-accent rounded p-3 text-center"><p className="font-mono text-xs text-muted-foreground">CIA (Internal)</p><p className="text-lg font-bold">50</p><p className="font-mono text-xs text-muted-foreground">marks</p></div>
+                            <div className="bg-accent rounded p-3 text-center"><p className="font-mono text-xs text-muted-foreground">SEE (External)</p><p className="text-lg font-bold">50</p><p className="font-mono text-xs text-muted-foreground">marks</p></div>
+                            <div className="bg-accent rounded p-3 text-center"><p className="font-mono text-xs text-muted-foreground">Theory Component</p><p className="text-lg font-bold">CT+CAT</p></div>
+                            <div className="bg-accent rounded p-3 text-center"><p className="font-mono text-xs text-muted-foreground">Lab Component</p><p className="text-lg font-bold">Practical</p></div>
+                          </>)}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </>
+      )}
     </div>
   )
 }

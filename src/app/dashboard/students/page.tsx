@@ -1,4 +1,5 @@
 "use client"
+import { toTitleCase } from "@/lib/utils"
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
@@ -30,7 +31,7 @@ export default function StudentsPage() {
   const isHOD = authUser?.type === 'staff' && authUser.data.role === 'HOD'
 
   useEffect(() => {
-    const stored = localStorage.getItem('licet_user')
+    const stored = localStorage.getItem('excelsior_user') || localStorage.getItem('licet_user')
     if (!stored) { router.push('/login'); return }
     const au = JSON.parse(stored) as AuthUser
     setAuthUser(au)
@@ -234,7 +235,7 @@ export default function StudentsPage() {
               <tr key={s.id} className="hover:bg-accent/20 transition-colors">
                 <td className="p-4 font-mono text-xs text-muted-foreground">{idx + 1}</td>
                 <td className="p-4">
-                  <p className="text-sm font-medium">{s.full_name}</p>
+                  <p className="text-sm font-medium">{toTitleCase(s.full_name)}</p>
                   <p className="font-mono text-xs text-muted-foreground mt-0.5">{s.email}</p>
                 </td>
                 <td className="p-4">

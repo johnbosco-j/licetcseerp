@@ -57,10 +57,10 @@ export function AttendanceModule() {
   const isHOD     = authUser?.type === 'staff' && authUser.data.role === 'HOD'
   const isFaculty = authUser?.type === 'staff' && authUser.data.role === 'PROFESSOR'
   const isStudent = authUser?.type === 'student'
-  const currentSem = (s: string) => s.startsWith('IV ') ? 8 : s.startsWith('III ') ? 6 : s.startsWith('II ') ? 4 : 2
+  const currentSem = (s: string) => getActiveSemester(s)
 
   useEffect(() => {
-    const stored = localStorage.getItem('licet_user')
+    const stored = localStorage.getItem('excelsior_user') || localStorage.getItem('licet_user')
     if (!stored) { router.push('/login'); return }
     const au = JSON.parse(stored) as AuthUser
     setAuthUser(au)
