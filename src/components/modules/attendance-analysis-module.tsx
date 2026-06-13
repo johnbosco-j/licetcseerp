@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
+import { getActiveSemester } from '@/lib/utils';
 import type { AuthUser } from "@/lib/auth"
 import { Users, AlertTriangle, CheckCircle2, Clock, Download, Loader2 } from "lucide-react"
 import * as XLSX from "xlsx"

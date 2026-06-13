@@ -13,6 +13,8 @@ const QUOTES = [
   "Forming Leaders with Social Responsibility",
   "Inspired by Jesuit Pedagogy of Excellence",
   "A Centre of Global Learning",
+  "Luceat Lux Vestra",
+  "Let Your Light Shine!",
   "Empowering Minds for Tomorrow's World",
   "Where Engineering Meets Human Values",
 ]
@@ -87,7 +89,7 @@ export default function LoginPage() {
                 College of Engineering<br />&amp; Technology
               </p>
               <p className="text-[9px] tracking-widest uppercase mt-0.5" style={{ color: '#c9a84c99' }}>
-                Autonomous Institution
+                An autonomous Jesuit institution
               </p>
             </div>
           </div>
