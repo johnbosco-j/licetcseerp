@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic"
 import { useEffect, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
+import { getActiveSemester } from '@/lib/semester';
 import type { AuthUser } from "@/lib/auth"
 import type { Database } from "@/lib/supabase"
 import { Save, Loader2, Calendar, Download, Lock, Unlock, Clock } from "lucide-react"

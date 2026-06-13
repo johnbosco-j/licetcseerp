@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import type { AuthUser } from "@/lib/auth"
 import type { Database } from "@/lib/supabase"
+import { getActiveSemester } from '@/lib/semester';
 import { Search, Edit2, Trash2, Plus, Loader2, Download, X, Users, AlertTriangle, Check } from "lucide-react"
 import { addStudentAdmin, deleteStudentAdmin } from "@/app/actions"
 import * as XLSX from "xlsx"
