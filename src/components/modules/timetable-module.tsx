@@ -6,6 +6,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import type { AuthUser } from "@/lib/auth"
+import { getActiveSemester } from '@/lib/semester';
 import type { Database } from "@/lib/supabase"
 import { Save, Loader2, Settings } from "lucide-react"
 
