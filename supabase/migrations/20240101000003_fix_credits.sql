@@ -1,0 +1,1 @@
+ALTER TABLE subjects ALTER COLUMN credits TYPE NUMERIC(4,1);
