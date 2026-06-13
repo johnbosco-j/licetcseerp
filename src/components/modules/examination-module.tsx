@@ -8,6 +8,7 @@ import { supabase } from "@/lib/supabase"
 import { RichEditor } from "@/components/rich-editor"
 import type { AuthUser } from "@/lib/auth"
 import type { Database } from "@/lib/supabase"
+import { getActiveSemester } from '@/lib/semester';
 import {
   FileText, Plus, X, Check, Clock, Loader2,
   Calendar, BarChart3, BookOpen, AlertTriangle, Download
