@@ -66,6 +66,9 @@ export default function AttendancePage() {
   const [activeMode, setActiveMode]       = useState<'subject'|'day'>('subject')
   const [activePart, setActivePart]       = useState<1|2|3>(1)
   const [dayAttendance, setDayAttendance] = useState<Record<string, Record<number, 'PRESENT'|'ABSENT'>>>({})
+  const [dayLocked, setDayLocked]         = useState(false)
+  const [showDayLockModal, setShowDayLockModal] = useState(false)
+  const [dayLockReason, setDayLockReason] = useState('')
 
   const isHOD     = authUser?.type === 'staff' && authUser.data.role === 'HOD'
   const isFaculty = authUser?.type === 'staff' && authUser.data.role === 'PROFESSOR'
@@ -115,6 +118,15 @@ export default function AttendancePage() {
       .then(({ data }: any) => setIsLocked(!!(data?.length)))
   }, [selectedSubject])
 
+  // Check day-attendance lock for the selected section
+  useEffect(() => {
+    const section = selectedSubject?.section ?? selectedSection
+    if (!section || isStudent) { setDayLocked(false); return }
+    ;(supabase.from('subject_locks' as any) as any)
+      .select('*').is('subject_id', null).eq('lock_type', 'DAY_ATTENDANCE').eq('section', section)
+      .then(({ data }: any) => setDayLocked(!!(data?.length)))
+  }, [selectedSection, selectedSubject, isStudent])
+
   // Load day attendance for selected section+date
   useEffect(() => {
     const section = selectedSubject?.section ?? selectedSection
@@ -163,7 +175,7 @@ export default function AttendancePage() {
   }, [students, isStudent])
 
   const saveDayAttendance = async () => {
-    if (!profile) return
+    if (!profile || dayLocked) return
     const section = selectedSubject?.section ?? selectedSection
     if (!section) return
     setSaving(true)
@@ -259,6 +271,70 @@ export default function AttendancePage() {
       })
       setIsLocked(true); setShowLockModal(false); setSaveMsg('✓ Locked')
     }
+    setTimeout(() => setSaveMsg(''), 4000)
+  }
+
+  const toggleDayLock = async () => {
+    const section = selectedSubject?.section ?? selectedSection
+    if (!section || !profile) return
+    if (dayLocked) {
+      await (supabase.from('subject_locks' as any) as any)
+        .delete().is('subject_id', null).eq('lock_type', 'DAY_ATTENDANCE').eq('section', section)
+      setDayLocked(false); setSaveMsg('✓ Day attendance unlocked')
+    } else {
+      await (supabase.from('subject_locks' as any) as any).insert({
+        subject_id: null, lock_type: 'DAY_ATTENDANCE', section,
+        locked_by: profile.id, reason: dayLockReason || 'Locked by HOD'
+      })
+      setDayLocked(true); setShowDayLockModal(false); setSaveMsg('✓ Day attendance locked')
+    }
+    setTimeout(() => setSaveMsg(''), 4000)
+  }
+
+  const exportDayXLSX = async () => {
+    const section = selectedSubject?.section ?? selectedSection
+    if (!section) return
+    setExporting(true)
+    let query = (supabase.from('day_attendance' as any) as any)
+      .select('*, profiles!student_id(full_name, email)')
+      .eq('section', section).order('date')
+    if (exportFrom) query = query.gte('date', exportFrom)
+    if (exportTo)   query = query.lte('date', exportTo)
+    const { data } = await query
+    if (!data?.length) { setExporting(false); setSaveMsg('No data'); return }
+
+    // Build sorted list of (date, part) columns
+    const dateParts: string[] = Array.from(new Set<string>(data.map((r: any) => `${r.date}__${r.part}`)))
+      .sort((a, b) => {
+        const [da, pa] = a.split('__'); const [db, pb] = b.split('__')
+        return da === db ? Number(pa) - Number(pb) : da.localeCompare(db)
+      })
+
+    const studentMap: Record<string, string> = {}
+    data.forEach((r: any) => { studentMap[r.student_id] = r.profiles?.full_name ?? r.student_id })
+
+    const rows: any[] = []
+    Object.entries(studentMap).forEach(([sid, name]) => {
+      const row: any = { 'Student Name': name }
+      let present = 0, total = dateParts.length
+      dateParts.forEach(dp => {
+        const [date, part] = dp.split('__')
+        const rec = data.find((r: any) => r.student_id === sid && r.date === date && String(r.part) === part)
+        const status = rec?.status ?? '—'
+        const partLabel = PARTS.find(p => p.id === Number(part))?.label ?? `Part ${part}`
+        row[`${date} ${partLabel}`] = status
+        if (status === 'PRESENT') present++
+      })
+      row['Present'] = present; row['Total'] = total
+      row['%'] = total > 0 ? Math.round(present / total * 100) + '%' : '—'
+      rows.push(row)
+    })
+
+    const ws = XLSX.utils.json_to_sheet(rows)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Day Attendance')
+    XLSX.writeFile(wb, `DayAttendance_${section}.xlsx`)
+    setExporting(false); setSaveMsg(`✓ Exported ${rows.length} students`)
     setTimeout(() => setSaveMsg(''), 4000)
   }
 
@@ -452,9 +528,41 @@ export default function AttendancePage() {
                 )}
               </div>
             )}
+
+            {/* Export + Lock (day mode) */}
+            {activeMode === 'day' && (selectedSubject?.section ?? selectedSection) && (
+              <div className="flex flex-wrap items-end gap-3 pt-3 border-t border-border mt-3">
+                <div className="space-y-1">
+                  <label className="font-mono text-xs text-muted-foreground">Export From</label>
+                  <input type="date" value={exportFrom} onChange={e => setExportFrom(e.target.value)}
+                    className="h-9 px-2 bg-background border border-border rounded font-mono text-xs focus:border-primary focus:outline-none" />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-mono text-xs text-muted-foreground">Export To</label>
+                  <input type="date" value={exportTo} onChange={e => setExportTo(e.target.value)}
+                    className="h-9 px-2 bg-background border border-border rounded font-mono text-xs focus:border-primary focus:outline-none" />
+                </div>
+                <button onClick={exportDayXLSX} disabled={exporting}
+                  className="flex items-center gap-2 h-9 px-3 bg-green-600 text-white font-mono text-xs rounded hover:bg-green-700 disabled:opacity-50">
+                  {exporting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
+                  Export XLSX
+                </button>
+                {isHOD && (
+                  <button onClick={() => dayLocked ? toggleDayLock() : setShowDayLockModal(true)}
+                    className={`flex items-center gap-2 h-9 px-3 font-mono text-xs rounded transition-colors ${dayLocked ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-yellow-600 hover:bg-yellow-700 text-white'}`}>
+                    {dayLocked ? <><Unlock className="w-3 h-3" /> Unlock</> : <><Lock className="w-3 h-3" /> Lock</>}
+                  </button>
+                )}
+                {dayLocked && (
+                  <div className="flex items-center gap-2 font-mono text-xs text-red-500 bg-red-500/10 border border-red-500/20 px-3 py-1.5 rounded">
+                    <Lock className="w-3 h-3" /> Locked
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
-          {/* Lock modal */}
+          {/* Lock modal (subject mode) */}
           {showLockModal && (
             <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
               <div className="bg-card border border-border rounded-lg p-6 w-full max-w-md space-y-4">
@@ -468,6 +576,25 @@ export default function AttendancePage() {
                     <Lock className="w-3 h-3" /> Confirm Lock
                   </button>
                   <button onClick={() => setShowLockModal(false)} className="flex-1 h-10 bg-accent font-mono text-xs rounded">Cancel</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Lock modal (day mode) */}
+          {showDayLockModal && (
+            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+              <div className="bg-card border border-border rounded-lg p-6 w-full max-w-md space-y-4">
+                <span className="font-mono text-xs text-primary">// LOCK DAY ATTENDANCE</span>
+                <h2 className="font-bold text-sm">{selectedSubject?.section ?? selectedSection}</h2>
+                <input type="text" value={dayLockReason} onChange={e => setDayLockReason(e.target.value)}
+                  placeholder="Reason (optional)"
+                  className="w-full h-10 px-3 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none" />
+                <div className="flex gap-3">
+                  <button onClick={toggleDayLock} className="flex-1 h-10 bg-red-600 text-white font-mono text-xs rounded hover:bg-red-700 flex items-center justify-center gap-2">
+                    <Lock className="w-3 h-3" /> Confirm Lock
+                  </button>
+                  <button onClick={() => setShowDayLockModal(false)} className="flex-1 h-10 bg-accent font-mono text-xs rounded">Cancel</button>
                 </div>
               </div>
             </div>
@@ -548,10 +675,10 @@ export default function AttendancePage() {
 
                   <div className="px-6 py-4 border-t border-border flex items-center justify-between">
                     <span className={`font-mono text-xs ${saveMsg.startsWith('Error') ? 'text-red-500' : 'text-green-500'}`}>{saveMsg}</span>
-                    <button onClick={saveDayAttendance} disabled={saving || !students.length}
+                    <button onClick={saveDayAttendance} disabled={saving || !students.length || dayLocked}
                       className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground font-mono text-xs rounded hover:bg-primary/90 disabled:opacity-50">
                       {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-                      {saving ? 'Saving & Linking...' : `Save Part ${activePart} Attendance`}
+                      {dayLocked ? 'Locked' : saving ? 'Saving & Linking...' : `Save Part ${activePart} Attendance`}
                     </button>
                   </div>
                 </div>
