@@ -507,7 +507,10 @@ export default function SubjectsPage() {
     const au = JSON.parse(stored) as AuthUser
     setAuthUser(au)
     supabase.from('profiles').select('*').eq('email', au.data.email).single()
-      .then(({ data }) => { if (data) setProfile(data) })
+      .then(({ data, error }) => {
+        if (error) { console.error('Failed to load profile for', au.data.email, error); return }
+        if (data) setProfile(data)
+      })
   }, [router])
 
   // Load faculty profiles
@@ -520,14 +523,21 @@ export default function SubjectsPage() {
   useEffect(() => {
     if (!authUser) return
     let section = selectedSection
-    if (isStudent) section = (authUser.data as { section?: string })?.section ?? ''
+    if (isStudent) {
+      // Use freshly fetched profile.section, not the stale cached localStorage value
+      if (!profile) return // wait for profile to load before querying with a possibly-stale section
+      section = profile.section ?? (authUser.data as { section?: string })?.section ?? ''
+    }
 
     const sem = currentSem(section)
     supabase.from('subjects').select('*')
       .eq('section', section).eq('semester', sem)
       .order('code')
-      .then(({ data }) => { if (data) setSubjects(data) })
-  }, [authUser, selectedSection, isStudent])
+      .then(({ data, error }) => {
+        if (error) { console.error('Failed to load subjects for section', section, 'sem', sem, error); return }
+        if (data) setSubjects(data)
+      })
+  }, [authUser, profile, selectedSection, isStudent])
 
   // Load faculty assignments from marks table (faculty_id used as proxy)
   useEffect(() => {
@@ -571,7 +581,7 @@ export default function SubjectsPage() {
   }
 
   const displaySection = isStudent
-    ? (authUser?.data as { section?: string })?.section ?? ''
+    ? profile?.section ?? (authUser?.data as { section?: string })?.section ?? ''
     : selectedSection
 
   return (
@@ -591,9 +601,10 @@ export default function SubjectsPage() {
             <button key={tab} onClick={() => setActiveTab(tab)} style={{
               fontFamily:'monospace',fontSize:'12px',padding:'8px 20px',
               borderBottom: activeTab===tab ? '2px solid #722F37' : '2px solid transparent',
+              borderTop:'none',borderLeft:'none',borderRight:'none',
               color: activeTab===tab ? '#722F37' : '#6b7280',
               fontWeight: activeTab===tab ? 600 : 400,
-              background:'none',border:'none',cursor:'pointer',
+              background:'none',cursor:'pointer',
             }}>
               {tab === 'view' ? '// VIEW SUBJECTS' : '// MANAGE SUBJECTS'}
             </button>

@@ -113,7 +113,9 @@ export default function CurriculumModule() {
 
   // ── Auth guard ─────────────────────────────────────────
   useEffect(() => {
-    const stored = localStorage.getItem("excelsior_user")
+    // dashboard/layout.tsx migrates "excelsior_user" -> "licet_user" and removes the old key,
+    // so by the time this module mounts, "excelsior_user" no longer exists. Check "licet_user" first.
+    const stored = localStorage.getItem("licet_user") || localStorage.getItem("excelsior_user")
     if (!stored) { router.push("/login"); return }
     const user = JSON.parse(stored) as AuthUser
     if (user.type !== "staff" || user.data.role !== "HOD") {

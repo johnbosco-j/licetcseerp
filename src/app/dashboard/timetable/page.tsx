@@ -99,19 +99,33 @@ export default function TimetablePage() {
     const au = JSON.parse(stored) as AuthUser
     setAuthUser(au)
     supabase.from('profiles').select('*').eq('email', au.data.email).single()
-      .then(({ data }) => { if (data) setProfile(data) })
+      .then(({ data, error }) => {
+        if (error) { console.error('Failed to load profile for', au.data.email, error); return }
+        if (data) setProfile(data)
+      })
     if (au.type === 'student') {
+      // Fall back to stale localStorage section only until profile loads (handled below)
       const sec = (au.data as any)?.section ?? 'I CSE-A'
       setSection(sec)
     }
   }, [router])
+
+  // Once the live profile loads, prefer its section for students (overrides stale localStorage value)
+  useEffect(() => {
+    if (authUser?.type === 'student' && profile?.section) {
+      setSection(profile.section)
+    }
+  }, [authUser, profile])
 
   // Load subjects
   useEffect(() => {
     if (!authUser) return
     supabase.from('subjects').select('*')
       .eq('section', section).eq('semester', currentSem(section)).order('code')
-      .then(({ data }) => { if (data) setSubjects(data) })
+      .then(({ data, error }) => {
+        if (error) { console.error('Failed to load subjects for section', section, error); return }
+        if (data) setSubjects(data)
+      })
   }, [section, authUser])
 
   // Load saved timetable

@@ -132,8 +132,20 @@ export default function MarksPage() {
   const isStudent = authUser?.type === 'student'
 
   const SECTIONS = ['I CSE-A','I CSE-B','II CSE-A','II CSE-B','III CSE-A','III CSE-B','IV CSE-A','IV CSE-B']
-  const currentSem = (section: string) =>
-    section.startsWith('I ') ? 2 : section.startsWith('II ') ? 4 : 6
+  // Semester helper — June–Dec = odd (1,3,5,7), Jan–May = even (2,4,6,8)
+  // Matches subjects/timetable pages for consistency
+  const currentSem = (section: string): number => {
+    const m = new Date().getMonth() + 1
+    const odd = m >= 6
+    const map: Record<string, [number, number]> = {
+      'I CSE-A': [1, 2], 'I CSE-B': [1, 2],
+      'II CSE-A': [3, 4], 'II CSE-B': [3, 4],
+      'III CSE-A': [5, 6], 'III CSE-B': [5, 6],
+      'IV CSE-A': [7, 8], 'IV CSE-B': [7, 8],
+    }
+    const [o, e] = map[section] ?? [1, 2]
+    return odd ? o : e
+  }
 
   // Auth
   useEffect(() => {
@@ -142,7 +154,10 @@ export default function MarksPage() {
     const au = JSON.parse(stored) as AuthUser
     setAuthUser(au)
     supabase.from('profiles').select('*').eq('email', au.data.email).single()
-      .then(({ data }) => { if (data) setProfile(data) })
+      .then(({ data, error }) => {
+        if (error) { console.error('Failed to load profile for', au.data.email, error); return }
+        if (data) setProfile(data)
+      })
   }, [router])
 
   // Load subjects
@@ -150,14 +165,18 @@ export default function MarksPage() {
     if (!authUser) return
     let query = supabase.from('subjects').select('*').order('semester').order('name')
     if (isStudent) {
-      const section = (authUser.data as { section?: string })?.section ?? ''
+      if (!profile) return // wait for live profile before querying with a possibly-stale section
+      const section = profile.section ?? (authUser.data as { section?: string })?.section ?? ''
       query = query.eq('section', section).eq('semester', currentSem(section))
     } else if (selectedSection) {
       query = query.eq('section', selectedSection)
     }
     // Faculty/HOD with no section selected — load all subjects
-    query.then(({ data }) => { if (data) setSubjects(data) })
-  }, [authUser, isStudent, selectedSection])
+    query.then(({ data, error }) => {
+      if (error) { console.error('Failed to load subjects', error); return }
+      if (data) setSubjects(data)
+    })
+  }, [authUser, profile, isStudent, selectedSection])
 
   // Load students
   useEffect(() => {
