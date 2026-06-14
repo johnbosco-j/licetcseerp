@@ -62,7 +62,7 @@ const SEM_LABEL: Record<number, string> = {
   1:"I", 2:"II", 3:"III", 4:"IV", 5:"V", 6:"VI", 7:"VII", 8:"VIII"
 }
 
-const CREDIT_OPTIONS = [1, 2, 3, 4, 5]
+const CREDIT_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
 const DEPT_ID = "00000000-0000-0000-0000-000000000001"
 
