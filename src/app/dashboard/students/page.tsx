@@ -212,6 +212,8 @@ export default function StudentsPage() {
             <tr className="border-b border-border bg-accent/30">
               <th className="p-4 font-mono text-xs text-muted-foreground font-normal w-12">#</th>
               <th className="p-4 font-mono text-xs text-muted-foreground font-normal">Student Details</th>
+              <th className="p-4 font-mono text-xs text-muted-foreground font-normal">Roll No</th>
+              <th className="p-4 font-mono text-xs text-muted-foreground font-normal">Reg No</th>
               <th className="p-4 font-mono text-xs text-muted-foreground font-normal">Section</th>
               <th className="p-4 font-mono text-xs text-muted-foreground font-normal">Batch</th>
               <th className="p-4 font-mono text-xs text-muted-foreground font-normal text-right">Actions</th>
@@ -220,13 +222,13 @@ export default function StudentsPage() {
           <tbody className="divide-y divide-border">
             {loading ? (
               <tr>
-                <td colSpan={5} className="p-12 text-center">
+                <td colSpan={7} className="p-12 text-center">
                   <Loader2 className="w-6 h-6 animate-spin mx-auto text-muted-foreground" />
                 </td>
               </tr>
             ) : filtered.length === 0 ? (
               <tr>
-                <td colSpan={5} className="p-12 text-center">
+                <td colSpan={7} className="p-12 text-center">
                   <Users className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
                   <p className="font-mono text-sm text-muted-foreground">No students found matching your criteria</p>
                 </td>
@@ -238,6 +240,8 @@ export default function StudentsPage() {
                   <p className="text-sm font-medium">{toTitleCase(s.full_name)}</p>
                   <p className="font-mono text-xs text-muted-foreground mt-0.5">{s.email}</p>
                 </td>
+                <td className="p-4 font-mono text-xs">{(s as any).roll_number ?? '—'}</td>
+                <td className="p-4 font-mono text-xs text-muted-foreground">{(s as any).register_number ?? '—'}</td>
                 <td className="p-4">
                   <span className="font-mono text-xs px-2 py-0.5 bg-accent rounded border border-border">
                     {s.section ?? 'UNASSIGNED'}

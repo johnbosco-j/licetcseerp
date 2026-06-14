@@ -78,20 +78,27 @@ export default function AttendancePage() {
     const au = JSON.parse(stored) as AuthUser
     setAuthUser(au)
     supabase.from('profiles').select('*').eq('email', au.data.email).single()
-      .then(({ data }) => { if (data) setProfile(data) })
+      .then(({ data, error }) => {
+        if (error) { console.error('Failed to load profile for', au.data.email, error); return }
+        if (data) setProfile(data)
+      })
   }, [router])
 
   useEffect(() => {
     if (!authUser) return
     let query = supabase.from('subjects').select('*').order('semester').order('name')
     if (isStudent) {
-      const section = (authUser.data as any)?.section ?? ''
+      if (!profile) return // wait for live profile before querying with a possibly-stale section
+      const section = profile.section ?? (authUser.data as any)?.section ?? ''
       query = query.eq('section', section).eq('semester', currentSem(section))
     } else if (selectedSection) {
       query = query.eq('section', selectedSection)
     }
-    query.then(({ data }) => { if (data) setSubjects(data) })
-  }, [authUser, isStudent, selectedSection])
+    query.then(({ data, error }) => {
+      if (error) { console.error('Failed to load subjects', error); return }
+      if (data) setSubjects(data)
+    })
+  }, [authUser, profile, isStudent, selectedSection])
 
   useEffect(() => {
     const section = selectedSubject?.section ?? selectedSection

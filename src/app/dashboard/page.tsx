@@ -33,8 +33,20 @@ interface FeedItem {
   kind: "notice" | "event" | "alert"
 }
 
-const currentSem = (s: string) =>
-  s.startsWith('IV ') ? 8 : s.startsWith('III ') ? 6 : s.startsWith('II ') ? 4 : 2
+// Semester helper — June–Dec = odd (1,3,5,7), Jan–May = even (2,4,6,8)
+// Matches subjects/timetable/marks pages for consistency
+const currentSem = (s: string): number => {
+  const m = new Date().getMonth() + 1
+  const odd = m >= 6
+  const map: Record<string, [number, number]> = {
+    'I CSE-A': [1, 2], 'I CSE-B': [1, 2],
+    'II CSE-A': [3, 4], 'II CSE-B': [3, 4],
+    'III CSE-A': [5, 6], 'III CSE-B': [5, 6],
+    'IV CSE-A': [7, 8], 'IV CSE-B': [7, 8],
+  }
+  const [o, e] = map[s] ?? [1, 2]
+  return odd ? o : e
+}
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime()
