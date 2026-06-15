@@ -28,6 +28,8 @@ export async function addStudentAdmin(data: any) {
     email: data.email,
     section: data.section,
     batch_year: data.batch_year,
+    roll_number: data.roll_number || null,
+    register_number: data.register_number || null,
     is_active: true
   })
 

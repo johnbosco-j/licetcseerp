@@ -125,6 +125,8 @@ export default function MarksPage() {
   const [showLockModal, setShowLockModal] = useState(false)
   const [lockReason, setLockReason]   = useState('')
   const [exporting, setExporting]     = useState(false)
+  const [exportingStudent, setExportingStudent] = useState(false)
+  const [exportStudentId, setExportStudentId]   = useState('')
   const [activeTab, setActiveTab]   = useState<'cia1'|'cia2'|'sem'|'summary'>('cia1')
 
   const isHOD     = authUser?.type === 'staff' && authUser.data.role === 'HOD'
@@ -320,6 +322,69 @@ export default function MarksPage() {
     XLSX.writeFile(wb, filename)
     setExporting(false)
     setSaveMsg(`✓ Exported ${rows.length} students`)
+    setTimeout(() => setSaveMsg(''), 4000)
+  }
+
+  // Export all-subject marks for a single student (student-wise report)
+  const exportStudentXLSX = async () => {
+    const student = students.find(s => s.id === exportStudentId)
+    if (!student) return
+    setExportingStudent(true)
+
+    // All subjects for this student's section + current semester
+    const sem = currentSem(student.section ?? '')
+    const { data: subs } = await supabase.from('subjects').select('*')
+      .eq('section', student.section ?? '').eq('semester', sem).order('code')
+
+    if (!subs || !subs.length) {
+      setExportingStudent(false); setSaveMsg('No subjects found for this student'); return
+    }
+
+    const { data: marksRaw } = await supabase.from('marks')
+      .select('*').eq('student_id', student.id)
+      .in('subject_id', subs.map(s => s.id)) as any
+
+    const rows = subs.map(sub => {
+      const ct = getCourseType(sub)
+      const subjectMarks = (marksRaw ?? []).filter((m: any) => m.subject_id === sub.id)
+      const get = (type: string) => subjectMarks.find((m: any) => m.exam_type === type)?.marks_obtained ?? 0
+
+      const entry: MarksEntry = {
+        studentId: student.id,
+        cia1: { ct: get('CIA1_CT'), cat: get('CIA1_CAT'), activity: get('CIA1_ACTIVITY') },
+        cia2: { ct: get('CIA2_CT'), cat: get('CIA2_CAT'), activity: get('CIA2_ACTIVITY') },
+        labCia1: { experiments: get('CIA1_EXP'), record: get('CIA1_RECORD'), viva: get('CIA1_VIVA'), labAssessment: get('CIA1_LAB') },
+        labCia2: { experiments: get('CIA2_EXP'), record: get('CIA2_RECORD'), viva: get('CIA2_VIVA'), labAssessment: get('CIA2_LAB') },
+        semesterEnd: get('SEM_END')
+      }
+      const { internal, total, grade, gradePoint } = computeTotals(entry, ct)
+      return {
+        'Code': sub.code,
+        'Subject': sub.name,
+        'Credits': sub.credits,
+        'Internal': internal,
+        'SEE': entry.semesterEnd,
+        'Total': total,
+        'Grade': grade,
+        'Grade Point': gradePoint,
+      }
+    })
+
+    const totalCredits = subs.reduce((s, x) => s + (x.credits ?? 0), 0)
+    const gpa = totalCredits > 0
+      ? Math.round(rows.reduce((s, r, i) => s + r['Grade Point'] * (subs[i].credits ?? 0), 0) / totalCredits * 100) / 100
+      : 0
+
+    const ws = XLSX.utils.json_to_sheet(rows)
+    XLSX.utils.sheet_add_aoa(ws, [[]], { origin: -1 })
+    XLSX.utils.sheet_add_aoa(ws, [['', '', '', '', '', 'GPA', gpa]], { origin: -1 })
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Marks')
+    ws['!cols'] = [{ wch: 12 }, { wch: 30 }, { wch: 8 }, { wch: 10 }, { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 10 }]
+    const filename = `Marks_${student.full_name.replace(/\s+/g, '_')}_Sem${sem}_${new Date().toISOString().split('T')[0]}.xlsx`
+    XLSX.writeFile(wb, filename)
+    setExportingStudent(false)
+    setSaveMsg(`✓ Exported report for ${student.full_name}`)
     setTimeout(() => setSaveMsg(''), 4000)
   }
 
@@ -556,6 +621,25 @@ export default function MarksPage() {
                 </select>
               </div>
             </div>
+
+            {/* Student-wise export */}
+            {students.length > 0 && (
+              <div className="flex flex-wrap items-end gap-3 pt-3 border-t border-border mt-3">
+                <div className="space-y-1 flex-1 min-w-[200px]">
+                  <label className="font-mono text-xs text-muted-foreground">Student-wise report</label>
+                  <select value={exportStudentId} onChange={e => setExportStudentId(e.target.value)}
+                    className="w-full h-10 px-3 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none">
+                    <option value="">Select student...</option>
+                    {students.map(s => <option key={s.id} value={s.id}>{s.full_name} ({(s as any).roll_number ?? s.email})</option>)}
+                  </select>
+                </div>
+                <button onClick={exportStudentXLSX} disabled={exportingStudent || !exportStudentId}
+                  className="flex items-center gap-2 h-10 px-3 bg-green-600 text-white font-mono text-xs rounded hover:bg-green-700 disabled:opacity-50 transition-colors">
+                  {exportingStudent ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
+                  Export Student Report
+                </button>
+              </div>
+            )}
 
             {/* Export + Lock bar */}
             {selectedSubject && (

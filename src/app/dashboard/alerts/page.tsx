@@ -5,414 +5,297 @@ export const dynamic = "force-dynamic"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
-import { sendEmail, emailTemplates } from "@/lib/email"
 import type { AuthUser } from "@/lib/auth"
-import { AlertTriangle, Mail, CheckCircle2, Clock, Users, Loader2, Filter, Send } from "lucide-react"
+import type { Database } from "@/lib/supabase"
+import { Bell, CheckCircle, XCircle, Clock, AlertTriangle, CheckCheck } from "lucide-react"
+
+type Profile = Database['public']['Tables']['profiles']['Row']
 
 interface Alert {
-  id:           string
-  student_id:   string
-  student_name: string
-  student_email:string
-  section:      string
-  date:         string
+  id: string
+  student_id: string | null
+  section: string
+  date: string
   missed_parts: number[]
-  alert_type:   string
-  email_sent:   boolean
-  email_sent_at:string | null
-  met_hod:      boolean
-  met_hod_at:   string | null
-  cleared_by:   string | null
-  notes:        string | null
-  created_at:   string
-}
-
-const PART_LABELS: Record<number, string> = {
-  1: 'Part I (8:00 AM — P1, P2)',
-  2: 'Part II (10:10 AM — P3, P4, P5)',
-  3: 'Part III (1:30 PM — P6, P7, P8)',
+  alert_type: string
+  met_hod: boolean | null
+  met_hod_at: string | null
+  cleared_by: string | null
+  cleared_at: string | null
+  notes: string | null
+  created_at: string | null
+  student?: { full_name: string; email: string; roll_number: string | null }
 }
 
 const SECTIONS = ['I CSE-A','I CSE-B','II CSE-A','II CSE-B','III CSE-A','III CSE-B','IV CSE-A','IV CSE-B']
 
+const ALERT_LABELS: Record<string, { label: string; color: string }> = {
+  ABSENT_ON_NO_INFO: { label: 'Absent (No Info)',   color: 'text-red-500 bg-red-500/10 border-red-500/20' },
+  LATE_THRESHOLD:    { label: '3× Late This Month', color: 'text-yellow-500 bg-yellow-500/10 border-yellow-500/20' },
+}
+
 export default function AlertsPage() {
   const router = useRouter()
-  const [authUser, setAuthUser]   = useState<AuthUser | null>(null)
-  const [profile, setProfile]     = useState<any>(null)
-  const [alerts, setAlerts]       = useState<Alert[]>([])
-  const [loading, setLoading]     = useState(false)
-  const [sending, setSending]     = useState<string | null>(null)
-  const [filterSection, setFilterSection] = useState('ALL')
-  const [filterStatus, setFilterStatus]   = useState<'ALL'|'PENDING'|'EMAIL_SENT'|'MET_HOD'>('ALL')
-  const [filterDate, setFilterDate]       = useState('')
-  const [bulkSending, setBulkSending]     = useState(false)
-  const [saveMsg, setSaveMsg]             = useState('')
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null)
+  const [profile, setProfile]   = useState<Profile | null>(null)
+  const [alerts, setAlerts]     = useState<Alert[]>([])
+  const [loading, setLoading]   = useState(true)
+  const [filterSection, setFilterSection] = useState('')
+  const [showResolved, setShowResolved]   = useState(false)
+  const [actionMsg, setActionMsg]         = useState('')
+  const [bulkClearing, setBulkClearing]   = useState(false)
 
-  const isHOD = authUser?.type === 'staff' && authUser.data.role === 'HOD'
+  const isHOD     = authUser?.type === 'staff' && authUser.data.role === 'HOD'
+  const isFaculty = authUser?.type === 'staff' && authUser.data.role === 'PROFESSOR'
+  const isStudent = authUser?.type === 'student'
 
   useEffect(() => {
-    const stored = localStorage.getItem('excelsior_user') || localStorage.getItem('licet_user')
+    const stored = localStorage.getItem('licet_user') || localStorage.getItem('excelsior_user')
     if (!stored) { router.push('/login'); return }
     const au = JSON.parse(stored) as AuthUser
     setAuthUser(au)
-    if (au.type !== 'staff' || (au.data as any).role !== 'HOD') {
-      router.push('/dashboard'); return
-    }
     supabase.from('profiles').select('*').eq('email', au.data.email).single()
       .then(({ data }) => { if (data) setProfile(data) })
   }, [router])
 
   const loadAlerts = async () => {
+    if (!profile) return
     setLoading(true)
-    // Load alerts with student info
-    const { data: alertData } = await (supabase.from('attendance_alerts' as any) as any)
-      .select('*').order('date', { ascending: false }).order('created_at', { ascending: false })
 
-    if (!alertData) { setLoading(false); return }
-
-    // Load student profiles
-    const studentIds = [...new Set(alertData.map((a: any) => a.student_id))]
-    const { data: students } = await supabase.from('profiles')
-      .select('id, full_name, email').in('id', studentIds)
-
-    const studentMap: Record<string, any> = {}
-    students?.forEach((s: any) => { studentMap[s.id] = s })
-
-    const enriched: Alert[] = alertData.map((a: any) => ({
-      ...a,
-      student_name:  studentMap[a.student_id]?.full_name ?? 'Unknown',
-      student_email: studentMap[a.student_id]?.email ?? '',
-    }))
-
-    setAlerts(enriched)
-    setLoading(false)
-  }
-
-  // Auto-generate alerts from today's day attendance
-  const generateTodayAlerts = async () => {
-    setLoading(true)
-    const today = new Date().toISOString().split('T')[0]
-
-    // Load today's day attendance
-    const { data: dayAtt } = await (supabase.from('day_attendance' as any) as any)
-      .select('*').eq('date', today)
-
-    if (!dayAtt?.length) { setLoading(false); setSaveMsg('No attendance marked today'); return }
-
-    // Group by student
-    const byStudent: Record<string, { section: string; parts: Record<number, string> }> = {}
-    dayAtt.forEach((r: any) => {
-      if (!byStudent[r.student_id]) byStudent[r.student_id] = { section: r.section, parts: {} }
-      byStudent[r.student_id].parts[r.part] = r.status
-    })
-
-    let created = 0
-    for (const [studentId, data] of Object.entries(byStudent)) {
-      const missedParts = Object.entries(data.parts)
-        .filter(([_, status]) => status === 'ABSENT')
-        .map(([part]) => Number(part))
-
-      if (missedParts.length === 0) continue
-
-      const alertType = missedParts.length === 3 ? 'FULL_ABSENT' : 'PARTIAL_ABSENT'
-
-      // Check if alert already exists for today
-      const { data: existing } = await (supabase.from('attendance_alerts' as any) as any)
-        .select('id').eq('student_id', studentId).eq('date', today).limit(1)
-
-      if (existing?.length) continue
-
-      await (supabase.from('attendance_alerts' as any) as any).insert({
-        student_id:   studentId,
-        section:      data.section,
-        date:         today,
-        missed_parts: missedParts,
-        alert_type:   alertType,
-        email_sent:   false,
-        met_hod:      false,
-      })
-      created++
-    }
-
-    setLoading(false)
-    setSaveMsg(`✓ Generated ${created} alerts for today`)
-    setTimeout(() => setSaveMsg(''), 4000)
-    loadAlerts()
-  }
-
-  useEffect(() => { if (profile) loadAlerts() }, [profile])
-
-  const sendAlertEmail = async (alert: Alert) => {
-    setSending(alert.id)
-    const missedLabels = alert.missed_parts.map(p => PART_LABELS[p])
-    const tmpl = emailTemplates.attendanceAlert(
-      alert.student_name, alert.section,
-      new Date(alert.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }),
-      missedLabels
-    )
-    const result = await sendEmail({ to: alert.student_email, ...tmpl })
-    if (result.success) {
-      await (supabase.from('attendance_alerts' as any) as any)
-        .update({ email_sent: true, email_sent_at: new Date().toISOString() })
-        .eq('id', alert.id)
-      setSaveMsg(`✓ Email sent to ${alert.student_name}`)
-      loadAlerts()
+    if (isStudent) {
+      // Students see only their own alerts
+      const { data } = await (supabase.from('attendance_alerts' as any) as any)
+        .select('*').eq('student_id', profile.id).order('created_at', { ascending: false })
+      setAlerts(data ?? [])
     } else {
-      setSaveMsg(`✗ Failed: ${result.error}`)
-    }
-    setSending(null)
-    setTimeout(() => setSaveMsg(''), 5000)
-  }
+      // Faculty / HOD: join with profiles to get student names
+      let query = (supabase.from('attendance_alerts' as any) as any)
+        .select('*, student:profiles!student_id(full_name, email, roll_number)')
+        .order('created_at', { ascending: false })
 
-  const sendBulkAlerts = async () => {
-    setBulkSending(true)
-    const unsent = filtered.filter(a => !a.email_sent)
-    let count = 0
-    for (const alert of unsent) {
-      const missedLabels = alert.missed_parts.map(p => PART_LABELS[p])
-      const tmpl = emailTemplates.attendanceAlert(
-        alert.student_name, alert.section,
-        new Date(alert.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }),
-        missedLabels
-      )
-      const result = await sendEmail({ to: alert.student_email, ...tmpl })
-      if (result.success) {
-        await (supabase.from('attendance_alerts' as any) as any)
-          .update({ email_sent: true, email_sent_at: new Date().toISOString() })
-          .eq('id', alert.id)
-        count++
+      if (isFaculty && profile.section) {
+        query = query.eq('section', profile.section)
       }
-      await new Promise(r => setTimeout(r, 200)) // rate limit
+      if (filterSection) {
+        query = query.eq('section', filterSection)
+      }
+      if (!showResolved) {
+        query = query.is('cleared_at', null)
+      }
+
+      const { data } = await query
+      setAlerts(data ?? [])
     }
-    setBulkSending(false)
-    setSaveMsg(`✓ Sent ${count}/${unsent.length} emails`)
-    setTimeout(() => setSaveMsg(''), 5000)
-    loadAlerts()
+    setLoading(false)
   }
 
-  const markMetHOD = async (alertId: string, met: boolean) => {
-    await (supabase.from('attendance_alerts' as any) as any).update({
-      met_hod: met,
-      met_hod_at: met ? new Date().toISOString() : null,
-      cleared_by: profile?.id,
-      cleared_at: met ? new Date().toISOString() : null,
-    }).eq('id', alertId)
-    loadAlerts()
-  }
+  useEffect(() => { if (profile) loadAlerts() }, [profile, filterSection, showResolved])
 
-  const updateNotes = async (alertId: string, notes: string) => {
+  const markMetHOD = async (alertId: string) => {
     await (supabase.from('attendance_alerts' as any) as any)
-      .update({ notes }).eq('id', alertId)
+      .update({ met_hod: true, met_hod_at: new Date().toISOString() })
+      .eq('id', alertId)
+    setActionMsg('✓ Marked as met HOD')
+    setTimeout(() => setActionMsg(''), 3000)
     loadAlerts()
   }
 
-  const filtered = alerts.filter(a => {
-    if (filterSection !== 'ALL' && a.section !== filterSection) return false
-    if (filterDate && a.date !== filterDate) return false
-    if (filterStatus === 'PENDING'    && (a.email_sent || a.met_hod)) return false
-    if (filterStatus === 'EMAIL_SENT' && (!a.email_sent || a.met_hod)) return false
-    if (filterStatus === 'MET_HOD'    && !a.met_hod) return false
-    return true
-  })
-
-  const stats = {
-    total:     alerts.length,
-    unsent:    alerts.filter(a => !a.email_sent).length,
-    sent:      alerts.filter(a => a.email_sent && !a.met_hod).length,
-    metHod:    alerts.filter(a => a.met_hod).length,
-    fullAbsent: alerts.filter(a => a.alert_type === 'FULL_ABSENT' && !a.met_hod).length,
+  const clearAlert = async (alertId: string) => {
+    if (!profile) return
+    await (supabase.from('attendance_alerts' as any) as any)
+      .update({ cleared_by: profile.id, cleared_at: new Date().toISOString() })
+      .eq('id', alertId)
+    setActionMsg('✓ Alert cleared')
+    setTimeout(() => setActionMsg(''), 3000)
+    loadAlerts()
   }
 
-  if (!isHOD) return (
-    <div className="p-6">
-      <div className="bg-card border border-border rounded-lg p-12 text-center">
-        <AlertTriangle className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
-        <p className="font-mono text-sm text-muted-foreground">Alerts module is restricted to HOD</p>
-      </div>
-    </div>
-  )
+  const reopenAlert = async (alertId: string) => {
+    await (supabase.from('attendance_alerts' as any) as any)
+      .update({ cleared_by: null, cleared_at: null })
+      .eq('id', alertId)
+    setActionMsg('✓ Alert reopened')
+    setTimeout(() => setActionMsg(''), 3000)
+    loadAlerts()
+  }
+
+  // HOD bulk: mark all pending met_hod = true + clear all in one go
+  const clearAllMetHOD = async () => {
+    if (!profile || !isHOD) return
+    setBulkClearing(true)
+    const pending = alerts.filter(a => !a.cleared_at)
+    const ids = pending.map(a => a.id)
+    if (ids.length === 0) { setBulkClearing(false); return }
+
+    await (supabase.from('attendance_alerts' as any) as any)
+      .update({
+        met_hod: true,
+        met_hod_at: new Date().toISOString(),
+        cleared_by: profile.id,
+        cleared_at: new Date().toISOString(),
+      })
+      .in('id', ids)
+
+    setBulkClearing(false)
+    setActionMsg(`✓ Cleared ${ids.length} alert${ids.length > 1 ? 's' : ''} — all marked as Met HOD`)
+    setTimeout(() => setActionMsg(''), 4000)
+    loadAlerts()
+  }
+
+  const pendingCount  = alerts.filter(a => !a.cleared_at).length
+  const metHODCount   = alerts.filter(a => a.met_hod && !a.cleared_at).length
+  const resolvedCount = alerts.filter(a => !!a.cleared_at).length
+
+  const visibleAlerts = showResolved ? alerts : alerts.filter(a => !a.cleared_at)
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <span className="font-mono text-xs text-primary">// SECTION: ATTENDANCE ALERTS</span>
-          <h1 className="text-2xl font-bold tracking-tight mt-1">Attendance Alerts</h1>
-          <p className="font-mono text-xs text-muted-foreground mt-1">
-            Auto-generate alerts for absent students · Send emails · Track who has met HOD
-          </p>
+      <div>
+        <span className="font-mono text-xs text-primary">// SECTION: ALERTS</span>
+        <h1 className="text-2xl font-bold tracking-tight mt-1">Attendance Alerts</h1>
+        <p className="font-mono text-xs text-muted-foreground mt-1">
+          {isStudent ? 'Your attendance alerts from faculty / HOD' : 'Alerts for absent and late students — students must meet HOD to clear'}
+        </p>
+      </div>
+
+      {/* Summary cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+        <div className="bg-card border border-border rounded-lg p-4">
+          <p className="font-mono text-xs text-muted-foreground mb-1">Pending</p>
+          <p className="text-2xl font-bold text-red-500">{pendingCount}</p>
         </div>
-        <div className="flex gap-2">
-          {saveMsg && <span className={`font-mono text-xs self-center ${saveMsg.startsWith('✗') ? 'text-red-500' : 'text-green-500'}`}>{saveMsg}</span>}
-          <button onClick={generateTodayAlerts} disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 bg-accent font-mono text-xs rounded border border-border hover:bg-accent/80 transition-colors">
-            {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <AlertTriangle className="w-3 h-3" />}
-            Generate Today's Alerts
-          </button>
-          {stats.unsent > 0 && (
-            <button onClick={sendBulkAlerts} disabled={bulkSending}
-              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white font-mono text-xs rounded hover:bg-red-700 transition-colors disabled:opacity-50">
-              {bulkSending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
-              {bulkSending ? 'Sending...' : `Send All (${stats.unsent})`}
+        {!isStudent && (
+          <div className="bg-card border border-border rounded-lg p-4">
+            <p className="font-mono text-xs text-muted-foreground mb-1">Met HOD (pending clear)</p>
+            <p className="text-2xl font-bold text-yellow-500">{metHODCount}</p>
+          </div>
+        )}
+        <div className="bg-card border border-border rounded-lg p-4">
+          <p className="font-mono text-xs text-muted-foreground mb-1">Resolved</p>
+          <p className="text-2xl font-bold text-green-500">{resolvedCount}</p>
+        </div>
+      </div>
+
+      {/* Filters + bulk action (HOD only) */}
+      {(isHOD || isFaculty) && (
+        <div className="bg-card border border-border rounded-lg p-4 flex flex-wrap items-center gap-4">
+          {isHOD && (
+            <div className="space-y-1">
+              <label className="font-mono text-xs text-muted-foreground">Section</label>
+              <select value={filterSection} onChange={e => setFilterSection(e.target.value)}
+                className="h-9 px-3 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none">
+                <option value="">All sections</option>
+                {SECTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+          )}
+          <label className="flex items-center gap-2 font-mono text-xs text-muted-foreground cursor-pointer mt-4">
+            <input type="checkbox" checked={showResolved} onChange={e => setShowResolved(e.target.checked)} className="rounded" />
+            Show resolved alerts
+          </label>
+          {isHOD && pendingCount > 0 && (
+            <button onClick={clearAllMetHOD} disabled={bulkClearing}
+              className="ml-auto flex items-center gap-2 h-9 px-4 bg-green-600 text-white font-mono text-xs rounded hover:bg-green-700 disabled:opacity-50">
+              <CheckCheck className="w-3.5 h-3.5" />
+              {bulkClearing ? 'Clearing...' : `Clear All — Met HOD (${pendingCount})`}
             </button>
           )}
         </div>
-      </div>
+      )}
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        {[
-          { label: 'Total Alerts',    value: stats.total,      color: 'text-foreground' },
-          { label: 'Email Pending',   value: stats.unsent,     color: 'text-red-500' },
-          { label: 'Email Sent',      value: stats.sent,       color: 'text-yellow-500' },
-          { label: 'Met HOD',         value: stats.metHod,     color: 'text-green-500' },
-          { label: 'Full Absent',     value: stats.fullAbsent, color: 'text-red-600' },
-        ].map(({ label, value, color }) => (
-          <div key={label} className="bg-card border border-border rounded-lg p-4">
-            <p className="font-mono text-xs text-muted-foreground mb-1">{label}</p>
-            <p className={`text-2xl font-bold ${color}`}>{value}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-wrap gap-2 items-center">
-        <Filter className="w-3.5 h-3.5 text-muted-foreground" />
-        <select value={filterSection} onChange={e => setFilterSection(e.target.value)}
-          className="h-8 px-2 bg-background border border-border rounded font-mono text-xs focus:border-primary focus:outline-none">
-          <option value="ALL">All Sections</option>
-          {SECTIONS.map(s => <option key={s} value={s}>{s}</option>)}
-        </select>
-        <input type="date" value={filterDate} onChange={e => setFilterDate(e.target.value)}
-          className="h-8 px-2 bg-background border border-border rounded font-mono text-xs focus:border-primary focus:outline-none" />
-        {['ALL','PENDING','EMAIL_SENT','MET_HOD'].map(f => (
-          <button key={f} onClick={() => setFilterStatus(f as any)}
-            className={`font-mono text-xs px-3 py-1 rounded border transition-all ${filterStatus === f ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:border-primary/50'}`}>
-            {f.replace('_',' ')}
-          </button>
-        ))}
-        {(filterSection !== 'ALL' || filterDate || filterStatus !== 'ALL') && (
-          <button onClick={() => { setFilterSection('ALL'); setFilterDate(''); setFilterStatus('ALL') }}
-            className="font-mono text-xs text-muted-foreground hover:text-foreground">
-            Clear filters
-          </button>
-        )}
-      </div>
+      {actionMsg && (
+        <div className="font-mono text-xs text-green-500 bg-green-500/10 border border-green-500/20 px-4 py-2 rounded">
+          {actionMsg}
+        </div>
+      )}
 
       {/* Alert list */}
-      <div className="space-y-3">
-        {loading ? (
-          <div className="bg-card border border-border rounded-lg p-12 text-center">
-            <Loader2 className="w-8 h-8 text-muted-foreground animate-spin mx-auto mb-3" />
-            <p className="font-mono text-sm text-muted-foreground">Loading alerts...</p>
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="bg-card border border-border rounded-lg p-12 text-center">
-            <CheckCircle2 className="w-8 h-8 text-green-500 mx-auto mb-3" />
-            <p className="font-mono text-sm text-muted-foreground">No alerts match this filter</p>
-          </div>
-        ) : filtered.map(alert => (
-          <div key={alert.id}
-            className={`bg-card border rounded-lg p-5 transition-all ${
-              alert.met_hod ? 'border-green-500/20 opacity-70' :
-              alert.email_sent ? 'border-yellow-500/20' : 'border-red-500/20'
-            }`}>
-            <div className="flex items-start gap-4">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap mb-1">
-                  {/* Status badge */}
-                  {alert.met_hod ? (
-                    <span className="font-mono text-xs px-2 py-0.5 rounded border text-green-500 bg-green-500/10 border-green-500/20">
-                      ✓ Met HOD
-                    </span>
-                  ) : alert.email_sent ? (
-                    <span className="font-mono text-xs px-2 py-0.5 rounded border text-yellow-500 bg-yellow-500/10 border-yellow-500/20">
-                      📧 Email Sent
-                    </span>
-                  ) : (
-                    <span className="font-mono text-xs px-2 py-0.5 rounded border text-red-500 bg-red-500/10 border-red-500/20">
-                      ⚠ Alert Pending
-                    </span>
+      {loading ? (
+        <div className="bg-card border border-border rounded-lg p-12 text-center">
+          <Clock className="w-8 h-8 text-muted-foreground mx-auto mb-3 animate-spin" />
+          <p className="font-mono text-sm text-muted-foreground">Loading alerts…</p>
+        </div>
+      ) : visibleAlerts.length === 0 ? (
+        <div className="bg-card border border-border rounded-lg p-12 text-center">
+          <Bell className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+          <p className="font-mono text-sm text-muted-foreground">
+            {pendingCount === 0 ? 'No alerts — all clear!' : 'No alerts to show. Enable "Show resolved" to see past alerts.'}
+          </p>
+        </div>
+      ) : (
+        <div className="bg-card border border-border rounded-lg divide-y divide-border">
+          {visibleAlerts.map(alert => {
+            const isResolved = !!alert.cleared_at
+            const hasMet     = !!alert.met_hod
+            const alertInfo  = ALERT_LABELS[alert.alert_type] ?? { label: alert.alert_type, color: 'text-muted-foreground bg-accent border-border' }
+            const partsLabel = alert.missed_parts?.length ? `Part ${alert.missed_parts.join(', ')}` : ''
+
+            return (
+              <div key={alert.id} className={`flex items-start gap-4 px-6 py-4 ${isResolved ? 'opacity-60' : ''}`}>
+                <div className="mt-0.5 flex-shrink-0">
+                  {isResolved
+                    ? <CheckCircle className="w-4 h-4 text-green-500" />
+                    : hasMet
+                      ? <AlertTriangle className="w-4 h-4 text-yellow-500" />
+                      : <XCircle className="w-4 h-4 text-red-500" />
+                  }
+                </div>
+                <div className="flex-1 min-w-0">
+                  {/* Student info (staff view) */}
+                  {!isStudent && alert.student && (
+                    <p className="font-medium text-sm truncate">
+                      {alert.student.full_name}
+                      {alert.student.roll_number && <span className="font-mono text-xs text-muted-foreground ml-2">{alert.student.roll_number}</span>}
+                    </p>
                   )}
-                  <span className={`font-mono text-xs px-2 py-0.5 rounded border ${
-                    alert.alert_type === 'FULL_ABSENT'
-                      ? 'text-red-600 bg-red-600/10 border-red-600/20'
-                      : 'text-orange-500 bg-orange-500/10 border-orange-500/20'
-                  }`}>
-                    {alert.alert_type === 'FULL_ABSENT' ? 'Full Day Absent' : 'Partial Absent'}
-                  </span>
-                  <span className="font-mono text-xs text-muted-foreground">{alert.section}</span>
-                  <span className="font-mono text-xs text-muted-foreground">
-                    {new Date(alert.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                  </span>
+                  <div className="flex flex-wrap items-center gap-2 mt-1">
+                    <span className={`font-mono text-xs px-2 py-0.5 rounded border ${alertInfo.color}`}>{alertInfo.label}</span>
+                    <span className="font-mono text-xs text-muted-foreground">{alert.section} · {alert.date}</span>
+                    {partsLabel && <span className="font-mono text-xs text-muted-foreground">{partsLabel}</span>}
+                  </div>
+                  {isStudent && !hasMet && !isResolved && (
+                    <p className="font-mono text-xs text-yellow-500 mt-2 flex items-center gap-1">
+                      <AlertTriangle className="w-3 h-3" /> Please meet the HOD regarding your attendance.
+                    </p>
+                  )}
+                  {hasMet && (
+                    <p className="font-mono text-xs text-green-500 mt-1">
+                      ✓ Met HOD {alert.met_hod_at ? `on ${alert.met_hod_at.slice(0,10)}` : ''}
+                    </p>
+                  )}
+                  {isResolved && (
+                    <p className="font-mono text-xs text-muted-foreground mt-1">
+                      Resolved {alert.cleared_at ? alert.cleared_at.slice(0,10) : ''}
+                    </p>
+                  )}
                 </div>
-
-                <p className="font-bold text-sm">{alert.student_name}</p>
-                <p className="font-mono text-xs text-muted-foreground">{alert.student_email}</p>
-
-                <div className="flex flex-wrap gap-1 mt-2">
-                  {alert.missed_parts.map(p => (
-                    <span key={p} className="font-mono text-xs px-2 py-0.5 bg-red-500/10 text-red-500 rounded border border-red-500/20">
-                      {PART_LABELS[p]}
-                    </span>
-                  ))}
-                </div>
-
-                {alert.email_sent_at && (
-                  <p className="font-mono text-xs text-muted-foreground mt-1">
-                    Email sent: {new Date(alert.email_sent_at).toLocaleString()}
-                  </p>
-                )}
-                {alert.met_hod_at && (
-                  <p className="font-mono text-xs text-green-500 mt-1">
-                    Met HOD: {new Date(alert.met_hod_at).toLocaleString()}
-                  </p>
-                )}
-
-                {/* Notes */}
-                <div className="mt-2">
-                  <input
-                    defaultValue={alert.notes ?? ''}
-                    onBlur={e => { if (e.target.value !== (alert.notes ?? '')) updateNotes(alert.id, e.target.value) }}
-                    placeholder="Add notes (e.g. called parent, medical reason)..."
-                    className="w-full h-8 px-2 bg-background border border-border rounded font-mono text-xs focus:border-primary focus:outline-none"
-                  />
+                <div className="flex flex-col gap-2 flex-shrink-0">
+                  {/* Student: Mark Met HOD */}
+                  {isStudent && !hasMet && !isResolved && (
+                    <button onClick={() => markMetHOD(alert.id)}
+                      className="font-mono text-xs px-3 py-1.5 rounded border border-green-500/30 text-green-500 hover:bg-green-500/10 whitespace-nowrap">
+                      Met HOD
+                    </button>
+                  )}
+                  {/* HOD: Clear or Reopen */}
+                  {isHOD && !isResolved && (
+                    <button onClick={() => clearAlert(alert.id)}
+                      className="font-mono text-xs px-3 py-1.5 rounded border border-primary/30 text-primary hover:bg-primary/10 whitespace-nowrap">
+                      Clear
+                    </button>
+                  )}
+                  {isHOD && isResolved && showResolved && (
+                    <button onClick={() => reopenAlert(alert.id)}
+                      className="font-mono text-xs px-3 py-1.5 rounded border border-border text-muted-foreground hover:border-primary/50 whitespace-nowrap">
+                      Reopen
+                    </button>
+                  )}
                 </div>
               </div>
-
-              {/* Actions */}
-              <div className="flex flex-col gap-2 flex-shrink-0">
-                {!alert.email_sent && (
-                  <button onClick={() => sendAlertEmail(alert)}
-                    disabled={sending === alert.id}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 text-white font-mono text-xs rounded hover:bg-red-700 transition-colors disabled:opacity-50">
-                    {sending === alert.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Mail className="w-3 h-3" />}
-                    Send Email
-                  </button>
-                )}
-                {alert.email_sent && !alert.met_hod && (
-                  <button onClick={() => sendAlertEmail(alert)}
-                    disabled={sending === alert.id}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-accent font-mono text-xs rounded border border-border hover:bg-accent/80 transition-colors disabled:opacity-50">
-                    <Mail className="w-3 h-3" /> Resend
-                  </button>
-                )}
-                {!alert.met_hod ? (
-                  <button onClick={() => markMetHOD(alert.id, true)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white font-mono text-xs rounded hover:bg-green-700 transition-colors">
-                    <CheckCircle2 className="w-3 h-3" /> Met HOD
-                  </button>
-                ) : (
-                  <button onClick={() => markMetHOD(alert.id, false)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-accent font-mono text-xs rounded border border-border hover:bg-accent/80 transition-colors text-muted-foreground">
-                    Unmark
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

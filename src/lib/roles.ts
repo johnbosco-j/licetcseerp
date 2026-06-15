@@ -11,12 +11,12 @@ export const NAV_HOD_IDS = [
 
 export const NAV_FACULTY_IDS = [
   "dashboard","students","attendance","marks","subjects","timetable",
-  "leaves","events","documents","feedback","notices","change-password"
+  "alerts","leaves","events","documents","feedback","notices","change-password"
 ]
 
 export const NAV_STUDENT_IDS = [
   "dashboard","attendance","marks","subjects","timetable","placements",
-  "leaves","documents","feedback","grievances","notices","change-password"
+  "alerts","leaves","documents","feedback","grievances","notices","change-password"
 ]
 
 export function getAllowedModules(userType: string, role: string): string[] {

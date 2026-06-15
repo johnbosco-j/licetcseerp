@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { getActiveSemester } from '@/lib/semester';
 import type { AuthUser } from "@/lib/auth"
-import { Users, AlertTriangle, CheckCircle2, Clock, Download, Loader2 } from "lucide-react"
+import { Users, AlertTriangle, CheckCircle2, Clock, Download, Loader2, Send, Bell } from "lucide-react"
 import * as XLSX from "xlsx"
 
 const SECTIONS = ['I CSE-A','I CSE-B','II CSE-A','II CSE-B','III CSE-A','III CSE-B','IV CSE-A','IV CSE-B']
@@ -31,12 +31,15 @@ interface StudentDayStatus {
 export function AttendanceAnalysisModule() {
   const router = useRouter()
   const [authUser, setAuthUser]   = useState<AuthUser | null>(null)
+  const [profile, setProfile]     = useState<{ id: string } | null>(null)
   const [section, setSection]     = useState('II CSE-A')
   const [date, setDate]           = useState(new Date().toISOString().split('T')[0])
   const [loading, setLoading]     = useState(false)
   const [students, setStudents]   = useState<StudentDayStatus[]>([])
   const [filter, setFilter]       = useState<'ALL'|'FULL_ABSENT'|'PARTIAL'|'PRESENT'>('ALL')
   const [subjectStats, setSubjectStats] = useState<any[]>([])
+  const [alertedIds, setAlertedIds] = useState<Set<string>>(new Set())
+  const [sendingAlert, setSendingAlert] = useState<string | null>(null)
 
   const isHOD     = authUser?.type === 'staff' && authUser.data.role === 'HOD'
   const isFaculty = authUser?.type === 'staff'
@@ -47,6 +50,8 @@ export function AttendanceAnalysisModule() {
     const au = JSON.parse(stored) as AuthUser
     setAuthUser(au)
     if (au.type === 'student') { router.push('/dashboard/attendance'); return }
+    supabase.from('profiles').select('id').eq('email', au.data.email).single()
+      .then(({ data }) => { if (data) setProfile(data) })
   }, [router])
 
   const loadAnalysis = async () => {
@@ -84,6 +89,11 @@ export function AttendanceAnalysisModule() {
       }
     })
     setStudents(result)
+
+    // Load existing alerts for this section/date
+    const { data: alerts } = await (supabase.from('attendance_alerts' as any) as any)
+      .select('student_id').eq('section', section).eq('date', date)
+    setAlertedIds(new Set((alerts ?? []).map((a: any) => a.student_id)))
 
     // Load subject-wise attendance for this date
     const currentSem = (sec: string) => getActiveSemester(sec)
@@ -137,6 +147,29 @@ export function AttendanceAnalysisModule() {
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Day Attendance')
     XLSX.writeFile(wb, `DayAttendance_${section}_${date}.xlsx`)
+  }
+
+  // Send an in-app "meet HOD" alert to a student for this date's absence
+  const sendAlert = async (s: StudentDayStatus) => {
+    if (!profile) return
+    setSendingAlert(s.id)
+    const missedParts: number[] = []
+    if (s.part1 === 'ABSENT') missedParts.push(1)
+    if (s.part2 === 'ABSENT') missedParts.push(2)
+    if (s.part3 === 'ABSENT') missedParts.push(3)
+
+    const { error } = await (supabase.from('attendance_alerts' as any) as any).insert({
+      student_id: s.id,
+      section,
+      date,
+      missed_parts: missedParts,
+      alert_type: s.fullDayAbsent ? 'FULL_ABSENT' : 'PARTIAL_ABSENT',
+    })
+
+    if (!error) {
+      setAlertedIds(prev => new Set(prev).add(s.id))
+    }
+    setSendingAlert(null)
   }
 
   const partColor = (status: string) => {
@@ -292,6 +325,19 @@ export function AttendanceAnalysisModule() {
                       </span>
                     ))}
                   </div>
+                  {(s.fullDayAbsent || s.partialAbsent) && (
+                    alertedIds.has(s.id) ? (
+                      <span className="flex items-center gap-1 font-mono text-xs px-2 py-1 rounded border border-green-500/30 text-green-400 bg-green-500/10 flex-shrink-0">
+                        <CheckCircle2 className="w-3 h-3" /> Alerted
+                      </span>
+                    ) : (
+                      <button onClick={() => sendAlert(s)} disabled={sendingAlert === s.id}
+                        className="flex items-center gap-1 font-mono text-xs px-2 py-1 rounded border border-cyan-500/30 text-cyan-300 bg-cyan-500/10 hover:bg-cyan-500/20 transition-colors disabled:opacity-50 flex-shrink-0">
+                        {sendingAlert === s.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Bell className="w-3 h-3" />}
+                        Send Alert
+                      </button>
+                    )
+                  )}
                 </div>
               ))}
             </div>
