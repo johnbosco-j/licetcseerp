@@ -35,9 +35,18 @@ interface FormState {
   name: string
   credits: string
   faculty_id: string
+  co1: string
+  co2: string
+  co3: string
+  co4: string
+  co5: string
+  co6: string
 }
 
-const EMPTY_FORM: FormState = { code: "", name: "", credits: "3", faculty_id: "" }
+const EMPTY_FORM: FormState = {
+  code: "", name: "", credits: "3", faculty_id: "",
+  co1: "", co2: "", co3: "", co4: "", co5: "", co6: "",
+}
 
 const SECTIONS = [
   "I CSE-A", "I CSE-B",
@@ -65,6 +74,16 @@ const SEM_LABEL: Record<number, string> = {
 const CREDIT_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
 const DEPT_ID = "00000000-0000-0000-0000-000000000001"
+
+// CO placeholder hints per number
+const CO_HINTS: Record<number, string> = {
+  1: "e.g. Understand and apply fundamental concepts of the subject",
+  2: "e.g. Analyse and design solutions for real-world problems",
+  3: "e.g. Implement algorithms and data structures effectively",
+  4: "e.g. Evaluate and compare different approaches and methodologies",
+  5: "e.g. Develop software systems using appropriate tools and techniques",
+  6: "e.g. Apply ethical and professional practices in computing",
+}
 
 // ── Component ────────────────────────────────────────────
 function getCurrentSemParity(): "odd" | "even" {
@@ -138,8 +157,7 @@ export default function CurriculumModule() {
   // ── Load subjects for section+semester ────────────────
   const loadSubjects = async () => {
     setLoading(true)
-    const { data, error } = await supabase
-      .from("subjects")
+    const { data, error } = await (supabase.from("subjects") as any)
       .select("*")
       .eq("section", section)
       .eq("semester", currentSem)
@@ -162,11 +180,18 @@ export default function CurriculumModule() {
 
   const openEdit = (s: Subject) => {
     setEditingId(s.id)
+    const sub = s as any
     setForm({
       code: s.code,
       name: s.name,
       credits: String(s.credits),
       faculty_id: s.faculty_id ?? "",
+      co1: sub.co1 ?? "",
+      co2: sub.co2 ?? "",
+      co3: sub.co3 ?? "",
+      co4: sub.co4 ?? "",
+      co5: sub.co5 ?? "",
+      co6: sub.co6 ?? "",
     })
     setFormError("")
     setShowForm(true)
@@ -208,6 +233,13 @@ export default function CurriculumModule() {
       department_id: DEPT_ID,
       faculty_id: form.faculty_id || null,
       academic_year: new Date().getFullYear().toString(),
+      // Course Outcomes — saved to DB columns co1…co6
+      co1: form.co1.trim() || null,
+      co2: form.co2.trim() || null,
+      co3: form.co3.trim() || null,
+      co4: form.co4.trim() || null,
+      co5: form.co5.trim() || null,
+      co6: form.co6.trim() || null,
     }
 
     if (editingId) {
@@ -235,7 +267,7 @@ export default function CurriculumModule() {
     const { error } = await supabase.from("subjects").delete().eq("id", deleteId)
     setDeleting(false)
     setDeleteId(null)
-    if (error) { showToast("❌ Delete failed: " + error.message); return }
+    if (error) { showToast("Delete failed: " + error.message); return }
     showToast("Subject removed")
     setExpanded(null)
     loadSubjects()
@@ -248,7 +280,7 @@ export default function CurriculumModule() {
       .update({ faculty_id: facultyId || null })
       .eq("id", subjectId)
     setAssignSaving(false)
-    if (error) { showToast("❌ Assignment failed"); return }
+    if (error) { showToast("Assignment failed"); return }
     showToast("Faculty assigned")
     setAssigningId(null)
     loadSubjects()
@@ -495,6 +527,48 @@ export default function CurriculumModule() {
             </select>
           </div>
 
+          {/* ── Course Outcomes (CO1 – CO6) ───────────────── */}
+          <div style={{
+            background: "#f8fafc", border: "1px solid #e2e8f0",
+            borderRadius: "8px", padding: "16px 18px", marginBottom: "16px",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "14px" }}>
+              <p style={{ fontSize: "11px", fontWeight: 700, color: "#1d3557", letterSpacing: "0.12em", textTransform: "uppercase", margin: 0 }}>
+                Course Outcomes (CO1 – CO6)
+              </p>
+              <span style={{ fontSize: "10px", color: "#9ca3af", fontStyle: "italic" }}>
+                — Students will be able to…
+              </span>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+              {([1,2,3,4,5,6] as const).map(n => {
+                const key = `co${n}` as keyof FormState
+                return (
+                  <div key={n}>
+                    <label style={{ display: "block", fontSize: "10px", fontWeight: 700, color: "#475569", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "4px" }}>
+                      CO{n}
+                    </label>
+                    <textarea
+                      value={form[key]}
+                      onChange={e => setForm({ ...form, [key]: e.target.value })}
+                      placeholder={CO_HINTS[n]}
+                      rows={2}
+                      style={{
+                        width: "100%", padding: "8px 10px",
+                        border: "1.5px solid #e5e7eb", borderRadius: "6px",
+                        fontSize: "12px", color: "#111827", outline: "none",
+                        boxSizing: "border-box", resize: "vertical",
+                        fontFamily: "inherit", lineHeight: 1.5,
+                      }}
+                      onFocus={e => e.target.style.borderColor = "#1d3557"}
+                      onBlur={e => e.target.style.borderColor = "#e5e7eb"}
+                    />
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
           {/* Context info */}
           <div style={{
             padding: "8px 12px", borderRadius: "6px",
@@ -631,6 +705,8 @@ export default function CurriculumModule() {
             const isOpen = expanded === sub.id
             const assignedFaculty = sub.faculty_id ? facultyMap[sub.faculty_id] : null
             const isAssigning = assigningId === sub.id
+            const subAny = sub as any
+            const hasCOs = [1,2,3,4,5,6].some(n => subAny[`co${n}`])
 
             return (
               <div key={sub.id} style={{
@@ -665,6 +741,15 @@ export default function CurriculumModule() {
                   <span style={{ fontSize: "13px", fontWeight: 500, color: "#111827", flex: 1 }}>
                     {sub.name}
                   </span>
+
+                  {/* CO indicator */}
+                  {hasCOs && (
+                    <span style={{
+                      fontSize: "10px", padding: "2px 7px", borderRadius: "4px",
+                      background: "#f0fdf4", color: "#15803d", border: "1px solid #bbf7d0",
+                      flexShrink: 0,
+                    }}>COs ✓</span>
+                  )}
 
                   {/* Credits */}
                   <span style={{
@@ -797,6 +882,25 @@ export default function CurriculumModule() {
                         )}
                       </div>
                     </div>
+
+                    {/* Course Outcomes display */}
+                    {hasCOs && (
+                      <div style={{ marginTop: "16px", paddingTop: "16px", borderTop: "1px solid #e5e7eb" }}>
+                        <p style={{ fontSize: "10px", color: "#9ca3af", margin: "0 0 10px", textTransform: "uppercase", letterSpacing: "0.08em" }}>Course Outcomes</p>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                          {([1,2,3,4,5,6] as const).map(n => {
+                            const val = subAny[`co${n}`]
+                            if (!val) return null
+                            return (
+                              <div key={n} style={{ display: "flex", gap: "8px", alignItems: "flex-start" }}>
+                                <span style={{ fontSize: "10px", fontWeight: 700, color: "#1d3557", background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: "4px", padding: "2px 6px", flexShrink: 0, marginTop: "1px" }}>CO{n}</span>
+                                <p style={{ fontSize: "12px", color: "#374151", margin: 0, lineHeight: 1.5 }}>{val}</p>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

@@ -26,7 +26,7 @@ export default function StudentsPage() {
   const [saving, setSaving]     = useState(false)
   const [error, setError]       = useState("")
   const [editId, setEditId]     = useState<string | null>(null)
-  const [form, setForm]         = useState({ full_name: '', email: '', section: 'I CSE-A', batch_year: new Date().getFullYear() })
+  const [form, setForm]         = useState({ full_name: '', email: '', section: 'I CSE-A', batch_year: new Date().getFullYear(), roll_number: '', register_number: '' })
 
   const isHOD = authUser?.type === 'staff' && authUser.data.role === 'HOD'
 
@@ -59,7 +59,9 @@ export default function StudentsPage() {
       const { error: updErr } = await supabase.from('profiles').update({
         full_name: form.full_name,
         section: form.section,
-        batch_year: form.batch_year
+        batch_year: form.batch_year,
+        roll_number: form.roll_number || null,
+        register_number: form.register_number || null
       }).eq('id', editId)
 
       if (updErr) setError(updErr.message)
@@ -95,14 +97,16 @@ export default function StudentsPage() {
       full_name: student.full_name,
       email: student.email,
       section: student.section ?? 'I CSE-A',
-      batch_year: student.batch_year ?? new Date().getFullYear()
+      batch_year: student.batch_year ?? new Date().getFullYear(),
+      roll_number: (student as any).roll_number ?? '',
+      register_number: (student as any).register_number ?? ''
     })
     setEditId(student.id)
     setShowForm(true)
   }
 
   const openAdd = () => {
-    setForm({ full_name: '', email: '', section: 'I CSE-A', batch_year: new Date().getFullYear() })
+    setForm({ full_name: '', email: '', section: 'I CSE-A', batch_year: new Date().getFullYear(), roll_number: '', register_number: '' })
     setEditId(null)
     setShowForm(true)
   }
@@ -179,6 +183,21 @@ export default function StudentsPage() {
                 <div className="space-y-1">
                   <label className="font-mono text-xs text-muted-foreground">Batch Year *</label>
                   <input type="number" value={form.batch_year} onChange={e => setForm({...form, batch_year: Number(e.target.value)})}
+                    className="w-full h-10 px-3 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-mono text-xs text-muted-foreground">Roll Number</label>
+                  <input value={form.roll_number} onChange={e => setForm({...form, roll_number: e.target.value})}
+                    placeholder="e.g. 24CS001"
+                    className="w-full h-10 px-3 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none" />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-mono text-xs text-muted-foreground">Register Number</label>
+                  <input value={form.register_number} onChange={e => setForm({...form, register_number: e.target.value})}
+                    placeholder="e.g. 311124104001"
                     className="w-full h-10 px-3 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none" />
                 </div>
               </div>
