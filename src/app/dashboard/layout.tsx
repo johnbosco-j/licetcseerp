@@ -1,24 +1,24 @@
 "use client"
-import React from "react"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
+import Link from "next/link"
 import { useRouter, usePathname } from "next/navigation"
-import { 
-  AlertCircle, Activity, Star, ClipboardCheck, PieChart, Key, FileText,
+import {
+  AlertCircle, Star, ClipboardCheck, PieChart, Key, FileText,
   PenTool, CalendarDays, BookOpen, MessageSquare, Wallet, AlertTriangle,
   Package, Heart, Award, ShieldCheck, Bell, Briefcase, TrendingUp,
-  FileBarChart, Users, Library, Clock, LogOut, LayoutDashboard, ChevronRight, Menu,
-  BarChart3
+  FileBarChart, Users, Library, Clock, LogOut, LayoutDashboard, ChevronLeft, Menu, X,
+  BarChart3, Search, UserCog, History, WifiOff, ChevronDown, GraduationCap, type LucideIcon
 } from "lucide-react"
 import type { AuthUser } from "@/lib/auth"
+import { signOut } from "@/lib/auth"
+import { supabase } from "@/lib/supabase"
 import { getAllowedModules } from "@/lib/roles"
-import { toTitleCase } from "@/lib/utils"
-import { Inter, Crimson_Text } from "next/font/google"
+import { LicetLogo } from "@/components/licet-brand"
 
-const serif = Crimson_Text({ subsets: ["latin"], weight: ["400", "600"] })
-const sans  = Inter({ subsets: ["latin"], weight: ["400", "500", "600"] })
+type NavItem = { icon: LucideIcon; label: string; id: string }
 
-const NAV_GROUPS = [
+const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
   {
     title: "Academic",
     items: [
@@ -27,6 +27,7 @@ const NAV_GROUPS = [
       { icon: ClipboardCheck,  label: "Attendance",      id: "attendance" },
       { icon: Award,           label: "Marks",           id: "marks" },
       { icon: Library,         label: "Subjects",        id: "subjects" },
+      { icon: GraduationCap,   label: "Curriculum",      id: "curriculum" },
       { icon: Clock,           label: "Timetable",       id: "timetable" },
       { icon: BookOpen,        label: "Examination",     id: "examination" },
       { icon: BarChart3,       label: "Analytics",       id: "analytics" },
@@ -40,6 +41,7 @@ const NAV_GROUPS = [
       { icon: Briefcase,       label: "Placements",      id: "placements" },
       { icon: Heart,           label: "Leaves",          id: "leaves" },
       { icon: CalendarDays,    label: "Events",          id: "events" },
+      { icon: UserCog,         label: "Accounts",        id: "accounts" },
     ]
   },
   {
@@ -50,441 +52,352 @@ const NAV_GROUPS = [
       { icon: AlertTriangle,   label: "Grievances",      id: "grievances" },
       { icon: Bell,            label: "Notices",         id: "notices" },
       { icon: AlertCircle,     label: "Alerts",          id: "alerts" },
+      { icon: History,         label: "Audit Log",       id: "audit" },
     ]
   },
   {
-    title: "Faculty",
+    title: "Faculty & Quality",
     items: [
       { icon: Star,            label: "Appraisal",       id: "appraisal" },
       { icon: PieChart,        label: "Att. Analysis",   id: "attendance-analysis" },
       { icon: PenTool,         label: "Editor",          id: "editor" },
-      { icon: ShieldCheck,     label: "NAAC",            id: "naac" },
+      { icon: ShieldCheck,     label: "NAAC / NBA",      id: "naac" },
       { icon: TrendingUp,      label: "Promotion",       id: "promotion" },
       { icon: FileBarChart,    label: "Reports",         id: "reports" },
-      { icon: Key,             label: "Change Password", id: "change-password" },
     ]
   },
 ]
+const ALL_ITEMS = NAV_GROUPS.flatMap(g => g.items)
 
-const ROLE_CONFIG: Record<string, { label: string; bg: string; color: string }> = {
-  HOD:       { label: "Head of Department", bg: "#722F37", color: "#FFFFFF" },
-  PROFESSOR: { label: "Faculty",            bg: "#E7E5E0", color: "#57534E" },
-  STUDENT:   { label: "Student",            bg: "#F5F5F0", color: "#78716C" },
+const ROLE_LABEL: Record<string, string> = {
+  HOD: "Head of Department",
+  PROFESSOR: "Faculty",
+  STUDENT: "Student",
 }
 
-
-// Logo with text fallback if SVG fails to load
-function LogoBadge({ size = 30 }: { size?: number }) {
-  const [err, setErr] = React.useState(false)
-  if (err) return (
-    <div style={{
-      width: size, height: size, borderRadius: '50%',
-      background: '#1d3557', color: '#fff',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: size * 0.28, fontWeight: 800, letterSpacing: '0.02em',
-      flexShrink: 0,
-    }}>L</div>
-  )
-  return <img src="/images.png" alt="LICET" onError={() => setErr(true)}
-    style={{ width: size, height: size, objectFit: 'contain', flexShrink: 0 }} />
-}
+const hrefFor = (id: string) => (id === "dashboard" ? "/dashboard" : `/dashboard/${id}`)
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
-  const [time, setTime]         = useState("")
-  const [date, setDate]         = useState("")
-  const [allowed, setAllowed]   = useState<string[]>([])
-  const [name, setName]         = useState("")
-  const [role, setRole]         = useState("")
-  const [expanded, setExpanded] = useState(true)
-  const [mobileOpen, setMobile] = useState(false)
+  const [ready, setReady]         = useState(false)
+  const [now, setNow]             = useState<Date | null>(null)
+  const [allowed, setAllowed]     = useState<string[]>([])
+  const [name, setName]           = useState("")
+  const [role, setRole]           = useState("")
+  const [section, setSection]     = useState<string | null>(null)
+  const [mustChange, setMustChange] = useState(false)
+  const [expanded, setExpanded]   = useState(true)
+  const [mobileOpen, setMobile]   = useState(false)
+  const [query, setQuery]         = useState("")
+  const [menuOpen, setMenuOpen]   = useState(false)
+  const [offline, setOffline]     = useState(false)
+  const [toast, setToast]         = useState('')
+  const searchRef = useRef<HTMLInputElement>(null)
 
+  const activeId = pathname === "/dashboard" || pathname === "/dashboard/"
+    ? "dashboard"
+    : pathname?.split("/")[2] ?? "dashboard"
+
+  // Session + live profile check on every dashboard load.
   useEffect(() => {
-    let stored = localStorage.getItem("licet_user")
-    if (!stored) {
-      // Migrate legacy key from previous branding
-      const legacy = localStorage.getItem("excelsior_user")
-      if (legacy) {
-        localStorage.setItem("licet_user", legacy)
-        localStorage.removeItem("excelsior_user")
-        stored = legacy
+    let active = true
+    const goLogin = () => { localStorage.removeItem("licet_user"); router.replace("/login") }
+
+    const init = async () => {
+      localStorage.removeItem("excelsior_user")
+      const stored = localStorage.getItem("licet_user")
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!active) return
+      let user: AuthUser | null = null
+      try { user = stored ? (JSON.parse(stored) as AuthUser) : null } catch { user = null }
+      if (!session || !user?.data || session.user.id !== user.data.id) return goLogin()
+
+      // Re-read role/flags from the database so changes (and tampering) take effect.
+      const { data: profile, error } = await supabase.from("profiles").select("*").eq("id", session.user.id).single()
+      if (!active) return
+      if (error || !profile || !profile.is_active) {
+        await supabase.auth.signOut()
+        return goLogin()
       }
+      const type = profile.role === "STUDENT" ? "student" : "staff"
+      const fresh = { type, data: { ...user.data, ...profile, name: profile.full_name } } as AuthUser
+      localStorage.setItem("licet_user", JSON.stringify(fresh))
+
+      setAllowed(getAllowedModules({ type, role: profile.role, advisor_section: profile.advisor_section, can_reset_passwords: profile.can_reset_passwords }))
+      setName(profile.full_name || "")
+      setRole(profile.role)
+      setSection(profile.section ?? null)
+      setMustChange(!!profile.must_change_password)
+      setReady(true)
     }
-    if (!stored) { router.push("/login"); return }
-    const user = JSON.parse(stored) as AuthUser
-    if (!user || !user.data) { localStorage.removeItem("licet_user"); router.push("/login"); return }
-    setAllowed(getAllowedModules(user.type, user.type === "staff" ? user.data.role : ""))
-    setName(user.data.name || "")
-    setRole(user.type === "staff" ? user.data.role : "STUDENT")
-    const tick = () => {
-      const n = new Date()
-      setTime(n.toLocaleTimeString("en-IN", { hour12: true, hour: "2-digit", minute: "2-digit" }))
-      setDate(n.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" }))
-    }
-    tick(); const iv = setInterval(tick, 1000); return () => clearInterval(iv)
+    init()
+
+    const { data: sub } = supabase.auth.onAuthStateChange(event => {
+      if (event === "SIGNED_OUT") goLogin()
+    })
+    return () => { active = false; sub.subscription.unsubscribe() }
   }, [router])
 
-  const logout = () => { localStorage.removeItem("licet_user"); router.push("/login") }
+  // Keep people on allowed pages; force the password change when required.
+  useEffect(() => {
+    if (!ready) return
+    if (mustChange && activeId !== "change-password") router.replace("/dashboard/change-password")
+    else if (!mustChange && !allowed.includes(activeId)) router.replace("/dashboard")
+  }, [ready, mustChange, activeId, allowed, router])
 
-  const navigateTo = (id: string) => {
-    router.push(id === "dashboard" ? "/dashboard" : `/dashboard/${id}`)
-    setMobile(false)
+  useEffect(() => {
+    const onFlag = () => setMustChange(false)
+    window.addEventListener("licet:password-changed", onFlag)
+    return () => window.removeEventListener("licet:password-changed", onFlag)
+  }, [])
+
+  useEffect(() => {
+    setNow(new Date())
+    const iv = setInterval(() => setNow(new Date()), 30_000)
+    const on = () => setOffline(false), off = () => setOffline(true)
+    setOffline(!navigator.onLine)
+    window.addEventListener("online", on)
+    window.addEventListener("offline", off)
+    const onKey = (e: KeyboardEvent) => {
+      const typing = (e.target as HTMLElement)?.closest("input, textarea, select, [contenteditable]")
+      if (e.key === "/" && !typing) { e.preventDefault(); setExpanded(true); searchRef.current?.focus() }
+      if (e.key === "Escape") { setMobile(false); setMenuOpen(false) }
+    }
+    window.addEventListener("keydown", onKey)
+    let toastTimer: ReturnType<typeof setTimeout> | undefined
+    const onFailure = (e: PromiseRejectionEvent | ErrorEvent) => {
+      const msg = e instanceof PromiseRejectionEvent ? String(e.reason?.message ?? e.reason ?? '') : e.message
+      if (/ResizeObserver|AbortError/i.test(msg)) return
+      setToast(/fetch|network/i.test(msg)
+        ? "Couldn't reach the server. Check your connection and try again."
+        : "Something went wrong. Please try again — if it keeps happening, contact the department office.")
+      clearTimeout(toastTimer)
+      toastTimer = setTimeout(() => setToast(''), 6000)
+    }
+    window.addEventListener("unhandledrejection", onFailure)
+    window.addEventListener("error", onFailure)
+    return () => {
+      clearTimeout(toastTimer)
+      window.removeEventListener("unhandledrejection", onFailure)
+      window.removeEventListener("error", onFailure)
+      clearInterval(iv)
+      window.removeEventListener("online", on)
+      window.removeEventListener("offline", off)
+      window.removeEventListener("keydown", onKey)
+    }
+  }, [])
+
+  useEffect(() => { setMobile(false); setMenuOpen(false) }, [pathname])
+
+  const visibleGroups = useMemo(() => {
+    if (mustChange) return [{ title: "Security", items: [{ icon: Key, label: "Change Password", id: "change-password" }] }]
+    const q = query.trim().toLowerCase()
+    return NAV_GROUPS.map(g => ({
+      ...g,
+      items: g.items.filter(i => allowed.includes(i.id) && (!q || i.label.toLowerCase().includes(q))),
+    })).filter(g => g.items.length)
+  }, [allowed, query, mustChange])
+
+  const logout = async () => {
+    await signOut()
+    router.replace("/login")
   }
 
-  const activeId = (() => {
-    if (pathname === "/dashboard" || pathname === "/dashboard/") return "dashboard"
-    const seg = pathname?.split("/")[2] ?? "dashboard"
-    return seg
-  })()
+  const current = ALL_ITEMS.find(i => i.id === activeId) ?? (activeId === "change-password" ? { label: "Change Password" } : null)
+  const initials = name.replace(/^(Dr|Mr|Ms|Mrs|Rev)\.?\s+/i, "").split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase()
+  const time = now?.toLocaleTimeString("en-IN", { hour12: true, hour: "2-digit", minute: "2-digit" }) ?? ""
+  const date = now?.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" }) ?? ""
+  const showText = expanded || mobileOpen
 
-  const rc = ROLE_CONFIG[role] || ROLE_CONFIG.STUDENT
-  const initials = name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase()
+  if (!ready) {
+    return (
+      <div className="h-screen w-full flex items-center justify-center bg-licet-indigo">
+        <div className="flex flex-col items-center gap-4 text-licet-cream">
+          <img src="/images.png" alt="" className="w-16 h-16 rounded-full bg-white p-1 animate-pulse" />
+          <p className="text-[11px] font-bold tracking-[3px] uppercase text-licet-gold">Loading your workspace…</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div className={`h-screen w-full flex flex-col overflow-hidden ${sans.className}`} style={{ background: "#F1EFEB" }}>
-      {/* Header */}
-      <header style={{
-        background: "#FFFFFF",
-        borderBottom: "1px solid #DDD8D0",
-        height: "54px",
-        flexShrink: 0,
-        display: "flex",
-        alignItems: "center",
-        padding: "0 20px",
-        zIndex: 40,
-        position: "relative",
-      }}>
-        <button
-          onClick={() => setMobile(!mobileOpen)}
-          className="mobile-btn"
-          style={{
-            display: "none",
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            color: "#A8A29E",
-            padding: "6px",
-            marginRight: "8px",
-            borderRadius: "4px",
-          }}
-        >
-          <Menu size={18} />
+    <div className="h-screen w-full flex flex-col overflow-hidden bg-background">
+      {/* Utility strip — same as the top bar on licet.ac.in */}
+      <div className="hidden md:flex h-9 shrink-0 items-center gap-6 px-6 bg-licet-indigo border-b-[3px] border-licet-gold text-[12px]">
+        <nav className="flex items-center gap-5 text-licet-cream" aria-label="LICET links">
+          <a href="https://licet.ac.in/help-desk/" target="_blank" rel="noopener noreferrer" className="hover:text-[#F8D88D] transition-colors">Help Desk</a>
+          <a href="https://licet.ac.in/examination/" target="_blank" rel="noopener noreferrer" className="hover:text-[#F8D88D] transition-colors">Examinations</a>
+          <a href="http://moodle.licet.ac.in/" target="_blank" rel="noopener noreferrer" className="hover:text-[#F8D88D] transition-colors">Moodle</a>
+          <a href="https://licet.ac.in/" target="_blank" rel="noopener noreferrer" className="hover:text-[#F8D88D] transition-colors">licet.ac.in</a>
+        </nav>
+        <span className="mx-auto text-white/80 tabular-nums">{date}{time && <> &nbsp;·&nbsp; {time}</>}</span>
+        <span className="text-[13px] text-licet-gold">Anna University Counselling Code : 1450</span>
+      </div>
+
+      {/* Brand bar */}
+      <header className="h-16 shrink-0 flex items-center gap-4 px-4 md:px-6 z-40 relative text-white"
+        style={{ background: "linear-gradient(180deg, #1A0C4E 0%, #2A1A63 100%)" }}>
+        <button onClick={() => setMobile(!mobileOpen)} aria-label={mobileOpen ? "Close menu" : "Open menu"} aria-expanded={mobileOpen}
+          className="md:hidden p-2 -ml-1 rounded-md text-licet-cream hover:bg-white/10">
+          {mobileOpen ? <X size={20} /> : <Menu size={20} />}
         </button>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <div style={{
-            width: "30px",
-            height: "30px",
-            borderRadius: "6px",
-            background: "#FFFFFF",
-            border: "1px solid #DDD8D0",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flexShrink: 0,
-            padding: "3px",
-          }}>
-            <img src="/images.png" alt="LICET" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
-          </div>
-          <div>
-            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <span className={serif.className} style={{
-                fontSize: "16px",
-                color: "#292524",
-                fontWeight: 600,
-                letterSpacing: "0.02em",
-              }}>
-                LICET CSE&ndash;ERP
-              </span>
-            </div>
-            <p style={{
-              fontSize: "9px",
-              color: "#A8A29E",
-              margin: 0,
-              letterSpacing: "0.06em",
-              textTransform: "uppercase",
-              fontWeight: 500,
-            }}>
-              Dept. of Computer Science &amp; Engineering
-            </p>
-          </div>
-        </div>
-
-        <div className="hide-mobile" style={{
-          position: "absolute",
-          left: "50%",
-          transform: "translateX(-50%)",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-        }}>
-          <span style={{
-            fontSize: "13px",
-            fontWeight: 500,
-            color: "#292524",
-            fontVariantNumeric: "tabular-nums",
-            letterSpacing: "-0.01em",
-          }}>
-            {time}
+        <Link href="/dashboard" className="flex items-center gap-4 min-w-0" aria-label="Dashboard home">
+          <LicetLogo className="h-10 w-auto" />
+          <span className="hidden sm:block h-8 w-px bg-licet-gold/50" />
+          <span className="hidden sm:flex flex-col items-start leading-tight min-w-0">
+            <span className="font-display uppercase font-bold tracking-wide text-[17px] text-white">CSE ERP</span>
+            <span className="text-[10px] font-semibold tracking-[2px] uppercase text-licet-gold truncate">Dept. of Computer Science &amp; Engineering</span>
           </span>
-          <span style={{ fontSize: "9px", color: "#A8A29E", fontWeight: 500 }}>
-            {date}
-          </span>
-        </div>
+        </Link>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "12px", marginLeft: "auto" }}>
-          <div className="hide-mobile" style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <div style={{ textAlign: "right" }}>
-              <p style={{ fontSize: "12px", fontWeight: 500, color: "#292524", margin: 0, lineHeight: 1.3 }}>
-                {name}
-              </p>
-              <span style={{
-                display: "inline-block",
-                fontSize: "9px",
-                fontWeight: 600,
-                padding: "1px 7px",
-                borderRadius: "3px",
-                letterSpacing: "0.06em",
-                background: rc.bg,
-                color: rc.color,
-              }}>
-                {rc.label.toUpperCase()}
-              </span>
-            </div>
-            <div style={{
-              width: "30px",
-              height: "30px",
-              borderRadius: "50%",
-              background: "#E7E5E0",
-              color: "#57534E",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "10px",
-              fontWeight: 700,
-              flexShrink: 0,
-              border: "1px solid #DDD8D0",
-            }}>
+        <div className="ml-auto relative">
+          <button onClick={() => setMenuOpen(o => !o)} aria-haspopup="menu" aria-expanded={menuOpen}
+            className="flex items-center gap-3 rounded-full md:rounded-md pl-1 pr-1 md:pr-3 py-1 hover:bg-white/10 transition-colors">
+            <span className="w-9 h-9 rounded-full bg-licet-cream text-licet-indigo border-2 border-licet-gold flex items-center justify-center text-[12px] font-bold shrink-0">
               {initials || "?"}
-            </div>
-          </div>
-          <button
-            onClick={logout}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "5px",
-              padding: "5px 10px",
-              borderRadius: "4px",
-              background: "transparent",
-              color: "#A8A29E",
-              border: "1px solid #E7E5E0",
-              cursor: "pointer",
-              fontSize: "11px",
-              fontWeight: 500,
-              transition: "all 0.15s",
-              fontFamily: "inherit",
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.background = "#FAFAF8"
-              e.currentTarget.style.color = "#292524"
-              e.currentTarget.style.borderColor = "#DDD8D0"
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.background = "transparent"
-              e.currentTarget.style.color = "#A8A29E"
-              e.currentTarget.style.borderColor = "#E7E5E0"
-            }}
-          >
-            <LogOut size={13} />
-            <span className="hide-mobile">Sign out</span>
+            </span>
+            <span className="hidden md:block text-left leading-tight">
+              <span className="block text-[13px] font-medium text-white max-w-[220px] truncate">{name}</span>
+              <span className="block text-[10px] font-bold tracking-[2px] uppercase text-licet-gold">
+                {ROLE_LABEL[role] ?? role}{role === "STUDENT" && section ? ` · ${section}` : ""}
+              </span>
+            </span>
+            <ChevronDown size={14} className="hidden md:block text-licet-cream/70" />
           </button>
+          {menuOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
+              <div role="menu" className="absolute right-0 mt-2 w-56 z-50 rounded-lg bg-white text-foreground shadow-xl shadow-licet-indigo/20 border border-border overflow-hidden">
+                <div className="px-4 py-3 border-b border-border md:hidden">
+                  <p className="text-[13px] font-semibold text-licet-indigo truncate">{name}</p>
+                  <p className="text-[11px] text-muted-foreground">{ROLE_LABEL[role] ?? role}</p>
+                </div>
+                <Link href="/dashboard/change-password" role="menuitem"
+                  className="flex items-center gap-2.5 px-4 py-2.5 text-[13px] hover:bg-licet-cream/60">
+                  <Key size={15} className="text-licet-violet" /> Change password
+                </Link>
+                <button onClick={logout} role="menuitem"
+                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-red-700 hover:bg-red-50 border-t border-border">
+                  <LogOut size={15} /> Sign out
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </header>
 
-      <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+      {offline && (
+        <div role="status" className="shrink-0 flex items-center justify-center gap-2 bg-amber-100 text-amber-900 text-[12.5px] py-1.5 border-b border-amber-200">
+          <WifiOff size={14} /> You&rsquo;re offline — changes won&rsquo;t be saved until your connection is back.
+        </div>
+      )}
+      {mustChange && (
+        <div role="status" className="shrink-0 bg-licet-cream text-licet-indigo text-[13px] py-2 px-4 text-center border-b border-licet-gold">
+          For your security, please set a new password before continuing.
+        </div>
+      )}
+
+      <div className="flex flex-1 overflow-hidden relative">
         {mobileOpen && (
-          <div
-            onClick={() => setMobile(false)}
-            style={{ position: "fixed", inset: 0, background: "rgba(41, 37, 36, 0.2)", zIndex: 50 }}
-          />
+          <div onClick={() => setMobile(false)} className="md:hidden fixed inset-0 top-16 bg-licet-indigo/40 backdrop-blur-[1px] z-40" />
         )}
 
         {/* Sidebar */}
         <aside
-          className={`sidebar ${mobileOpen ? "mobile-open" : ""}`}
-          style={{
-            width: expanded ? "228px" : "50px",
-            transition: "width 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
-            background: "#292524",
-            display: "flex",
-            flexDirection: "column",
-            overflow: "hidden",
-            flexShrink: 0,
-            zIndex: 60,
-          }}
+          aria-label="Main menu"
+          className={`bg-licet-indigo flex flex-col shrink-0 overflow-hidden z-50 transition-[width,transform] duration-200 ease-out
+            max-md:fixed max-md:top-16 max-md:bottom-0 max-md:left-0 max-md:w-72 max-md:shadow-2xl
+            ${mobileOpen ? "max-md:translate-x-0" : "max-md:-translate-x-full"}
+            ${expanded ? "md:w-64" : "md:w-[68px]"}`}
         >
-          <button
-            onClick={() => setExpanded(!expanded)}
-            style={{
-              height: "36px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: expanded ? "flex-end" : "center",
-              padding: expanded ? "0 12px" : "0",
-              background: "none",
-              border: "none",
-              borderBottom: "1px solid #3E3A36",
-              cursor: "pointer",
-              color: "#78716C",
-              transition: "color 0.15s",
-              flexShrink: 0,
-            }}
-            onMouseEnter={e => (e.currentTarget.style.color = "#A8A29E")}
-            onMouseLeave={e => (e.currentTarget.style.color = "#78716C")}
-          >
-            <ChevronRight
-              size={14}
-              style={{
-                transform: expanded ? "rotate(180deg)" : "rotate(0deg)",
-                transition: "transform 0.2s",
-              }}
-            />
-          </button>
-
-          <div
-            className="nav-scroll"
-            style={{ flex: 1, overflowY: "auto", overflowX: "hidden", padding: "8px 0" }}
-          >
-            {NAV_GROUPS.map(group => {
-              const visibleItems = group.items.filter(i => allowed.includes(i.id))
-              if (visibleItems.length === 0) return null
-              return (
-                <div key={group.title} style={{ marginBottom: "4px" }}>
-                  {expanded && (
-                    <p style={{
-                      fontSize: "8px",
-                      fontWeight: 600,
-                      letterSpacing: "0.14em",
-                      color: "#78716C",
-                      textTransform: "uppercase",
-                      padding: "8px 14px 4px",
-                      margin: 0,
-                    }}>
-                      {group.title}
-                    </p>
-                  )}
-                  {visibleItems.map(({ icon: Icon, label, id }) => {
-                    const active = activeId === id
-                    return (
-                      <button
-                        key={id}
-                        onClick={() => navigateTo(id)}
-                        title={!expanded ? label : undefined}
-                        style={{
-                          width: "100%",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "10px",
-                          padding: expanded ? "6px 14px" : "6px 0",
-                          justifyContent: expanded ? "flex-start" : "center",
-                          background: active ? "rgba(114, 47, 55, 0.25)" : "transparent",
-                          border: "none",
-                          borderLeft: active ? "2px solid #722F37" : "2px solid transparent",
-                          color: active ? "#FFFFFF" : "#A8A29E",
-                          cursor: "pointer",
-                          fontSize: "12px",
-                          fontWeight: active ? 500 : 400,
-                          whiteSpace: "nowrap",
-                          textAlign: "left",
-                          transition: "all 0.1s ease",
-                        }}
-                        onMouseEnter={e => {
-                          if (!active) {
-                            e.currentTarget.style.background = "rgba(255,255,255,0.04)"
-                            e.currentTarget.style.color = "#D6D3D1"
-                          }
-                        }}
-                        onMouseLeave={e => {
-                          if (!active) {
-                            e.currentTarget.style.background = "transparent"
-                            e.currentTarget.style.color = "#A8A29E"
-                          }
-                        }}
-                      >
-                        <Icon size={14} style={{ flexShrink: 0 }} />
-                        {expanded && (
-                          <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{label}</span>
-                        )}
-                      </button>
-                    )
-                  })}
-                </div>
-              )
-            })}
+          <div className={`flex items-center gap-2 border-b border-white/10 ${showText ? "p-3" : "p-2 justify-center"}`}>
+            {showText ? (
+              <label className="flex-1 flex items-center gap-2 h-9 px-3 rounded-md bg-white/[0.07] border border-white/10 focus-within:border-licet-gold/70 transition-colors">
+                <Search size={14} className="text-licet-cream/60 shrink-0" />
+                <input ref={searchRef} value={query} onChange={e => setQuery(e.target.value)} placeholder="Find a module…"
+                  aria-label="Find a module" className="flex-1 min-w-0 bg-transparent text-[13px] text-white placeholder:text-licet-cream/40 outline-none" />
+                <kbd className="hidden md:inline text-[10px] text-licet-cream/40 border border-white/15 rounded px-1">/</kbd>
+              </label>
+            ) : null}
+            <button onClick={() => setExpanded(!expanded)} aria-label={expanded ? "Collapse menu" : "Expand menu"}
+              className="hidden md:flex w-9 h-9 items-center justify-center rounded-md text-licet-gold/70 hover:text-licet-gold hover:bg-white/5 shrink-0">
+              <ChevronLeft size={16} className={`transition-transform ${expanded ? "" : "rotate-180"}`} />
+            </button>
           </div>
 
-          <div style={{ borderTop: "1px solid #3E3A36", padding: "12px 14px", flexShrink: 0 }}>
-            {expanded ? (
-              <div>
-                <p style={{
-                  fontSize: "8px",
-                  fontWeight: 600,
-                  letterSpacing: "0.12em",
-                  color: "#78716C",
-                  margin: "0 0 2px",
-                  textTransform: "uppercase",
-                }}>
-                  Loyola-ICAM
-                </p>
-                <p style={{ fontSize: "8px", color: "#57534E", margin: 0, fontWeight: 400 }}>
-                  Established 2009
-                </p>
+          <nav className="flex-1 overflow-y-auto overflow-x-hidden py-2 [scrollbar-width:thin] [scrollbar-color:#41317E_transparent]">
+            {visibleGroups.length === 0 && (
+              <p className="px-5 py-6 text-[12.5px] text-licet-cream/50">No module matches &ldquo;{query}&rdquo;.</p>
+            )}
+            {visibleGroups.map(group => (
+              <div key={group.title} className="mb-1">
+                {showText
+                  ? <p className="px-5 pt-4 pb-1.5 text-[10px] font-bold tracking-[2.5px] uppercase text-licet-gold/70">{group.title}</p>
+                  : <div className="mx-4 my-2.5 h-px bg-white/10" />}
+                <ul className={showText ? "px-2.5 space-y-0.5" : "px-2 space-y-1"}>
+                  {group.items.map(({ icon: Icon, label, id }) => {
+                    const active = activeId === id
+                    return (
+                      <li key={id}>
+                        <Link href={hrefFor(id)} prefetch title={!showText ? label : undefined}
+                          aria-current={active ? "page" : undefined}
+                          className={`relative flex items-center gap-3 rounded-md text-[13.5px] whitespace-nowrap transition-colors
+                            ${showText ? "px-3 py-2" : "justify-center py-2.5"}
+                            ${active
+                              ? "bg-white/[0.12] text-white font-semibold"
+                              : "text-licet-cream/75 hover:bg-white/[0.06] hover:text-[#F8D88D]"}`}>
+                          {active && <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-full bg-licet-gold" />}
+                          <Icon size={17} className={`shrink-0 ${active ? "text-licet-gold" : ""}`} />
+                          {showText && <span className="truncate">{label}</span>}
+                        </Link>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </div>
+            ))}
+          </nav>
+
+          <div className="border-t border-white/10 px-5 py-4 shrink-0">
+            {showText ? (
+              <div className="flex items-center gap-3">
+                <img src="/images.png" alt="" className="w-9 h-9 rounded-full bg-white shrink-0" />
+                <div className="min-w-0">
+                  <p className="font-serif italic text-[16px] text-licet-gold leading-none">Luceat Lux Vestra</p>
+                  <p className="text-[10px] tracking-[2px] uppercase text-licet-cream/55 mt-1">Let your light shine</p>
+                </div>
               </div>
             ) : (
-              <div style={{
-                width: "20px",
-                height: "20px",
-                borderRadius: "50%",
-                background: "#722F37",
-                margin: "0 auto",
-              }} />
+              <img src="/images.png" alt="" className="w-8 h-8 rounded-full bg-white mx-auto" />
             )}
           </div>
         </aside>
 
         {/* Main */}
-        <main style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-          <div style={{ height: "3px", background: "#722F37", flexShrink: 0 }} />
-          <div
-            id="scroll-container"
-            style={{
-              flex: 1,
-              overflowY: "auto",
-              background: "#F1EFEB",
-              scrollbarWidth: "thin",
-              scrollbarColor: "#DDD8D0 transparent",
-            }}
-          >
-            {children}
-          </div>
+        <main id="scroll-container" className="flex-1 overflow-y-auto flex flex-col [scrollbar-width:thin] [scrollbar-color:#DCCAA0_transparent]">
+          {current && activeId !== "dashboard" && (
+            <div className="px-5 md:px-8 pt-5 text-[12px] text-muted-foreground flex items-center gap-1.5">
+              <Link href="/dashboard" className="hover:text-licet-indigo">Dashboard</Link>
+              <span aria-hidden>›</span>
+              <span className="text-licet-indigo font-medium">{current.label}</span>
+            </div>
+          )}
+          <div className="flex-1">{children}</div>
+          {toast && (
+            <div role="alert" className="fixed bottom-5 right-5 z-[70] max-w-sm flex items-start gap-3 rounded-lg bg-licet-indigo text-white px-4 py-3 shadow-2xl border-l-4 border-licet-gold text-[13px]">
+              <AlertTriangle size={16} className="text-licet-gold mt-0.5 shrink-0" />
+              <span className="flex-1">{toast}</span>
+              <button onClick={() => setToast('')} aria-label="Dismiss" className="text-white/70 hover:text-white"><X size={15} /></button>
+            </div>
+          )}
+          <footer className="shrink-0 bg-licet-parchment border-t border-border px-6 py-3 flex flex-wrap items-center justify-between gap-2 text-[11px] text-muted-foreground">
+            <span>© {now?.getFullYear() ?? ""} Loyola-ICAM College of Engineering and Technology (Autonomous), Chennai</span>
+            <span>Maintained by <span className="font-semibold text-licet-indigo">LICET · Department of CSE</span></span>
+          </footer>
         </main>
       </div>
-
-      <style dangerouslySetInnerHTML={{ __html: `
-        .nav-scroll::-webkit-scrollbar { width: 3px; }
-        .nav-scroll::-webkit-scrollbar-thumb { background: #44403C; border-radius: 3px; }
-        #scroll-container::-webkit-scrollbar { width: 5px; }
-        #scroll-container::-webkit-scrollbar-thumb { background: #DDD8D0; border-radius: 3px; }
-        #scroll-container::-webkit-scrollbar-thumb:hover { background: #A8A29E; }
-        @media (max-width: 768px) {
-          .hide-mobile { display: none !important; }
-          .mobile-btn { display: flex !important; }
-          .sidebar { position: fixed !important; top: 54px !important; left: 0 !important; bottom: 0 !important; width: 228px !important; transform: translateX(-100%) !important; transition: transform 0.25s cubic-bezier(0.4,0,0.2,1) !important; }
-          .sidebar.mobile-open { transform: translateX(0) !important; }
-        }
-      `}} />
     </div>
   )
 }

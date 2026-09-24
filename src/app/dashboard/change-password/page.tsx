@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import type { AuthUser } from "@/lib/auth"
 import { Lock, Eye, EyeOff, CheckCircle2, Loader2 } from "lucide-react"
+import { defaultStudentPassword } from "@/lib/passwords"
 
 export default function ChangePasswordPage() {
   const router = useRouter()
@@ -50,6 +51,9 @@ export default function ChangePasswordPage() {
     if (newPwd.length < 8)      { setError('New password must be at least 8 characters'); return }
     if (newPwd !== confirmPwd)  { setError('New passwords do not match'); return }
     if (newPwd === currentPwd)  { setError('New password must be different from current password'); return }
+    if (newPwd.toLowerCase() === defaultStudentPassword(authUser!.data.email).toLowerCase()) {
+      setError('Choose a password other than the default one'); return
+    }
 
     setSaving(true)
 
@@ -74,6 +78,13 @@ export default function ChangePasswordPage() {
       return
     }
 
+    await supabase.rpc('password_changed')
+    try {
+      const stored = JSON.parse(localStorage.getItem('licet_user') ?? 'null')
+      if (stored?.data) { stored.data.must_change_password = false; localStorage.setItem('licet_user', JSON.stringify(stored)) }
+    } catch { /* ignore */ }
+    window.dispatchEvent(new Event('licet:password-changed'))
+
     setSaving(false)
     setSuccess(true)
     setCurrentPwd('')
@@ -96,7 +107,7 @@ export default function ChangePasswordPage() {
           value={value}
           onChange={e => onChange(e.target.value)}
           placeholder={placeholder}
-          className="w-full h-10 pl-9 pr-10 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none transition-colors"
+          className="w-full h-10 pl-9 pr-10 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none transition-colors"
         />
         <button type="button" onClick={onToggle}
           className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
@@ -110,9 +121,9 @@ export default function ChangePasswordPage() {
     <div className="p-6 flex justify-center">
       <div className="w-full max-w-md space-y-6">
         <div>
-          <span className="font-mono text-xs text-primary">// SECURITY</span>
-          <h1 className="text-2xl font-bold tracking-tight mt-1">Change Password</h1>
-          <p className="font-mono text-xs text-muted-foreground mt-1">
+          <span className="eyebrow">SECURITY</span>
+          <h1 className="text-2xl font-semibold tracking-tight mt-2">Change Password</h1>
+          <p className="text-[13.5px] text-muted-foreground mt-1.5 max-w-3xl">
             Verify your current password then set a new one
           </p>
         </div>
@@ -209,7 +220,7 @@ export default function ChangePasswordPage() {
             <button
               onClick={handleUpdate}
               disabled={saving || !currentPwd || !newPwd || !confirmPwd}
-              className="w-full flex items-center justify-center gap-2 h-10 bg-primary text-primary-foreground font-mono text-sm rounded hover:bg-primary/90 disabled:opacity-50 transition-colors">
+              className="w-full flex items-center justify-center gap-2 h-10 bg-licet-indigo text-white text-[13.5px] font-semibold rounded-md hover:bg-licet-violet shadow-sm disabled:opacity-50 transition-colors">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
               {saving ? 'Updating...' : 'Update Password'}
             </button>
