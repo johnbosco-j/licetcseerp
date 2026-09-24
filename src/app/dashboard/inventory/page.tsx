@@ -14,9 +14,9 @@ const CATEGORIES = ['Computers', 'Networking', 'Furniture', 'Electronics', 'Soft
 const LOCATIONS = ['CS Lab 1', 'CS Lab 2', 'CS Lab 3', 'Hardware Lab', 'Department Library', 'HOD Cabin', 'Staff Room', 'Seminar Hall']
 
 const STATUS_COLORS = {
-  OPERATIONAL: 'text-green-500 bg-green-500/10 border-green-500/20',
-  MAINTENANCE: 'text-yellow-500 bg-yellow-500/10 border-yellow-500/20',
-  RETIRED:     'text-red-500 bg-red-500/10 border-red-500/20',
+  OPERATIONAL: 'text-green-700 bg-green-50 border-green-200',
+  MAINTENANCE: 'text-amber-700 bg-amber-50 border-amber-200',
+  RETIRED:     'text-red-700 bg-red-50 border-red-200',
 }
 
 export default function InventoryPage() {
@@ -129,7 +129,7 @@ export default function InventoryPage() {
         </div>
         <div className="flex gap-2">
           <button onClick={exportXLSX} disabled={inventory.length === 0}
-            className="flex items-center gap-2 px-3 py-2 bg-green-600 text-white font-mono text-xs rounded hover:bg-green-700 disabled:opacity-50 transition-colors">
+            className="flex items-center gap-2 px-3 py-2 border border-licet-indigo/25 bg-white text-licet-indigo text-[13px] font-semibold rounded-md hover:bg-licet-cream/60 shadow-sm disabled:opacity-50 transition-colors">
             <Download className="w-3 h-3" /> Export NAAC Report
           </button>
           {isHOD && (
@@ -145,8 +145,8 @@ export default function InventoryPage() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
           { label: 'Total Assets', value: stats.total, icon: Package, color: 'text-foreground' },
-          { label: 'Operational', value: stats.operational, icon: CheckCircle2, color: 'text-green-500' },
-          { label: 'Needs Repair', value: stats.maintenance, icon: Wrench, color: 'text-yellow-500' },
+          { label: 'Operational', value: stats.operational, icon: CheckCircle2, color: 'text-green-700' },
+          { label: 'Needs Repair', value: stats.maintenance, icon: Wrench, color: 'text-amber-700' },
           { label: 'Total Est. Value', value: `₹${stats.value.toLocaleString()}`, icon: Monitor, color: 'text-primary' },
         ].map(({ label, value, icon: Icon, color }) => (
           <div key={label} className="bg-card border border-border rounded-lg p-5">

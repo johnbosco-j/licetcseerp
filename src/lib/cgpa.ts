@@ -113,28 +113,33 @@ export interface RiskScore {
   studentId:     string
   riskLevel:     'SAFE' | 'WATCH' | 'AT_RISK' | 'CRITICAL'
   riskScore:     number  // 0-100
-  attendancePct: number
-  avgMarksPct:   number
+  attendancePct: number | null
+  avgMarksPct:   number | null
   cgpa:          number
   flags:         string[]
+  /** false when no attendance, marks or grades have been recorded yet */
+  hasData:       boolean
 }
 
 export async function computeRisk(
   studentId: string,
-  attendancePct: number,
-  avgMarksPct: number,
+  attendancePct: number | null,
+  avgMarksPct: number | null,
   cgpa: number
 ): Promise<RiskScore> {
   const flags: string[] = []
   let score = 0
+  const hasData = attendancePct !== null || avgMarksPct !== null || cgpa > 0
 
-  // Attendance risk (weight: 40)
-  if (attendancePct < 65)       { score += 40; flags.push('Attendance below 65% — prevented from exam') }
-  else if (attendancePct < 75)  { score += 30; flags.push('Attendance below 75% — needs medical proof') }
-  else if (attendancePct < 85)  { score += 15; flags.push('Attendance below 85%') }
+  // Attendance risk (weight: 40) — clause 7: < 65% SA, 65–74% condonation
+  if (attendancePct === null)     { /* nothing recorded yet */ }
+  else if (attendancePct < 65)   { score += 40; flags.push('Attendance below 65% — SA, not eligible for the semester-end examination') }
+  else if (attendancePct < 75)   { score += 30; flags.push('Attendance 65–74% — condonation required') }
+  else if (attendancePct < 85)   { score += 15; flags.push('Attendance below 85%') }
 
   // Marks risk (weight: 35)
-  if (avgMarksPct < 45)         { score += 35; flags.push('Internal marks below 45% — may fail') }
+  if (avgMarksPct === null)       { /* nothing recorded yet */ }
+  else if (avgMarksPct < 45)     { score += 35; flags.push('Internal marks below 45% — may fail') }
   else if (avgMarksPct < 50)    { score += 25; flags.push('Internal marks borderline — below 50%') }
   else if (avgMarksPct < 60)    { score += 10; flags.push('Internal marks below 60%') }
 
@@ -150,13 +155,15 @@ export async function computeRisk(
     score >= 40 ? 'AT_RISK'  :
     score >= 20 ? 'WATCH'    : 'SAFE'
 
-  return { studentId, riskLevel, riskScore: score, attendancePct, avgMarksPct, cgpa, flags }
+  return { studentId, riskLevel, riskScore: score, attendancePct, avgMarksPct, cgpa, flags, hasData }
 }
 
 export interface StudentStats {
-  attendancePct: number
+  /** null when no attendance has been recorded */
+  attendancePct: number | null
   attendanceSessions: number
-  avgMarksPct: number
+  /** null when no marks have been entered */
+  avgMarksPct: number | null
   cgpa: CGPAResult
 }
 
@@ -190,11 +197,48 @@ export async function loadStudentStats(studentIds: string[]): Promise<Record<str
     const obtained = m.reduce((s, r) => s + Number(r.marks_obtained), 0)
     const max = m.reduce((s, r) => s + Number(r.max_marks), 0)
     out[id] = {
-      attendancePct: a.length ? Math.round(present / a.length * 100) : 0,
+      attendancePct: a.length ? Math.round(present / a.length * 100) : null,
       attendanceSessions: a.length,
-      avgMarksPct: max ? Math.round(obtained / max * 100) : 0,
+      avgMarksPct: max ? Math.round(obtained / max * 100) : null,
       cgpa: cgpaFromMarks(m),
     }
   }
   return out
+}
+
+export interface DepartmentTotals {
+  /** session-wise attendance (day_attendance), null when none recorded */
+  attendancePct: number | null
+  attendanceRecords: number
+  /** average of all entered marks, null when none entered */
+  marksPct: number | null
+  /** share of mark entries at or above 45% (clause 12 component minimum) */
+  passRate: number | null
+  markEntries: number
+}
+
+/** Department-wide attendance and marks, counted exactly (no 1000-row cap). */
+export async function loadDepartmentTotals(): Promise<DepartmentTotals> {
+  const [total, present] = await Promise.all([
+    supabase.from('day_attendance').select('id', { count: 'exact', head: true }),
+    supabase.from('day_attendance').select('id', { count: 'exact', head: true }).in('status', ['PRESENT', 'LATE']),
+  ])
+  const marks: { marks_obtained: number; max_marks: number }[] = []
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await supabase.from('marks').select('marks_obtained, max_marks').range(from, from + 999)
+    if (error) throw new Error(error.message)
+    marks.push(...(data ?? []))
+    if (!data || data.length < 1000) break
+  }
+  const attendanceRecords = total.count ?? 0
+  const obtained = marks.reduce((s, m) => s + Number(m.marks_obtained), 0)
+  const max = marks.reduce((s, m) => s + Number(m.max_marks), 0)
+  const passed = marks.filter(m => Number(m.marks_obtained) >= Number(m.max_marks) * 0.45).length
+  return {
+    attendancePct: attendanceRecords ? Math.round((present.count ?? 0) / attendanceRecords * 100) : null,
+    attendanceRecords,
+    marksPct: max ? Math.round(obtained / max * 100) : null,
+    passRate: marks.length ? Math.round(passed / marks.length * 100) : null,
+    markEntries: marks.length,
+  }
 }

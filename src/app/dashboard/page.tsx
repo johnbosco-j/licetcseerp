@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
+import { loadDepartmentTotals } from "@/lib/cgpa"
 import type { AuthUser } from "@/lib/auth"
 import type { Database } from "@/lib/supabase"
 import type { LucideIcon } from "lucide-react"
@@ -67,6 +68,8 @@ export default function DashboardPage() {
   const [stats, setStats]       = useState<StatData[]>([])
   const [feed, setFeed]         = useState<FeedItem[]>([])
   const [subtitle, setSubtitle] = useState("")
+  const [actions, setActions]   = useState<{ label: string; count: number; href: string; tone: 'warn' | 'info' }[]>([])
+  const [strength, setStrength] = useState<{ section: string; count: number }[]>([])
 
   useEffect(() => {
     const stored = localStorage.getItem("licet_user") || localStorage.getItem("excelsior_user")
@@ -104,28 +107,39 @@ export default function DashboardPage() {
   const loadHOD = async () => {
     setSubtitle("Department of Computer Science & Engineering · Overview")
 
-    const [studentsRes, attTotalRes, attPresentRes, marksRes, leavesRes] = await Promise.all([
+    const SECTION_LIST = ['I CSE-A','I CSE-B','II CSE-A','II CSE-B','III CSE-A','III CSE-B','IV CSE-A','IV CSE-B']
+    const head = { count: 'exact' as const, head: true }
+    const [alertsRes, grievRes, leaveRes, unassignedRes, advisorsRes, ...sectionRes] = await Promise.all([
+      supabase.from('attendance_alerts').select('id', head).is('cleared_at', null),
+      supabase.from('grievances').select('id', head).in('status', ['OPEN', 'IN_PROGRESS']),
+      supabase.from('leaves').select('id', head).eq('status', 'PENDING'),
+      supabase.from('subjects').select('id', head).is('faculty_id', null),
+      supabase.from('profiles').select('advisor_section').not('advisor_section', 'is', null),
+      ...SECTION_LIST.map(sec => supabase.from('profiles').select('id', head).eq('role', 'STUDENT').eq('section', sec)),
+    ])
+    const advisorCount = new Set((advisorsRes.data ?? []).map(a => a.advisor_section)).size
+    setActions([
+      { label: 'Attendance alerts to clear', count: alertsRes.count ?? 0, href: '/dashboard/alerts', tone: 'warn' },
+      { label: 'Open grievances', count: grievRes.count ?? 0, href: '/dashboard/grievances', tone: 'warn' },
+      { label: 'Leave applications awaiting you', count: leaveRes.count ?? 0, href: '/dashboard/leaves', tone: 'warn' },
+      { label: 'Subjects without a faculty member', count: unassignedRes.count ?? 0, href: '/dashboard/curriculum', tone: 'info' },
+      { label: 'Sections without a class advisor', count: SECTION_LIST.length - advisorCount, href: '/dashboard/accounts', tone: 'info' },
+    ])
+    setStrength(SECTION_LIST.map((section, i) => ({ section, count: sectionRes[i].count ?? 0 })))
+
+    const [studentsRes, totals, leavesRes] = await Promise.all([
       supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'STUDENT'),
-      supabase.from('day_attendance').select('id', { count: 'exact', head: true }),
-      supabase.from('day_attendance').select('id', { count: 'exact', head: true }).in('status', ['PRESENT', 'LATE']),
-      supabase.from('marks').select('marks_obtained, max_marks'),
+      loadDepartmentTotals(),
       supabase.from('leaves').select('id', { count: 'exact', head: true }).eq('status', 'PENDING'),
     ])
 
     const totalStudents = studentsRes.count ?? 0
     const pendingLeaves = leavesRes.count ?? 0
 
-    const attTotal = attTotalRes.count ?? 0
-    const attendancePct = attTotal > 0 ? Math.round(((attPresentRes.count ?? 0) / attTotal) * 100) : 0
-
-    const marks = marksRes.data ?? []
-    const passCount = marks.filter(m => Number(m.marks_obtained) >= Number(m.max_marks) * 0.45).length
-    const passRate = marks.length > 0 ? Math.round((passCount / marks.length) * 100) : 0
-
     setStats([
       { label: "Total Students",  value: String(totalStudents), sub: "Across 8 sections", icon: Users },
-      { label: "Avg. Attendance", value: attTotal ? `${attendancePct}%` : "—", sub: attTotal ? `${attTotal} session records` : "No attendance yet", icon: ClipboardCheck },
-      { label: "Pass Rate",       value: marks.length ? `${passRate}%` : "—", sub: marks.length ? "Assessments scoring ≥ 45%" : "No marks entered yet", icon: Award },
+      { label: "Avg. Attendance", value: totals.attendancePct !== null ? `${totals.attendancePct}%` : "—", sub: totals.attendanceRecords ? `${totals.attendanceRecords} session records` : "No attendance yet", icon: ClipboardCheck },
+      { label: "Pass Rate",       value: totals.passRate !== null ? `${totals.passRate}%` : "—", sub: totals.markEntries ? "Assessments scoring ≥ 45%" : "No marks entered yet", icon: Award },
       { label: "Pending Leaves",  value: String(pendingLeaves), sub: "Awaiting your approval", icon: Heart },
     ])
   }
@@ -180,8 +194,8 @@ export default function DashboardPage() {
     const avgMarksPct = totalMax > 0 ? Math.round((totalObtained / totalMax) * 100) : 0
 
     setStats([
-      { label: "My Attendance",  value: `${attendancePct}%`, sub: attTotal ? `${attPresent}/${attTotal} sessions` : "No records yet", icon: ClipboardCheck },
-      { label: "Avg. Marks",     value: `${avgMarksPct}%`,   sub: marks.length ? "All subjects" : "No marks yet", icon: Award },
+      { label: "My Attendance",  value: attTotal ? `${attendancePct}%` : "—", sub: attTotal ? `${attPresent}/${attTotal} sessions` : "No records yet", icon: ClipboardCheck },
+      { label: "Avg. Marks",     value: totalMax ? `${avgMarksPct}%` : "—",   sub: marks.length ? "All subjects" : "No marks yet", icon: Award },
       { label: "Subjects",       value: String(subjectsRes.count ?? 0), sub: `Semester ${sem} · ${section}`, icon: BookOpen },
       { label: "Pending Leaves", value: String(leavesRes.count ?? 0),  sub: "Your applications", icon: Heart },
     ])
@@ -262,7 +276,7 @@ export default function DashboardPage() {
       </section>
 
       {/* Stats */}
-      <section className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(210px,1fr))]">
+      <section className="grid gap-4 grid-cols-2 xl:grid-cols-4">
         {loading ? (
           Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="bg-card border border-border border-t-[3px] border-t-licet-gold p-5 h-[120px] animate-pulse">
@@ -283,6 +297,46 @@ export default function DashboardPage() {
           </div>
         ))}
       </section>
+
+      {roleLabel === 'HOD' && !loading && (
+        <section className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
+          <div className="bg-card border border-border rounded-xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-border bg-licet-paper/70">
+              <h2 className="font-serif text-[22px] font-semibold">Needs your attention</h2>
+            </div>
+            <ul className="divide-y divide-border">
+              {actions.map(a => (
+                <li key={a.label}>
+                  <button onClick={() => router.push(a.href)} className="w-full flex items-center gap-3 px-5 py-3 text-left hover:bg-licet-cream/40 transition-colors">
+                    <span className={`min-w-9 h-7 px-2 rounded-full flex items-center justify-center text-[13px] font-bold ${a.count === 0 ? 'bg-green-50 text-green-800' : a.tone === 'warn' ? 'bg-amber-100 text-amber-900' : 'bg-licet-cream text-licet-indigo'}`}>{a.count}</span>
+                    <span className="flex-1 text-[14px] text-licet-indigo">{a.label}</span>
+                    <ArrowRight size={15} className="text-muted-foreground" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="bg-card border border-border rounded-xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-border bg-licet-paper/70">
+              <h2 className="font-serif text-[22px] font-semibold">Section strength</h2>
+            </div>
+            <div className="p-5 space-y-2.5">
+              {strength.map(({ section, count }) => {
+                const max = Math.max(1, ...strength.map(x => x.count))
+                return (
+                  <div key={section} className="flex items-center gap-3">
+                    <span className="w-20 text-[12.5px] font-semibold text-licet-indigo">{section}</span>
+                    <div className="flex-1 h-2.5 rounded-full bg-muted overflow-hidden">
+                      <div className="h-full rounded-full bg-licet-violet" style={{ width: `${count / max * 100}%` }} />
+                    </div>
+                    <span className="w-8 text-right text-[12.5px] tabular-nums text-muted-foreground">{count}</span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Recent news / events — styled like the news panel on licet.ac.in */}
       <section className="bg-licet-cream p-6 md:p-7">

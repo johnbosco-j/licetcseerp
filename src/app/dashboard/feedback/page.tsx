@@ -145,7 +145,7 @@ export default function FeedbackPage() {
     <div className="flex gap-1">
       {[1,2,3,4,5].map(star => (
         <button key={star} onClick={() => onChange(star)}
-          className={`text-xl transition-all ${star <= value ? 'text-yellow-500' : 'text-muted-foreground/30 hover:text-yellow-500/50'}`}>
+          className={`text-xl transition-all ${star <= value ? 'text-amber-600' : 'text-muted-foreground/30 hover:text-amber-600/50'}`}>
           ★
         </button>
       ))}
@@ -194,7 +194,9 @@ export default function FeedbackPage() {
                   </div>
                   <div className="text-right">
                     <p className="font-mono text-xs text-muted-foreground">{s ? `${s.count} response${s.count === 1 ? '' : 's'}` : 'No responses yet'}</p>
-                    <p className="text-yellow-600 text-lg font-bold">★ {s ? s.avg.toFixed(2) : '—'}</p>
+                    {s
+                      ? <p className="text-licet-indigo text-lg font-semibold"><span className="text-amber-600">★</span> {s.avg.toFixed(2)}<span className="text-xs text-muted-foreground font-normal"> / 5</span></p>
+                      : <p className="text-muted-foreground/60 text-lg">—</p>}
                   </div>
                 </div>
               )
@@ -213,14 +215,14 @@ export default function FeedbackPage() {
                 const isSaved = saved.includes(subject.id)
                 return (
                   <div key={subject.id}
-                    className={`bg-card border rounded-lg p-4 flex items-center justify-between transition-all ${isSaved ? 'border-green-500/30 opacity-60' : 'border-border hover:border-primary/50 cursor-pointer'}`}
+                    className={`bg-card border rounded-lg p-4 flex items-center justify-between transition-all ${isSaved ? 'border-green-200 opacity-60' : 'border-border hover:border-primary/50 cursor-pointer'}`}
                     onClick={() => !isSaved && setSelected(subject)}>
                     <div>
                       <p className="font-mono text-xs text-muted-foreground">{subject.code}</p>
                       <p className="text-sm font-medium">{subject.name}</p>
                     </div>
                     {isSaved ? (
-                      <span className="flex items-center gap-1 font-mono text-xs text-green-500">
+                      <span className="flex items-center gap-1 font-mono text-xs text-green-700">
                         <CheckCircle2 className="w-3 h-3" /> Done
                       </span>
                     ) : (
@@ -269,7 +271,7 @@ export default function FeedbackPage() {
                 </button>
               </div>
 
-              {submitError && <p className="font-mono text-xs text-red-600">{submitError}</p>}
+              {submitError && <p className="font-mono text-xs text-red-700">{submitError}</p>}
               {ratings.some(r => r === 0) && (
                 <p className="font-mono text-xs text-muted-foreground">Please rate all questions before submitting</p>
               )}

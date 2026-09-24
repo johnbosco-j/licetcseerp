@@ -14,9 +14,9 @@ type Grievance = Database['public']['Tables']['grievances']['Row']
 type Profile = Database['public']['Tables']['profiles']['Row']
 
 const STATUS_COLORS: Record<string, string> = {
-  OPEN:        'text-red-500 bg-red-500/10 border-red-500/20',
-  IN_PROGRESS: 'text-yellow-500 bg-yellow-500/10 border-yellow-500/20',
-  RESOLVED:    'text-green-500 bg-green-500/10 border-green-500/20',
+  OPEN:        'text-red-700 bg-red-50 border-red-200',
+  IN_PROGRESS: 'text-amber-700 bg-amber-50 border-amber-200',
+  RESOLVED:    'text-green-700 bg-green-50 border-green-200',
   CLOSED:      'text-muted-foreground bg-accent border-border',
 }
 
@@ -132,9 +132,9 @@ export default function GrievancesPage() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
           { label: 'Total',       value: stats.total,       color: 'text-foreground' },
-          { label: 'Open',        value: stats.open,        color: 'text-red-500' },
-          { label: 'In Progress', value: stats.in_progress, color: 'text-yellow-500' },
-          { label: 'Resolved',    value: stats.resolved,    color: 'text-green-500' },
+          { label: 'Open',        value: stats.open,        color: 'text-red-700' },
+          { label: 'In Progress', value: stats.in_progress, color: 'text-amber-700' },
+          { label: 'Resolved',    value: stats.resolved,    color: 'text-green-700' },
         ].map(({ label, value, color }) => (
           <div key={label} className="bg-card border border-border rounded-lg p-4">
             <p className="text-[10.5px] font-bold tracking-[1.5px] uppercase text-muted-foreground mb-1">{label}</p>
@@ -186,8 +186,8 @@ export default function GrievancesPage() {
       <div className="space-y-3">
         {grievances.length === 0 ? (
           <div className="bg-card border border-dashed border-licet-gold/70 rounded-xl p-12 text-center">
-            <CheckCircle2 className="w-8 h-8 text-green-500 mx-auto mb-3" />
-            <p className="font-mono text-sm text-muted-foreground">No grievances — all is well!</p>
+            <CheckCircle2 className="w-8 h-8 text-green-700 mx-auto mb-3" />
+            <p className="font-mono text-sm text-muted-foreground">No grievances have been raised.</p>
           </div>
         ) : grievances.map(g => {
           const applicant = profiles[g.student_id]
@@ -216,8 +216,8 @@ export default function GrievancesPage() {
                 <div className="px-5 pb-5 border-t border-border space-y-4 pt-4">
                   <p className="text-sm text-muted-foreground">{g.description}</p>
                   {g.resolution && (
-                    <div className="bg-green-500/10 border border-green-500/20 rounded p-3">
-                      <p className="font-mono text-xs text-green-500 font-bold mb-1">Resolution</p>
+                    <div className="bg-green-50 border border-green-200 rounded p-3">
+                      <p className="font-mono text-xs text-green-700 font-bold mb-1">Resolution</p>
                       <p className="font-mono text-xs text-muted-foreground">{g.resolution}</p>
                     </div>
                   )}
@@ -230,12 +230,12 @@ export default function GrievancesPage() {
                       <div className="flex gap-2 flex-wrap">
                         {g.status === 'OPEN' && (
                           <button onClick={() => updateStatus(g.id, 'IN_PROGRESS')}
-                            className="flex items-center gap-1 px-3 py-1.5 bg-yellow-600 text-white font-mono text-xs rounded hover:bg-yellow-700">
+                            className="flex items-center gap-1 px-3 py-1.5 bg-licet-cream text-licet-indigo border border-licet-gold text-[13px] font-semibold rounded-md hover:bg-licet-gold/50">
                             <Clock className="w-3 h-3" /> Mark In Progress
                           </button>
                         )}
                         <button onClick={() => updateStatus(g.id, 'RESOLVED', resolution)}
-                          className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white font-mono text-xs rounded hover:bg-green-700">
+                          className="flex items-center gap-1 px-3 py-1.5 bg-green-700 text-white text-[13px] font-semibold rounded-md hover:bg-green-800">
                           <CheckCircle2 className="w-3 h-3" /> Mark Resolved
                         </button>
                         <button onClick={() => updateStatus(g.id, 'CLOSED', resolution)}

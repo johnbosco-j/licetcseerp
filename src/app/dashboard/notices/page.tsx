@@ -12,16 +12,14 @@ import { Bell, Plus, X, AlertTriangle, Clock, Users, BookOpen, Loader2 } from "l
 type Announcement = Database['public']['Tables']['announcements']['Row']
 type Profile = Database['public']['Tables']['profiles']['Row']
 
+const SECTIONS = ['I CSE-A','I CSE-B','II CSE-A','II CSE-B','III CSE-A','III CSE-B','IV CSE-A','IV CSE-B']
+const SECTION_BADGE = 'text-licet-indigo bg-licet-cream/60 border-licet-gold'
 const AUDIENCE_LABELS: Record<string, { label: string; color: string }> = {
-  ALL:      { label: 'All',          color: 'text-blue-500 bg-blue-500/10 border-blue-500/20' },
-  FACULTY:  { label: 'Faculty Only', color: 'text-purple-500 bg-purple-500/10 border-purple-500/20' },
-  STUDENTS: { label: 'Students',     color: 'text-green-500 bg-green-500/10 border-green-500/20' },
-  'I CSE-A':   { label: 'I CSE-A',   color: 'text-yellow-500 bg-yellow-500/10 border-yellow-500/20' },
-  'I CSE-B':   { label: 'I CSE-B',   color: 'text-yellow-500 bg-yellow-500/10 border-yellow-500/20' },
-  'II CSE-A':  { label: 'II CSE-A',  color: 'text-orange-500 bg-orange-500/10 border-orange-500/20' },
-  'II CSE-B':  { label: 'II CSE-B',  color: 'text-orange-500 bg-orange-500/10 border-orange-500/20' },
-  'III CSE-A': { label: 'III CSE-A', color: 'text-red-500 bg-red-500/10 border-red-500/20' },
-  'III CSE-B': { label: 'III CSE-B', color: 'text-red-500 bg-red-500/10 border-red-500/20' },
+  ALL:       { label: 'Everyone', color: 'text-licet-indigo bg-licet-paper border-border' },
+  PROFESSOR: { label: 'Faculty',  color: 'text-violet-800 bg-violet-50 border-violet-200' },
+  FACULTY:   { label: 'Faculty',  color: 'text-violet-800 bg-violet-50 border-violet-200' },
+  STUDENTS:  { label: 'Students', color: 'text-green-800 bg-green-50 border-green-200' },
+  ...Object.fromEntries(SECTIONS.map(sec => [sec, { label: sec, color: SECTION_BADGE }])),
 }
 
 export default function NoticesPage() {
@@ -41,7 +39,6 @@ export default function NoticesPage() {
   const isHOD     = authUser?.type === 'staff' && authUser.data.role === 'HOD'
   const isFaculty = authUser?.type === 'staff' && authUser.data.role === 'PROFESSOR'
   const isStudent = authUser?.type === 'student'
-  const SECTIONS  = ['I CSE-A','I CSE-B','II CSE-A','II CSE-B','III CSE-A','III CSE-B','IV CSE-A','IV CSE-B']
 
   useEffect(() => {
     const stored = localStorage.getItem('excelsior_user') || localStorage.getItem('licet_user')
@@ -164,8 +161,8 @@ export default function NoticesPage() {
               <select value={form.audience} onChange={e => setForm({...form, audience: e.target.value})}
                 className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none">
                 <option value="ALL">All (Students + Faculty)</option>
-                <option value="PROFESSOR">Faculty Only</option>
-                <option value="STUDENTS">All Students</option>
+                <option value="PROFESSOR">Faculty only</option>
+                <option value="STUDENTS">All students</option>
                 {SECTIONS.map(s => <option key={s} value={s}>{s} only</option>)}
               </select>
             </div>
@@ -178,7 +175,7 @@ export default function NoticesPage() {
             <div className="sm:col-span-2 flex items-center gap-3">
               <button
                 onClick={() => setForm({...form, is_urgent: !form.is_urgent})}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded border font-mono text-xs transition-all ${form.is_urgent ? 'bg-red-500/10 border-red-500/30 text-red-500' : 'border-border text-muted-foreground hover:border-red-500/30'}`}>
+                className={`flex items-center gap-2 px-3 py-1.5 rounded border font-mono text-xs transition-all ${form.is_urgent ? 'bg-red-50 border-red-200 text-red-700' : 'border-border text-muted-foreground hover:border-red-200'}`}>
                 <AlertTriangle className="w-3 h-3" />
                 {form.is_urgent ? 'Marked Urgent' : 'Mark as Urgent'}
               </button>
@@ -216,7 +213,7 @@ export default function NoticesPage() {
           {['ALL', 'PROFESSOR', 'STUDENTS', ...SECTIONS].map(aud => (
             <button key={aud} onClick={() => setFilterAudience(aud)}
               className={`text-[12.5px] font-medium px-3.5 py-1.5 rounded-full border transition-all ${filterAudience === aud ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:border-primary/50'}`}>
-              {aud}
+              {aud === 'ALL' ? 'All' : AUDIENCE_LABELS[aud]?.label ?? aud}
             </button>
           ))}
         </div>
@@ -237,23 +234,23 @@ export default function NoticesPage() {
           const aud = AUDIENCE_LABELS[notice.audience] ?? { label: notice.audience, color: 'text-muted-foreground bg-accent border-border' }
           return (
             <div key={notice.id}
-              className={`bg-card border rounded-lg p-5 transition-all hover:border-primary/30 ${notice.is_urgent ? 'border-red-500/30' : 'border-border'}`}>
+              className={`bg-card border rounded-lg p-5 transition-all hover:border-primary/30 ${notice.is_urgent ? 'border-red-200' : 'border-border'}`}>
               <div className="flex items-start gap-3">
                 {notice.is_urgent && (
-                  <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse mt-1.5 flex-shrink-0" />
+                  <div className="w-2 h-2 rounded-full bg-red-600 animate-pulse mt-1.5 flex-shrink-0" />
                 )}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-3 mb-2">
                     <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="font-bold text-sm">{notice.title}</h3>
                       {notice.is_urgent && (
-                        <span className="font-mono text-xs px-1.5 py-0.5 bg-red-500/10 text-red-500 border border-red-500/20 rounded">URGENT</span>
+                        <span className="font-mono text-xs px-1.5 py-0.5 bg-red-50 text-red-700 border border-red-200 rounded">URGENT</span>
                       )}
                       <span className={`font-mono text-xs px-1.5 py-0.5 border rounded ${aud.color}`}>{aud.label}</span>
                     </div>
                     {(isHOD || (isFaculty && notice.created_by === profile?.id)) && (
                       <button onClick={() => deleteNotice(notice.id)}
-                        className="text-muted-foreground hover:text-red-500 transition-colors flex-shrink-0">
+                        className="text-muted-foreground hover:text-red-700 transition-colors flex-shrink-0">
                         <X className="w-4 h-4" />
                       </button>
                     )}

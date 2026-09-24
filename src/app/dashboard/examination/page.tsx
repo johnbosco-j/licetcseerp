@@ -6,6 +6,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { printHtml } from "@/lib/print"
+import { academicYear, semesterTerm } from "@/lib/utils"
 import { courseResult, type MarkMap } from "@/lib/regulations"
 import { RichEditor } from "@/components/rich-editor"
 import type { AuthUser } from "@/lib/auth"
@@ -28,14 +29,14 @@ const SECTIONS   = ['I CSE-A','I CSE-B','II CSE-A','II CSE-B','III CSE-A','III C
 
 const STATUS_COLORS: Record<QPStatus, string> = {
   DRAFT:     'text-muted-foreground bg-accent border-border',
-  SUBMITTED: 'text-yellow-500 bg-yellow-500/10 border-yellow-500/20',
-  APPROVED:  'text-green-500 bg-green-500/10 border-green-500/20',
-  REJECTED:  'text-red-500 bg-red-500/10 border-red-500/20',
+  SUBMITTED: 'text-amber-700 bg-amber-50 border-amber-200',
+  APPROVED:  'text-green-700 bg-green-50 border-green-200',
+  REJECTED:  'text-red-700 bg-red-50 border-red-200',
 }
 
 const QP_TEMPLATE = `<h1 style="text-align:center">LOYOLA-ICAM COLLEGE OF ENGINEERING AND TECHNOLOGY</h1>
 <h2 style="text-align:center">Department of Computer Science and Engineering</h2>
-<p style="text-align:center">B.E. CSE – R2024 | Even Semester 2025-2026</p>
+<p style="text-align:center">B.E. CSE – R2024 | ${semesterTerm()} ${academicYear()}</p>
 <hr/>
 <table>
 <tr><th>Course Code</th><th>Course Title</th><th>Date</th><th>Duration</th><th>Max Marks</th></tr>
@@ -151,7 +152,7 @@ export default function ExaminationPage() {
       subject_name: editing?.subject_name ?? '',
       exam_type: editing?.exam_type ?? 'Semester End Exam',
       section: editing?.section ?? section,
-      academic_year: '2025-2026',
+      academic_year: academicYear(),
       status: editing?.status ?? 'DRAFT',
       content
     })
@@ -184,7 +185,7 @@ export default function ExaminationPage() {
   }
 
   const printQP = () => {
-    printHtml('Question Paper', `body{font-family:'Times New Roman',serif;font-size:12pt;margin:2.5cm;line-height:1.7} h1{font-size:14pt;text-align:center}h2{font-size:12pt}table{border-collapse:collapse;width:100%;margin:.5cm 0} th,td{border:1px solid #000;padding:4px 8px;font-size:10pt}th{background:#f0f0f0} @media print{body{margin:1.5cm}}`, content)
+    printHtml('Question Paper', `body{font-family:'Times New Roman',serif;font-size:12pt;margin:2.5cm;line-height:1.7} h1{font-size:14pt;text-align:center}h2{font-size:12pt}table{border-collapse:collapse;width:100%;margin:.5cm 0} th,td{border:1px solid #000;padding:4px 8px;font-size:10pt}th{background:#F3EEE3} @media print{body{margin:1.5cm}}`, content)
   }
 
   const addSchedule = async () => {
@@ -297,7 +298,7 @@ export default function ExaminationPage() {
                       {isHOD && paper.status === 'SUBMITTED' && (
                         <>
                           <button onClick={() => updateQPStatus(paper.id, 'APPROVED', JSON.stringify(paper))}
-                            className="flex items-center gap-1 font-mono text-xs px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700">
+                            className="flex items-center gap-1 font-mono text-xs px-3 py-1.5 bg-green-700 text-white text-[13px] font-semibold rounded-md hover:bg-green-800">
                             <Check className="w-3 h-3" /> Approve
                           </button>
                           <button onClick={() => updateQPStatus(paper.id, 'REJECTED', JSON.stringify(paper))}
@@ -356,7 +357,7 @@ export default function ExaminationPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  {saveMsg && <span className="font-mono text-xs text-green-500">{saveMsg}</span>}
+                  {saveMsg && <span className="font-mono text-xs text-green-700">{saveMsg}</span>}
                   <button onClick={printQP}
                     className="flex items-center gap-1.5 px-3 py-2 border border-border bg-white text-licet-indigo text-[13px] font-semibold rounded-md hover:bg-licet-cream/60">
                     <Download className="w-3 h-3" /> Print / PDF
@@ -400,7 +401,7 @@ export default function ExaminationPage() {
             <div className="flex gap-2">
               {schedule.length > 0 && (
                 <button onClick={exportSchedule}
-                  className="flex items-center gap-2 px-3 py-2 bg-green-600 text-white font-mono text-xs rounded hover:bg-green-700">
+                  className="flex items-center gap-2 px-3 py-2 border border-licet-indigo/25 bg-white text-licet-indigo text-[13px] font-semibold rounded-md hover:bg-licet-cream/60 shadow-sm">
                   <Download className="w-3 h-3" /> Export
                 </button>
               )}
@@ -588,9 +589,9 @@ function MarksAnalysisCard({ subject, section }: { subject: Subject; section: st
           <p className="font-mono text-xs text-muted-foreground">Avg SEE</p>
           <p className="font-mono text-sm font-bold">{stats.avgSEE}/{stats.maxSEE}</p>
         </div>
-        <div className={`rounded p-2 text-center ${passPct >= 75 ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
+        <div className={`rounded p-2 text-center ${passPct >= 75 ? 'bg-green-50' : 'bg-red-50'}`}>
           <p className="font-mono text-xs text-muted-foreground">Pass %</p>
-          <p className={`font-mono text-sm font-bold ${passPct >= 75 ? 'text-green-500' : 'text-red-500'}`}>{passPct}%</p>
+          <p className={`font-mono text-sm font-bold ${passPct >= 75 ? 'text-green-700' : 'text-red-700'}`}>{passPct}%</p>
         </div>
         <div className="bg-accent rounded p-2 text-center">
           <p className="font-mono text-xs text-muted-foreground">Appeared</p>

@@ -66,10 +66,10 @@ export default function DashboardError({
         </h2>
 
         {/* Friendly description */}
-        <p style={{ fontSize: "13px", color: "#6b7280", margin: "0 0 6px", lineHeight: 1.6 }}>
+        <p style={{ fontSize: "13px", color: "#6B6480", margin: "0 0 6px", lineHeight: 1.6 }}>
           {friendly}
         </p>
-        <p style={{ fontSize: "12px", color: "#9ca3af", margin: "0 0 28px" }}>
+        <p style={{ fontSize: "12px", color: "#8A8298", margin: "0 0 28px" }}>
           If this keeps happening, please contact the IT department.
         </p>
 
@@ -77,10 +77,10 @@ export default function DashboardError({
         {error.digest && (
           <div style={{
             padding: "8px 12px", borderRadius: "6px",
-            background: "#f9fafb", border: "1px solid #f3f4f6",
+            background: "#F9F7F5", border: "1px solid #F3EEE3",
             marginBottom: "24px",
           }}>
-            <span style={{ fontSize: "11px", color: "#9ca3af", fontFamily:'inherit' }}>
+            <span style={{ fontSize: "11px", color: "#8A8298", fontFamily:'inherit' }}>
               Ref: {error.digest}
             </span>
           </div>
@@ -96,29 +96,29 @@ export default function DashboardError({
             cursor: "pointer", transition: "background 0.15s",
             fontFamily: "inherit",
           }}
-            onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = "#16304d"}
+            onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = "#41317E"}
             onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = "#1A0C4E"}>
             <RefreshCw size={14} /> Try again
           </button>
           <button onClick={() => router.push("/dashboard")} style={{
             display: "flex", alignItems: "center", gap: "6px",
             padding: "9px 18px", borderRadius: "7px",
-            background: "transparent", color: "#374151",
+            background: "transparent", color: "#3C3852",
             border: "1px solid #E6DCC3", fontSize: "13px", fontWeight: 500,
             cursor: "pointer", transition: "background 0.15s",
             fontFamily: "inherit",
           }}
-            onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = "#f9fafb"}
+            onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = "#F9F7F5"}
             onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = "transparent"}>
             <Home size={14} /> Dashboard
           </button>
         </div>
 
         {/* Footer note */}
-        <div style={{ marginTop: "28px", paddingTop: "20px", borderTop: "1px solid #f3f4f6" }}>
+        <div style={{ marginTop: "28px", paddingTop: "20px", borderTop: "1px solid #F3EEE3" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
             <img src="/images.png" alt="LICET" style={{ width: "16px", opacity: 0.4 }} />
-            <span style={{ fontSize: "11px", color: "#d1d5db", letterSpacing: "0.06em" }}>
+            <span style={{ fontSize: "11px", color: "#DCD0B4", letterSpacing: "0.06em" }}>
               LICET · EXCELSIOR ERP
             </span>
           </div>
