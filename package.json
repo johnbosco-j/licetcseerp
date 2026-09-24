@@ -1,12 +1,21 @@
 {
-  "name": "web",
+  "name": "licet-cse-erp",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "db:push": "supabase db push",
+    "seed": "node scripts/seed-users.mjs",
+    "seed:iv-year": "node scripts/seed-iv-year.mjs",
+    "seed:subjects": "node scripts/seed-subjects.mjs",
+    "db:verify": "node scripts/verify-db.mjs",
+    "promote": "node scripts/auto-promote.mjs",
+    "seed:first-years": "node scripts/seed-first-years.mjs",
+    "repair:promotion": "node scripts/repair-promotion.mjs"
   },
   "dependencies": {
     "@radix-ui/react-checkbox": "^1.3.3",
