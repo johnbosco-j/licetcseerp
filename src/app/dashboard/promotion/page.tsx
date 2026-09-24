@@ -7,7 +7,9 @@ import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import type { AuthUser } from "@/lib/auth"
 import type { Database } from "@/lib/supabase"
-import { Users, TrendingUp, GraduationCap, AlertTriangle, CheckCircle2, Loader2, Calendar } from "lucide-react"
+import { Users, TrendingUp, GraduationCap, AlertTriangle, CheckCircle2, Loader2, Calendar, Trash2 } from "lucide-react"
+import { removeGraduatedStudents } from "@/app/actions"
+import { getAccessToken } from "@/lib/auth"
 
 type Profile = Database['public']['Tables']['profiles']['Row']
 
@@ -40,8 +42,12 @@ export default function PromotionPage() {
   const [promoting, setPromoting] = useState(false)
   const [done, setDone]           = useState(false)
   const [log, setLog]             = useState<any[]>([])
+  const [gradCount, setGradCount] = useState(0)
+  const [removing, setRemoving]   = useState(false)
+  const [removeMsg, setRemoveMsg] = useState('')
   const [preview, setPreview]     = useState(false)
   const [academicYear, setAcademicYear] = useState('2026-2027')
+  const [runError, setRunError]   = useState('')
 
   const isHOD = authUser?.type === 'staff' && authUser.data.role === 'HOD'
 
@@ -56,6 +62,11 @@ export default function PromotionPage() {
     supabase.from('profiles').select('*').eq('email', au.data.email).single()
       .then(({ data }) => { if (data) setProfile(data) })
   }, [router])
+
+  useEffect(() => {
+    supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'STUDENT').eq('section', 'GRADUATED')
+      .then(({ count }) => setGradCount(count ?? 0))
+  }, [done])
 
   // Load promotion history
   useEffect(() => {
@@ -86,52 +97,61 @@ export default function PromotionPage() {
     setLoading(false)
   }
 
+  const alreadyRun = log.some(l => l.academic_year === academicYear.trim())
+
   const runPromotion = async () => {
-    if (!profile) return
+    if (!profile || promoting) return
     setPromoting(true)
+    setRunError('')
+
+    // Each run moves every student up one year, so a second run for the same
+    // academic year would skip them a year ahead. Re-check the database here in
+    // case another session already ran it.
+    const { count } = await supabase.from('promotion_log' as any)
+      .select('id', { count: 'exact', head: true }).eq('academic_year', academicYear.trim())
+    if (count) {
+      setRunError(`Promotion for ${academicYear.trim()} has already been run. It can only run once per academic year.`)
+      setPromoting(false)
+      setPreview(false)
+      const { data } = await supabase.from('promotion_log' as any).select('*').order('promotion_date', { ascending: false })
+      if (data) setLog(data)
+      return
+    }
 
     let promoted = 0
     let graduated = 0
+    const failures: string[] = []
 
-    // Promote students
-    for (const { student, from, to } of promotions) {
-      const { error } = await supabase.from('profiles').update({ section: to })
-        .eq('id', student.id)
-      if (!error) {
-        // Log history
-        await supabase.from('student_promotion_history' as any).insert({
-          student_id: student.id,
-          from_section: from,
-          to_section: to,
-          from_sem: SEM_MAP[from] ?? 0,
-          to_sem: SEM_MAP[to] ?? 0,
-          academic_year: academicYear,
-        })
-        promoted++
-      }
+    // Move whole sections at once, final year first, so no student is moved twice.
+    const order = ['IV CSE-A', 'IV CSE-B', 'III CSE-A', 'III CSE-B', 'II CSE-A', 'II CSE-B', 'I CSE-A', 'I CSE-B']
+    for (const from of order) {
+      const to = PROMOTION_MAP[from]
+      const ids = to === 'GRADUATED'
+        ? graduations.filter(s => s.section === from).map(s => s.id)
+        : promotions.filter(p => p.from === from).map(p => p.student.id)
+      if (!ids.length) continue
+
+      const { error } = await supabase.from('profiles')
+        .update(to === 'GRADUATED' ? { section: to, is_active: false } : { section: to })
+        .in('id', ids).eq('section', from)
+      if (error) { failures.push(`${from}: ${error.message}`); continue }
+
+      await supabase.from('student_promotion_history' as any).insert(ids.map(id => ({
+        student_id: id, from_section: from, to_section: to,
+        from_sem: SEM_MAP[from] ?? 0, to_sem: to === 'GRADUATED' ? 9 : SEM_MAP[to] ?? 0,
+        academic_year: academicYear.trim(),
+      })))
+      if (to === 'GRADUATED') graduated += ids.length
+      else promoted += ids.length
     }
 
-    // Graduate students
-    for (const student of graduations) {
-      const { error } = await supabase.from('profiles').update({
-        section: 'GRADUATED', is_active: false
-      }).eq('id', student.id)
-      if (!error) {
-        await supabase.from('student_promotion_history' as any).insert({
-          student_id: student.id,
-          from_section: student.section,
-          to_section: 'GRADUATED',
-          from_sem: 8,
-          to_sem: 9,
-          academic_year: academicYear,
-        })
-        graduated++
-      }
+    if (failures.length) {
+      setRunError(`Some sections could not be promoted: ${failures.join('; ')}. Fix the issue and contact the administrator before re-running.`)
     }
 
     // Log the promotion run
     await supabase.from('promotion_log' as any).insert({
-      academic_year: academicYear,
+      academic_year: academicYear.trim(),
       promoted_count: promoted,
       graduated_count: graduated,
       run_by: profile.id,
@@ -145,8 +165,8 @@ export default function PromotionPage() {
 
   if (!isHOD) return (
     <div className="p-6">
-      <div className="bg-card border border-border rounded-lg p-12 text-center">
-        <GraduationCap className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+      <div className="bg-card border border-dashed border-licet-gold/70 rounded-xl p-12 text-center">
+        <GraduationCap className="w-12 h-12 p-3 rounded-full bg-licet-cream text-licet-indigo mx-auto mb-3" />
         <p className="font-mono text-sm text-muted-foreground">Promotion module is restricted to HOD</p>
       </div>
     </div>
@@ -155,9 +175,9 @@ export default function PromotionPage() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <span className="font-mono text-xs text-primary">// SECTION: YEAR PROMOTION</span>
-        <h1 className="text-2xl font-bold tracking-tight mt-1">Academic Year Promotion</h1>
-        <p className="font-mono text-xs text-muted-foreground mt-1">
+        <span className="eyebrow">YEAR PROMOTION</span>
+        <h1 className="text-2xl font-semibold tracking-tight mt-2">Academic Year Promotion</h1>
+        <p className="text-[13.5px] text-muted-foreground mt-1.5 max-w-3xl">
           Promote all students to next year — run every July. IV year students will be marked as Graduated.
         </p>
       </div>
@@ -175,24 +195,49 @@ export default function PromotionPage() {
         </div>
       </div>
 
+      {gradCount > 0 && (
+        <div className="bg-card border border-border rounded-lg p-5 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <span className="eyebrow">Graduated students</span>
+            <p className="text-sm mt-1.5">{gradCount} graduated student{gradCount === 1 ? '' : 's'} still have accounts. Remove them to keep the ERP to current students only.</p>
+          </div>
+          <button disabled={removing} onClick={async () => {
+            if (!confirm(`Permanently remove ${gradCount} graduated students and their records? This cannot be undone.`)) return
+            setRemoving(true)
+            const res = await removeGraduatedStudents(await getAccessToken() ?? '')
+            setRemoving(false)
+            if (res.error) setRemoveMsg(res.error)
+            else { setRemoveMsg(`Removed ${res.removed} graduated students.`); setGradCount(0) }
+          }} className="flex items-center gap-2 h-9 px-4 rounded-md bg-red-700 text-white text-[13px] font-semibold hover:bg-red-800 disabled:opacity-50">
+            {removing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />} Remove graduated students
+          </button>
+        </div>
+      )}
+      {removeMsg && <p className="text-sm text-licet-indigo">{removeMsg}</p>}
+
       {/* Controls */}
       <div className="bg-card border border-border rounded-lg p-6 space-y-4">
-        <span className="font-mono text-xs text-primary">// PROMOTION SETTINGS</span>
+        <span className="eyebrow">PROMOTION SETTINGS</span>
         <div className="flex items-end gap-4">
           <div className="space-y-1">
             <label className="font-mono text-xs text-muted-foreground">New Academic Year</label>
             <input value={academicYear} onChange={e => setAcademicYear(e.target.value)}
               placeholder="2026-2027"
-              className="h-10 px-3 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none" />
+              className="h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none" />
           </div>
           {!preview && !done && (
-            <button onClick={loadPreview} disabled={loading}
-              className="flex items-center gap-2 h-10 px-4 bg-primary text-primary-foreground font-mono text-xs rounded hover:bg-primary/90 disabled:opacity-50">
+            <button onClick={loadPreview} disabled={loading || alreadyRun}
+              className="flex items-center gap-2 h-10 px-4 bg-licet-indigo text-white text-[13px] font-semibold rounded-md hover:bg-licet-violet shadow-sm disabled:opacity-50">
               {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Users className="w-3 h-3" />}
               {loading ? 'Loading...' : 'Preview Promotions'}
             </button>
           )}
         </div>
+        {(alreadyRun || runError) && (
+          <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 px-3 py-2 rounded">
+            {runError || `Promotion for ${academicYear.trim()} has already been run — it can only run once per academic year.`}
+          </p>
+        )}
       </div>
 
       {/* Preview */}
@@ -200,23 +245,23 @@ export default function PromotionPage() {
         <div className="space-y-4">
           <div className="grid grid-cols-3 gap-4">
             <div className="bg-card border border-border rounded-lg p-4">
-              <p className="font-mono text-xs text-muted-foreground mb-1">Total Students</p>
-              <p className="text-2xl font-bold">{students.length}</p>
+              <p className="text-[10.5px] font-bold tracking-[1.5px] uppercase text-muted-foreground mb-1">Total Students</p>
+              <p className="font-serif text-[30px] font-semibold leading-none text-licet-indigo">{students.length}</p>
             </div>
             <div className="bg-card border border-border rounded-lg p-4">
-              <p className="font-mono text-xs text-muted-foreground mb-1">To Promote</p>
+              <p className="text-[10.5px] font-bold tracking-[1.5px] uppercase text-muted-foreground mb-1">To Promote</p>
               <p className="text-2xl font-bold text-blue-500">{promotions.length}</p>
             </div>
             <div className="bg-card border border-border rounded-lg p-4">
-              <p className="font-mono text-xs text-muted-foreground mb-1">To Graduate</p>
+              <p className="text-[10.5px] font-bold tracking-[1.5px] uppercase text-muted-foreground mb-1">To Graduate</p>
               <p className="text-2xl font-bold text-green-500">{graduations.length}</p>
             </div>
           </div>
 
           {/* Section breakdown */}
           <div className="bg-card border border-border rounded-lg">
-            <div className="px-6 py-4 border-b border-border">
-              <span className="font-mono text-xs text-primary">// PROMOTION MAP</span>
+            <div className="px-6 py-4 border-b border-border bg-licet-paper/70 rounded-t-xl">
+              <span className="eyebrow">PROMOTION MAP</span>
             </div>
             <div className="divide-y divide-border">
               {Object.entries(
@@ -241,13 +286,13 @@ export default function PromotionPage() {
           </div>
 
           <div className="flex gap-3">
-            <button onClick={runPromotion} disabled={promoting}
+            <button onClick={runPromotion} disabled={promoting || alreadyRun}
               className="flex items-center gap-2 px-6 py-3 bg-red-600 text-white font-mono text-sm rounded hover:bg-red-700 disabled:opacity-50 font-bold">
               {promoting ? <Loader2 className="w-4 h-4 animate-spin" /> : <TrendingUp className="w-4 h-4" />}
               {promoting ? `Promoting... ${promotions.length} students` : '⚡ Run Promotion Now'}
             </button>
             <button onClick={() => setPreview(false)}
-              className="px-6 py-3 bg-accent font-mono text-sm rounded hover:bg-accent/80">
+              className="px-6 py-3 border border-border bg-white text-licet-indigo text-[13.5px] font-semibold rounded-md hover:bg-licet-cream/60">
               Cancel
             </button>
           </div>
@@ -272,8 +317,8 @@ export default function PromotionPage() {
       {/* Promotion history */}
       {log.length > 0 && (
         <div className="bg-card border border-border rounded-lg">
-          <div className="px-6 py-4 border-b border-border">
-            <span className="font-mono text-xs text-primary">// PROMOTION HISTORY</span>
+          <div className="px-6 py-4 border-b border-border bg-licet-paper/70 rounded-t-xl">
+            <span className="eyebrow">PROMOTION HISTORY</span>
           </div>
           <div className="divide-y divide-border">
             {log.map((entry: any) => (

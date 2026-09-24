@@ -1,12 +1,12 @@
-// Shared role-based navigation constants
-// Single source of truth used by both layout.tsx and page.tsx
+// Role-based navigation — which dashboard modules each user may open.
+// The database (RLS) is the real guard; this only shapes the UI.
 
 export const NAV_HOD_IDS = [
   "dashboard","students","attendance","marks","subjects","timetable",
   "analytics","finance","inventory","placements","leaves","events",
   "documents","feedback","grievances","notices","alerts","appraisal",
   "attendance-analysis","change-password","editor","examination",
-  "naac","promotion","curriculum","reports"
+  "naac","promotion","curriculum","reports","accounts","audit"
 ]
 
 export const NAV_FACULTY_IDS = [
@@ -19,8 +19,17 @@ export const NAV_STUDENT_IDS = [
   "alerts","leaves","documents","feedback","grievances","notices","change-password"
 ]
 
-export function getAllowedModules(userType: string, role: string): string[] {
-  if (userType === 'staff' && role === 'HOD') return NAV_HOD_IDS
-  if (userType === 'staff' && role === 'PROFESSOR') return NAV_FACULTY_IDS
+export interface NavUser {
+  type: string
+  role?: string | null
+  advisor_section?: string | null
+  can_reset_passwords?: boolean | null
+}
+
+export function getAllowedModules(user: NavUser): string[] {
+  if (user.type === 'staff' && user.role === 'HOD') return NAV_HOD_IDS
+  if (user.type === 'staff' && user.role === 'PROFESSOR') {
+    return user.advisor_section || user.can_reset_passwords ? [...NAV_FACULTY_IDS, "accounts"] : NAV_FACULTY_IDS
+  }
   return NAV_STUDENT_IDS
 }
