@@ -32,8 +32,7 @@ export function academicYear(d = new Date(), short = false): string {
   return short ? `${start}-${String(start + 1).slice(2)}` : `${start}-${start + 1}`
 }
 
-// Odd semesters run June–November, even semesters December–May.
+// Odd semesters run June–December (including end-semester exams), even semesters January–May.
 export function semesterTerm(d = new Date()): 'Odd Semester' | 'Even Semester' {
-  const m = d.getMonth()
-  return m >= 5 && m <= 10 ? 'Odd Semester' : 'Even Semester'
+  return d.getMonth() >= 5 ? 'Odd Semester' : 'Even Semester'
 }
