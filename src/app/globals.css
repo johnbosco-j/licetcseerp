@@ -84,6 +84,8 @@
   --font-mono: var(--font-dm-sans), "DM Sans", system-ui, sans-serif;
   --font-serif: var(--font-cormorant), "Cormorant Garamond", Georgia, serif;
   --font-display: var(--font-outfit), "Outfit", system-ui, sans-serif;
+  --font-brand: var(--font-marcellus), "Marcellus", Georgia, serif;
+  --font-nav: var(--font-manrope), "Manrope", system-ui, sans-serif;
 }
 
 @layer base {
