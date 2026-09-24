@@ -1,4 +1,5 @@
 import { supabase } from "./supabase"
+import { courseResult, findCourse, gpa, letterGrade, GRADE_POINTS } from "./regulations"
 
 export interface SubjectResult {
   subjectId:   string
@@ -28,62 +29,24 @@ export interface CGPAResult {
   allResults: SubjectResult[]
 }
 
-// Grade from total marks
+// Grade from total marks (Table 14, fixed grading)
 export function getGrade(total: number): { grade: string; point: number } {
-  if (total >= 91) return { grade: 'O',  point: 10 }
-  if (total >= 81) return { grade: 'A+', point: 9  }
-  if (total >= 71) return { grade: 'A',  point: 8  }
-  if (total >= 61) return { grade: 'B+', point: 7  }
-  if (total >= 56) return { grade: 'B',  point: 6  }
-  if (total >= 50) return { grade: 'C',  point: 5  }
-  return { grade: 'U', point: 0 }
+  const grade = letterGrade(total)
+  return { grade, point: GRADE_POINTS[grade] }
 }
-
-// CIA computation per course type
-function computeInternal(marks: Record<string, number>, courseType: string): number {
-  if (courseType === 'THEORY') {
-    const cia1 = (marks['CIA1_CT']??0)/30*20 + (marks['CIA1_CAT']??0)/60*40 + (marks['CIA1_ACTIVITY']??0)/10*40
-    const cia2 = (marks['CIA2_CT']??0)/30*20 + (marks['CIA2_CAT']??0)/60*40 + (marks['CIA2_ACTIVITY']??0)/10*40
-    return Math.round((cia1 + cia2) / 2 / 100 * 40)
-  }
-  if (courseType === 'LAB') {
-    const lab1 = (marks['CIA1_EXP']??0) + (marks['CIA1_RECORD']??0) + (marks['CIA1_VIVA']??0) + (marks['CIA1_LAB']??0)
-    const lab2 = (marks['CIA2_EXP']??0) + (marks['CIA2_RECORD']??0) + (marks['CIA2_VIVA']??0) + (marks['CIA2_LAB']??0)
-    return Math.round((lab1 + lab2) / 2 / 100 * 60)
-  }
-  if (courseType === 'LAB_INTEGRATED') {
-    const cia1 = (marks['CIA1_CT']??0)/30*20 + (marks['CIA1_CAT']??0)/60*40 + (marks['CIA1_ACTIVITY']??0)/10*40
-    const cia2 = (marks['CIA2_CT']??0)/30*20 + (marks['CIA2_CAT']??0)/60*40 + (marks['CIA2_ACTIVITY']??0)/10*40
-    const theory = Math.round((cia1 + cia2) / 2 / 100 * 40)
-    const lab1 = (marks['CIA1_EXP']??0) + (marks['CIA1_RECORD']??0) + (marks['CIA1_VIVA']??0) + (marks['CIA1_LAB']??0)
-    const lab2 = (marks['CIA2_EXP']??0) + (marks['CIA2_RECORD']??0) + (marks['CIA2_VIVA']??0) + (marks['CIA2_LAB']??0)
-    const lab = Math.round((lab1 + lab2) / 2 / 100 * 60)
-    return Math.round((theory + lab) / 2)
-  }
-  return 0
-}
-
-function getCourseType(code: string): string {
-  if (['CS24321','CS24322','CS24421','CS24422','CY24121','PH24121',
-       'GE24121','GE24122','CS24221','CS24721','CS24821'].some(c => code.startsWith(c))) return 'LAB'
-  if (['GE24112','GE24111','CS24311','CS24312','CS24411','CS24412',
-       'CS24413','CS24511','CS24512','CS24611','CS24612','CS24613','CS24711'].some(c => code.startsWith(c))) return 'LAB_INTEGRATED'
-  return 'THEORY'
-}
-
-// Non-GPA courses per R2024
-const NON_GPA_CODES = new Set([
-  'FC24102', 'BS24321', 'GE24503', 'BS24502', 'GE24622'
-])
 
 export async function computeCGPA(studentId: string): Promise<CGPAResult> {
-  // Load all marks for student
   const { data: marksData } = await supabase
     .from('marks')
     .select('*, subjects(id, code, name, credits, semester, section)')
     .eq('student_id', studentId)
+  return cgpaFromMarks(marksData ?? [])
+}
 
-  if (!marksData || !marksData.length) {
+// Pure CGPA computation from a student's marks rows (joined with subjects).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function cgpaFromMarks(marksData: any[]): CGPAResult {
+  if (!marksData.length) {
     return { cgpa: 0, totalCredits: 0, semesters: [], allResults: [] }
   }
 
@@ -99,26 +62,22 @@ export async function computeCGPA(studentId: string): Promise<CGPAResult> {
   const allResults: SubjectResult[] = []
 
   Object.values(bySubject).forEach(({ subject, marks }) => {
-    const ct      = getCourseType(subject.code)
-    const internal = computeInternal(marks, ct)
-    const semEnd   = marks['SEM_END'] ?? 0
-    const total    = internal + semEnd
-    const { grade, point } = getGrade(total)
-    const credits  = Number(subject.credits)
-    const included = credits > 0 && !NON_GPA_CODES.has(subject.code) && grade !== 'U'
-
+    const r = courseResult(subject.code, marks)
+    if (r.pending) return // semester-end marks not entered yet — no grade
+    const course  = findCourse(subject.code)
+    const credits = course?.credits ?? Number(subject.credits)
     allResults.push({
       subjectId:   subject.id,
       subjectCode: subject.code,
       subjectName: subject.name,
       credits,
       semester:    subject.semester,
-      internal,
-      semEnd,
-      total,
-      grade,
-      gradePoint:  point,
-      included,
+      internal:    r.internal,
+      semEnd:      r.see ?? 0,
+      total:       r.total,
+      grade:       r.grade,
+      gradePoint:  r.gradePoint,
+      included:    r.passed && (course?.inGpa ?? credits > 0),
     })
   })
 
@@ -133,17 +92,18 @@ export async function computeCGPA(studentId: string): Promise<CGPAResult> {
     .sort(([a], [b]) => Number(a) - Number(b))
     .map(([sem, results]) => {
       const included = results.filter(r => r.included)
-      const sumCP    = included.reduce((s, r) => s + r.credits * r.gradePoint, 0)
-      const sumC     = included.reduce((s, r) => s + r.credits, 0)
-      const gpa      = sumC > 0 ? Math.round(sumCP / sumC * 100) / 100 : 0
-      return { semester: Number(sem), gpa, credits: sumC, results }
+      return {
+        semester: Number(sem),
+        gpa: gpa(included.map(r => ({ credits: r.credits, gradePoint: r.gradePoint, passed: true, inGpa: true }))),
+        credits: included.reduce((s, r) => s + r.credits, 0),
+        results,
+      }
     })
 
-  // Overall CGPA
+  // Overall CGPA (clause 14: U / SA and non-GPA courses excluded)
   const allIncluded = allResults.filter(r => r.included)
-  const totalCP     = allIncluded.reduce((s, r) => s + r.credits * r.gradePoint, 0)
-  const totalC      = allIncluded.reduce((s, r) => s + r.credits, 0)
-  const cgpa        = totalC > 0 ? Math.round(totalCP / totalC * 100) / 100 : 0
+  const cgpa   = gpa(allIncluded.map(r => ({ credits: r.credits, gradePoint: r.gradePoint, passed: true, inGpa: true })))
+  const totalC = allIncluded.reduce((s, r) => s + r.credits, 0)
 
   return { cgpa, totalCredits: totalC, semesters, allResults }
 }
@@ -191,4 +151,50 @@ export async function computeRisk(
     score >= 20 ? 'WATCH'    : 'SAFE'
 
   return { studentId, riskLevel, riskScore: score, attendancePct, avgMarksPct, cgpa, flags }
+}
+
+export interface StudentStats {
+  attendancePct: number
+  attendanceSessions: number
+  avgMarksPct: number
+  cgpa: CGPAResult
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function fetchForStudents(table: string, select: string, column: string, ids: string[]): Promise<any[]> {
+  const rows: unknown[] = []
+  for (let i = 0; i < ids.length; i += 100) {
+    const chunk = ids.slice(i, i + 100)
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await supabase.from(table as never).select(select).in(column, chunk).range(from, from + 999)
+      if (error) throw new Error(error.message)
+      rows.push(...(data ?? []))
+      if (!data || data.length < 1000) break
+    }
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return rows as any[]
+}
+
+/** Attendance (session-wise), marks and CGPA for many students in a handful of requests. */
+export async function loadStudentStats(studentIds: string[]): Promise<Record<string, StudentStats>> {
+  const [att, marks] = await Promise.all([
+    fetchForStudents('day_attendance', 'student_id, status', 'student_id', studentIds),
+    fetchForStudents('marks', '*, subjects(id, code, name, credits, semester, section)', 'student_id', studentIds),
+  ])
+  const out: Record<string, StudentStats> = {}
+  for (const id of studentIds) {
+    const a = att.filter(r => r.student_id === id)
+    const present = a.filter(r => r.status === 'PRESENT' || r.status === 'LATE').length
+    const m = marks.filter(r => r.student_id === id)
+    const obtained = m.reduce((s, r) => s + Number(r.marks_obtained), 0)
+    const max = m.reduce((s, r) => s + Number(r.max_marks), 0)
+    out[id] = {
+      attendancePct: a.length ? Math.round(present / a.length * 100) : 0,
+      attendanceSessions: a.length,
+      avgMarksPct: max ? Math.round(obtained / max * 100) : 0,
+      cgpa: cgpaFromMarks(m),
+    }
+  }
+  return out
 }

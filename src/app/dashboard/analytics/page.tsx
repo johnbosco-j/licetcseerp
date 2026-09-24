@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
-import { computeCGPA, computeRisk, type RiskScore, type CGPAResult } from "@/lib/cgpa"
+import { attendanceStatus } from "@/lib/regulations"
+import { computeRisk, loadStudentStats, type RiskScore, type CGPAResult } from "@/lib/cgpa"
 import type { AuthUser } from "@/lib/auth"
 import type { Database } from "@/lib/supabase"
 import {
@@ -116,21 +117,15 @@ export default function AnalyticsPage() {
     setLoading(true)
     setAnalytics([])
     const results: StudentAnalytics[] = []
-
-    for (const student of students) {
-      const { data: attData } = await supabase.from('attendance').select('status').eq('student_id', student.id)
-      const attTotal   = attData?.length ?? 0
-      const attPresent = attData?.filter(a => a.status === 'PRESENT' || a.status === 'LATE').length ?? 0
-      const attendancePct = attTotal > 0 ? Math.round(attPresent / attTotal * 100) : 0
-
-      const { data: marksData } = await supabase.from('marks').select('marks_obtained, max_marks').eq('student_id', student.id)
-      const totalObtained = marksData?.reduce((s, m) => s + Number(m.marks_obtained), 0) ?? 0
-      const totalMax      = marksData?.reduce((s, m) => s + Number(m.max_marks), 0) ?? 0
-      const avgMarksPct   = totalMax > 0 ? Math.round(totalObtained / totalMax * 100) : 0
-
-      const cgpaResult = await computeCGPA(student.id)
-      const risk = await computeRisk(student.id, attendancePct, avgMarksPct, cgpaResult.cgpa)
-      results.push({ profile: student, cgpaResult, risk, attendancePct, avgMarksPct })
+    try {
+      const stats = await loadStudentStats(students.map(s => s.id))
+      for (const student of students) {
+        const st = stats[student.id]
+        const risk = await computeRisk(student.id, st.attendancePct, st.avgMarksPct, st.cgpa.cgpa)
+        results.push({ profile: student, cgpaResult: st.cgpa, risk, attendancePct: st.attendancePct, avgMarksPct: st.avgMarksPct })
+      }
+    } catch (e) {
+      console.error('Analytics failed', e)
     }
     setAnalytics(results)
     setLoading(false)
@@ -140,17 +135,9 @@ export default function AnalyticsPage() {
     if (!isStudent || !profile) return
     const run = async () => {
       setLoading(true)
-      const { data: attData } = await supabase.from('attendance').select('status').eq('student_id', profile.id)
-      const attTotal   = attData?.length ?? 0
-      const attPresent = attData?.filter(a => a.status === 'PRESENT' || a.status === 'LATE').length ?? 0
-      const attendancePct = attTotal > 0 ? Math.round(attPresent / attTotal * 100) : 0
-
-      const { data: marksData } = await supabase.from('marks').select('marks_obtained, max_marks').eq('student_id', profile.id)
-      const totalObtained = marksData?.reduce((s, m) => s + Number(m.marks_obtained), 0) ?? 0
-      const totalMax      = marksData?.reduce((s, m) => s + Number(m.max_marks), 0) ?? 0
-      const avgMarksPct   = totalMax > 0 ? Math.round(totalObtained / totalMax * 100) : 0
-
-      const cgpaResult = await computeCGPA(profile.id)
+      const st = (await loadStudentStats([profile.id]))[profile.id]
+      const { attendancePct, avgMarksPct } = st
+      const cgpaResult = st.cgpa
       const risk = await computeRisk(profile.id, attendancePct, avgMarksPct, cgpaResult.cgpa)
       setMyData({ profile, cgpaResult, risk, attendancePct, avgMarksPct })
       setLoading(false)
@@ -208,9 +195,9 @@ export default function AnalyticsPage() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <span className="font-mono text-xs text-primary">// SECTION: ANALYTICS & REPORTS</span>
-        <h1 className="text-2xl font-bold tracking-tight mt-1">Department Reports</h1>
-        <p className="font-mono text-xs text-muted-foreground mt-1">
+        <span className="eyebrow">ANALYTICS & REPORTS</span>
+        <h1 className="text-2xl font-semibold tracking-tight mt-2">Department Reports</h1>
+        <p className="text-[13.5px] text-muted-foreground mt-1.5 max-w-3xl">
           {isStudent ? 'Your CGPA, grade history and risk assessment' : 'Performance, Faculty Workload, and Accreditation Exports'}
         </p>
       </div>
@@ -258,16 +245,16 @@ export default function AnalyticsPage() {
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
             <div className="bg-card border border-border rounded-lg p-5">
-              <p className="font-mono text-xs text-muted-foreground mb-1">Total Faculty</p>
-              <p className="text-2xl font-bold">{workload.length}</p>
+              <p className="text-[10.5px] font-bold tracking-[1.5px] uppercase text-muted-foreground mb-1">Total Faculty</p>
+              <p className="font-serif text-[30px] font-semibold leading-none text-licet-indigo">{workload.length}</p>
             </div>
             <div className="bg-card border border-border rounded-lg p-5">
-              <p className="font-mono text-xs text-muted-foreground mb-1">Overloaded (&gt; 16 cr)</p>
+              <p className="text-[10.5px] font-bold tracking-[1.5px] uppercase text-muted-foreground mb-1">Overloaded (&gt; 16 cr)</p>
               <p className="text-2xl font-bold text-orange-500">{workload.filter(w => w.totalCredits > 16).length}</p>
             </div>
             <div className="bg-card border border-border rounded-lg p-5">
-              <p className="font-mono text-xs text-muted-foreground mb-1">Avg Credits / Faculty</p>
-              <p className="text-2xl font-bold">{workload.length ? (workload.reduce((s, w) => s + w.totalCredits, 0) / workload.length).toFixed(1) : 0}</p>
+              <p className="text-[10.5px] font-bold tracking-[1.5px] uppercase text-muted-foreground mb-1">Avg Credits / Faculty</p>
+              <p className="font-serif text-[30px] font-semibold leading-none text-licet-indigo">{workload.length ? (workload.reduce((s, w) => s + w.totalCredits, 0) / workload.length).toFixed(1) : 0}</p>
             </div>
           </div>
 
@@ -326,14 +313,14 @@ export default function AnalyticsPage() {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 {[
                   { label: 'CGPA',        value: myData.cgpaResult.cgpa.toFixed(2), sub: `× 10 = ${(myData.cgpaResult.cgpa * 10).toFixed(1)}%` },
-                  { label: 'Attendance',  value: `${myData.attendancePct}%`, sub: myData.attendancePct >= 75 ? 'Eligible' : 'Below 75%' },
+                  { label: 'Attendance',  value: `${myData.attendancePct}%`, sub: `${attendanceStatus(myData.attendancePct).code} · ${attendanceStatus(myData.attendancePct).label}` },
                   { label: 'Avg Marks',   value: `${myData.avgMarksPct}%`, sub: 'All subjects' },
                   { label: 'Risk Level',  value: myData.risk.riskLevel, sub: `Score: ${myData.risk.riskScore}/100` },
                 ].map(({ label, value, sub }) => (
                   <div key={label} className="bg-card border border-border rounded-lg p-4">
-                    <p className="font-mono text-xs text-muted-foreground mb-1">{label}</p>
-                    <p className="text-2xl font-bold">{value}</p>
-                    <p className="font-mono text-xs text-muted-foreground mt-1">{sub}</p>
+                    <p className="text-[10.5px] font-bold tracking-[1.5px] uppercase text-muted-foreground mb-1">{label}</p>
+                    <p className="font-serif text-[30px] font-semibold leading-none text-licet-indigo">{value}</p>
+                    <p className="text-[13.5px] text-muted-foreground mt-1.5 max-w-3xl">{sub}</p>
                   </div>
                 ))}
               </div>
@@ -351,7 +338,7 @@ export default function AnalyticsPage() {
                 <div key={sem.semester} className="bg-card border border-border rounded-lg">
                   <div className="flex items-center justify-between px-6 py-4 border-b border-border">
                     <div>
-                      <span className="font-mono text-xs text-primary">// SEMESTER {sem.semester}</span>
+                      <span className="eyebrow">SEMESTER {sem.semester}</span>
                       <div className="flex items-center gap-4 mt-1">
                         <span className="font-bold text-sm">GPA: {sem.gpa.toFixed(2)}</span>
                         <span className="font-mono text-xs text-muted-foreground">{sem.credits} credits</span>
@@ -398,12 +385,12 @@ export default function AnalyticsPage() {
                 <div className="space-y-1">
                   <label className="font-mono text-xs text-muted-foreground">Section</label>
                   <select value={section} onChange={e => { setSection(e.target.value); setAnalytics([]) }}
-                    className="h-10 px-3 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none">
+                    className="h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none">
                     {SECTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
                 <button onClick={runAnalytics} disabled={loading || !students.length}
-                  className="flex items-center gap-2 h-10 px-4 bg-primary text-primary-foreground font-mono text-xs rounded hover:bg-primary/90 disabled:opacity-50 transition-colors">
+                  className="flex items-center gap-2 h-10 px-4 bg-licet-indigo text-white text-[13px] font-semibold rounded-md hover:bg-licet-violet shadow-sm disabled:opacity-50 transition-colors">
                   {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Activity className="w-3 h-3" />}
                   {loading ? `Computing ${analytics.length}/${students.length}...` : 'Run Analytics'}
                 </button>
@@ -423,12 +410,12 @@ export default function AnalyticsPage() {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                   {[
                     { label: 'Avg CGPA',    value: avgCGPA, color: 'text-foreground' },
-                    { label: 'Avg Attendance', value: `${avgAtt}%`, color: avgAtt >= 75 ? 'text-green-500' : 'text-red-500' },
+                    { label: 'Avg Attendance', value: `${avgAtt}%`, color: { good: 'text-green-700', warn: 'text-amber-700', bad: 'text-red-700' }[attendanceStatus(avgAtt).tone] },
                     { label: 'At Risk',     value: (riskCounts['AT_RISK']??0) + (riskCounts['CRITICAL']??0), color: 'text-orange-500' },
                     { label: 'Critical',    value: riskCounts['CRITICAL'] ?? 0, color: 'text-red-500' },
                   ].map(({ label, value, color }) => (
                     <div key={label} className="bg-card border border-border rounded-lg p-4">
-                      <p className="font-mono text-xs text-muted-foreground mb-1">{label}</p>
+                      <p className="text-[10.5px] font-bold tracking-[1.5px] uppercase text-muted-foreground mb-1">{label}</p>
                       <p className={`text-2xl font-bold ${color}`}>{value}</p>
                     </div>
                   ))}
@@ -437,9 +424,9 @@ export default function AnalyticsPage() {
 
               {analytics.length > 0 && (
                 <div className="bg-card border border-border rounded-lg">
-                  <div className="px-6 py-4 border-b border-border">
-                    <span className="font-mono text-xs text-primary">// STUDENT ANALYTICS — {section}</span>
-                    <h2 className="font-bold text-sm mt-1">{analytics.length} students computed</h2>
+                  <div className="px-6 py-4 border-b border-border bg-licet-paper/70 rounded-t-xl">
+                    <span className="eyebrow">STUDENT ANALYTICS — {section}</span>
+                    <h2 className="font-serif text-[19px] font-semibold text-licet-indigo mt-1">{analytics.length} students computed</h2>
                   </div>
                   <div className="divide-y divide-border max-h-[600px] overflow-y-auto">
                     {sorted.map((a, idx) => {
@@ -465,7 +452,7 @@ export default function AnalyticsPage() {
                               </div>
                               <div>
                                 <p className="font-mono text-xs text-muted-foreground">Att%</p>
-                                <p className={`font-mono text-sm font-bold ${a.attendancePct >= 75 ? 'text-green-500' : 'text-red-500'}`}>
+                                <p className={`font-mono text-sm font-bold ${{ good: 'text-green-700', warn: 'text-amber-700', bad: 'text-red-700' }[attendanceStatus(a.attendancePct).tone]}`}>
                                   {a.attendancePct}%
                                 </p>
                               </div>

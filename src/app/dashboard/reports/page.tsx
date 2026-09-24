@@ -5,7 +5,8 @@ export const dynamic = "force-dynamic"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
-import { computeCGPA } from "@/lib/cgpa"
+import { attendanceStatus } from "@/lib/regulations"
+import { loadStudentStats } from "@/lib/cgpa"
 import type { AuthUser } from "@/lib/auth"
 import type { Database } from "@/lib/supabase"
 import { BarChart3, Download, Loader2, Users, BookOpen, Award, TrendingUp } from "lucide-react"
@@ -44,20 +45,12 @@ export default function ReportsPage() {
 
       if (!students) { setLoading(false); return }
 
-      const results = []
-      for (const s of students) {
-        const { data: att } = await supabase.from('attendance').select('status').eq('student_id', s.id)
-        const total   = att?.length ?? 0
-        const present = att?.filter(a => a.status === 'PRESENT' || a.status === 'LATE').length ?? 0
-        const attPct  = total > 0 ? Math.round(present / total * 100) : 0
-
-        const cgpa = await computeCGPA(s.id)
-        results.push({
-          name: s.full_name, email: s.email, section: s.section,
-          attendance: attPct, cgpa: cgpa.cgpa.toFixed(2),
-          credits: cgpa.totalCredits
-        })
-      }
+      const stats = await loadStudentStats(students.map(s => s.id))
+      const results = students.map(s => ({
+        name: s.full_name, email: s.email, section: s.section,
+        attendance: stats[s.id].attendancePct, cgpa: stats[s.id].cgpa.cgpa.toFixed(2),
+        credits: stats[s.id].cgpa.totalCredits,
+      }))
       setStats({ type: 'student_performance', section, data: results })
     }
 
@@ -176,8 +169,8 @@ export default function ReportsPage() {
 
   if (!isHOD) return (
     <div className="p-6">
-      <div className="bg-card border border-border rounded-lg p-12 text-center">
-        <BarChart3 className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+      <div className="bg-card border border-dashed border-licet-gold/70 rounded-xl p-12 text-center">
+        <BarChart3 className="w-12 h-12 p-3 rounded-full bg-licet-cream text-licet-indigo mx-auto mb-3" />
         <p className="font-mono text-sm text-muted-foreground">Reports are restricted to HOD only</p>
       </div>
     </div>
@@ -186,21 +179,21 @@ export default function ReportsPage() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <span className="font-mono text-xs text-primary">// SECTION: REPORTS</span>
-        <h1 className="text-2xl font-bold tracking-tight mt-1">Reports & Analytics</h1>
-        <p className="font-mono text-xs text-muted-foreground mt-1">
+        <span className="eyebrow">REPORTS</span>
+        <h1 className="text-2xl font-semibold tracking-tight mt-2">Reports & Analytics</h1>
+        <p className="text-[13.5px] text-muted-foreground mt-1.5 max-w-3xl">
           Faculty workload, student performance, placement stats and NAAC/NBA data
         </p>
       </div>
 
       {/* Report selector */}
       <div className="bg-card border border-border rounded-lg p-6 space-y-4">
-        <span className="font-mono text-xs text-primary">// GENERATE REPORT</span>
+        <span className="eyebrow">GENERATE REPORT</span>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="space-y-1">
             <label className="font-mono text-xs text-muted-foreground">Report Type</label>
             <select value={reportType} onChange={e => { setReportType(e.target.value); setGenerated(false) }}
-              className="w-full h-10 px-3 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none">
+              className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none">
               <option value="student_performance">Student Performance Report</option>
               <option value="faculty_workload">Faculty Workload Report</option>
               <option value="placement_stats">Placement Statistics</option>
@@ -211,14 +204,14 @@ export default function ReportsPage() {
             <div className="space-y-1">
               <label className="font-mono text-xs text-muted-foreground">Section</label>
               <select value={section} onChange={e => setSection(e.target.value)}
-                className="w-full h-10 px-3 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none">
+                className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none">
                 {SECTIONS.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
           )}
           <div className="flex items-end gap-2">
             <button onClick={generateReport} disabled={loading}
-              className="flex items-center gap-2 h-10 px-4 bg-primary text-primary-foreground font-mono text-xs rounded hover:bg-primary/90 disabled:opacity-50">
+              className="flex items-center gap-2 h-10 px-4 bg-licet-indigo text-white text-[13px] font-semibold rounded-md hover:bg-licet-violet shadow-sm disabled:opacity-50">
               {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <BarChart3 className="w-3 h-3" />}
               {loading ? 'Generating...' : 'Generate'}
             </button>
@@ -235,9 +228,9 @@ export default function ReportsPage() {
       {/* Report output */}
       {generated && stats && (
         <div className="bg-card border border-border rounded-lg">
-          <div className="px-6 py-4 border-b border-border">
-            <span className="font-mono text-xs text-primary">// REPORT OUTPUT</span>
-            <h2 className="font-bold text-sm mt-1">
+          <div className="px-6 py-4 border-b border-border bg-licet-paper/70 rounded-t-xl">
+            <span className="eyebrow">REPORT OUTPUT</span>
+            <h2 className="font-serif text-[19px] font-semibold text-licet-indigo mt-1">
               {stats.type === 'student_performance' && `Student Performance — ${stats.section}`}
               {stats.type === 'faculty_workload' && 'Faculty Workload Report'}
               {stats.type === 'placement_stats' && 'Placement Statistics'}
@@ -310,7 +303,7 @@ export default function ReportsPage() {
                           <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{i+1}</td>
                           <td className="px-4 py-3 text-sm font-medium">{row.name}</td>
                           <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{row.email}</td>
-                          <td className={`px-4 py-3 font-mono text-sm font-bold ${row.attendance >= 75 ? 'text-green-500' : 'text-red-500'}`}>{row.attendance}%</td>
+                          <td className={`px-4 py-3 font-mono text-sm font-bold ${{ good: 'text-green-700', warn: 'text-amber-700', bad: 'text-red-700' }[attendanceStatus(row.attendance).tone]}`}>{row.attendance}%</td>
                           <td className="px-4 py-3 font-mono text-sm font-bold">{row.cgpa}</td>
                           <td className="px-4 py-3 font-mono text-xs">{row.credits}</td>
                         </>

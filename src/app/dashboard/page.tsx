@@ -7,14 +7,9 @@ import type { AuthUser } from "@/lib/auth"
 import type { Database } from "@/lib/supabase"
 import type { LucideIcon } from "lucide-react"
 import {
-  Users, ClipboardCheck, Award, BookOpen, TrendingUp, TrendingDown,
-  AlertTriangle, Bell, CalendarDays, ArrowUpRight, ArrowDownRight,
-  Minus, Heart, FileCheck
+  Users, ClipboardCheck, Award, BookOpen,
+  AlertTriangle, Bell, CalendarDays, Heart, ArrowRight
 } from "lucide-react"
-import { Inter, Crimson_Text } from "next/font/google"
-
-const serif = Crimson_Text({ subsets: ["latin"], weight: ["400", "600"] })
-const sans  = Inter({ subsets: ["latin"], weight: ["400", "500", "600"] })
 
 type Profile = Database['public']['Tables']['profiles']['Row']
 
@@ -32,6 +27,9 @@ interface FeedItem {
   time: string
   kind: "notice" | "event" | "alert"
 }
+
+const SECTIONS = ['I CSE-A','I CSE-B','II CSE-A','II CSE-B','III CSE-A','III CSE-B','IV CSE-A','IV CSE-B']
+const quoted = (xs: string[]) => xs.map(x => `"${x}"`).join(',')
 
 // Semester helper — June–Dec = odd (1,3,5,7), Jan–May = even (2,4,6,8)
 // Matches subjects/timetable/marks pages for consistency
@@ -106,31 +104,28 @@ export default function DashboardPage() {
   const loadHOD = async () => {
     setSubtitle("Department of Computer Science & Engineering · Overview")
 
-    const [studentsRes, subjectsRes, attRes, marksRes, leavesRes] = await Promise.all([
+    const [studentsRes, attTotalRes, attPresentRes, marksRes, leavesRes] = await Promise.all([
       supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'STUDENT'),
-      supabase.from('subjects').select('id', { count: 'exact', head: true }),
-      supabase.from('attendance').select('status'),
+      supabase.from('day_attendance').select('id', { count: 'exact', head: true }),
+      supabase.from('day_attendance').select('id', { count: 'exact', head: true }).in('status', ['PRESENT', 'LATE']),
       supabase.from('marks').select('marks_obtained, max_marks'),
       supabase.from('leaves').select('id', { count: 'exact', head: true }).eq('status', 'PENDING'),
     ])
 
     const totalStudents = studentsRes.count ?? 0
-    const totalSubjects = subjectsRes.count ?? 0
     const pendingLeaves = leavesRes.count ?? 0
 
-    const att = attRes.data ?? []
-    const attTotal = att.length
-    const attPresent = att.filter(a => a.status === 'PRESENT' || a.status === 'LATE').length
-    const attendancePct = attTotal > 0 ? Math.round((attPresent / attTotal) * 100) : 0
+    const attTotal = attTotalRes.count ?? 0
+    const attendancePct = attTotal > 0 ? Math.round(((attPresentRes.count ?? 0) / attTotal) * 100) : 0
 
     const marks = marksRes.data ?? []
-    const passCount = marks.filter(m => Number(m.marks_obtained) >= Number(m.max_marks) * 0.4).length
+    const passCount = marks.filter(m => Number(m.marks_obtained) >= Number(m.max_marks) * 0.45).length
     const passRate = marks.length > 0 ? Math.round((passCount / marks.length) * 100) : 0
 
     setStats([
       { label: "Total Students",  value: String(totalStudents), sub: "Across 8 sections", icon: Users },
-      { label: "Avg. Attendance", value: `${attendancePct}%`,   sub: "All recorded sessions", icon: ClipboardCheck },
-      { label: "Pass Rate",       value: `${passRate}%`,        sub: "All internal assessments", icon: Award },
+      { label: "Avg. Attendance", value: attTotal ? `${attendancePct}%` : "—", sub: attTotal ? `${attTotal} session records` : "No attendance yet", icon: ClipboardCheck },
+      { label: "Pass Rate",       value: marks.length ? `${passRate}%` : "—", sub: marks.length ? "Assessments scoring ≥ 45%" : "No marks entered yet", icon: Award },
       { label: "Pending Leaves",  value: String(pendingLeaves), sub: "Awaiting your approval", icon: Heart },
     ])
   }
@@ -140,28 +135,22 @@ export default function DashboardPage() {
     setSubtitle("Department of Computer Science & Engineering · Faculty Overview")
     if (!prof) { setStats([]); return }
 
-    const marksRes = await supabase.from('marks').select('subject_id, student_id').eq('faculty_id', prof.id)
-    const marks = marksRes.data ?? []
-    const subjectIds = Array.from(new Set(marks.map(m => m.subject_id)))
-    const studentIds = Array.from(new Set(marks.map(m => m.student_id)))
-
     const [subjectsRes, leavesRes, gradedRes] = await Promise.all([
-      subjectIds.length
-        ? supabase.from('subjects').select('id', { count: 'exact', head: true }).in('id', subjectIds)
-        : Promise.resolve({ count: 0 } as { count: number }),
-      supabase.from('leaves').select('id', { count: 'exact', head: true }).eq('status', 'PENDING'),
-      supabase.from('marks').select('marks_obtained, max_marks').eq('faculty_id', prof.id),
+      supabase.from('subjects').select('id', { count: 'exact', head: true }).eq('faculty_id', prof.id),
+      supabase.from('leaves').select('id', { count: 'exact', head: true }).eq('applicant_id', prof.id).eq('status', 'PENDING'),
+      supabase.from('marks').select('student_id, marks_obtained, max_marks').eq('faculty_id', prof.id),
     ])
 
     const graded = gradedRes.data ?? []
-    const passCount = graded.filter(m => Number(m.marks_obtained) >= Number(m.max_marks) * 0.4).length
+    const studentIds = new Set(graded.map(m => m.student_id))
+    const passCount = graded.filter(m => Number(m.marks_obtained) >= Number(m.max_marks) * 0.45).length
     const passRate = graded.length > 0 ? Math.round((passCount / graded.length) * 100) : 0
 
     setStats([
-      { label: "My Subjects",     value: String(subjectsRes.count ?? subjectIds.length), sub: "Assigned this semester", icon: BookOpen },
-      { label: "Students Taught", value: String(studentIds.length), sub: "Across your subjects", icon: Users },
+      { label: "My Subjects",     value: String(subjectsRes.count ?? 0), sub: "Assigned to you", icon: BookOpen },
+      { label: "Students Graded", value: String(studentIds.size), sub: "Across your subjects", icon: Users },
       { label: "Pass Rate",       value: `${passRate}%`, sub: "Your evaluated marks", icon: Award },
-      { label: "Pending Leaves",  value: String(leavesRes.count ?? 0), sub: "Department-wide", icon: Heart },
+      { label: "Pending Leaves",  value: String(leavesRes.count ?? 0), sub: "Your applications", icon: Heart },
     ])
   }
 
@@ -174,7 +163,7 @@ export default function DashboardPage() {
     const sem = currentSem(section)
 
     const [attRes, marksRes, subjectsRes, leavesRes] = await Promise.all([
-      supabase.from('attendance').select('status').eq('student_id', prof.id),
+      supabase.from('day_attendance').select('status').eq('student_id', prof.id),
       supabase.from('marks').select('marks_obtained, max_marks').eq('student_id', prof.id),
       supabase.from('subjects').select('id', { count: 'exact', head: true }).eq('section', section).eq('semester', sem),
       supabase.from('leaves').select('id', { count: 'exact', head: true }).eq('applicant_id', prof.id).eq('status', 'PENDING'),
@@ -210,12 +199,13 @@ export default function DashboardPage() {
 
     query = query.or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
 
-    if (isStudent) {
-      const section = prof?.section ?? ''
-      query = query.in('audience', ['ALL', 'STUDENTS', section])
-    } else if (isFaculty) {
-      query = query.in('audience', ['ALL', 'PROFESSOR'])
-    }
+    // Only notices and events belong in the feed; other audience prefixes hold
+    // stored documents, timetables and feedback.
+    const noticeAudiences = isStudent
+      ? ['ALL', 'STUDENTS', prof?.section ?? '']
+      : isFaculty ? ['ALL', 'PROFESSOR', 'FACULTY', ...SECTIONS]
+      : ['ALL', 'STUDENTS', 'PROFESSOR', 'FACULTY', ...SECTIONS]
+    query = query.or(`audience.in.(${quoted(noticeAudiences)}),audience.like.EVENT:*`)
 
     const { data } = await query
     if (!data) { setFeed([]); return }
@@ -242,163 +232,93 @@ export default function DashboardPage() {
     setFeed(items)
   }
 
-  const name = authUser?.data.name?.split(" ")[0] || ""
+  const name = authUser?.data.name?.replace(/^(Dr|Mr|Ms|Mrs|Rev)\.?\s+/i, "").split(" ")[0] || ""
   const roleLabel = authUser?.type === 'staff' ? authUser.data.role : 'STUDENT'
+  const heading = roleLabel === 'HOD' ? 'Department Overview' : roleLabel === 'PROFESSOR' ? 'Faculty Dashboard' : 'My Dashboard'
+  const quickLinks = roleLabel === 'STUDENT'
+    ? [['attendance', 'My attendance'], ['marks', 'My marks'], ['timetable', 'Timetable'], ['leaves', 'Apply for leave']]
+    : roleLabel === 'PROFESSOR'
+      ? [['attendance', 'Mark attendance'], ['marks', 'Enter marks'], ['timetable', 'Timetable'], ['notices', 'Post a notice']]
+      : [['attendance', 'Attendance'], ['leaves', 'Review leaves'], ['alerts', 'Attendance alerts'], ['reports', 'Reports']]
 
   return (
-    <div className={sans.className} style={{ padding: "28px 32px", maxWidth: "1200px" }}>
-      {/* Welcome section */}
-      <section style={{ marginBottom: "28px" }}>
-        <p style={{
-          fontSize: "13px",
-          color: "#78716C",
-          margin: "0 0 4px",
-          fontWeight: 400,
-        }}>
-          {greeting}{name ? `, ${name}` : ""}
+    <div className="p-5 md:p-8 max-w-[1200px] space-y-8">
+      {/* Welcome banner */}
+      <section className="relative overflow-hidden bg-licet-indigo text-white px-6 py-7 md:px-8 border-b-[3px] border-licet-gold">
+        <img src="/images.png" alt="" aria-hidden className="absolute -right-10 -top-10 w-56 h-56 rounded-full opacity-[0.07] pointer-events-none" />
+        <p className="text-[12px] font-bold tracking-[3px] uppercase text-licet-gold">{greeting}{name ? `, ${name}` : ""}</p>
+        <h1 className="font-serif italic font-medium text-[38px] md:text-[46px] leading-tight mt-1 !text-white">{heading}</h1>
+        <p className="text-[14px] text-licet-cream/80 mt-1">
+          {subtitle || "Loading…"}{profile?.section ? ` · ${profile.section}` : ""}
         </p>
-        <h1 className={serif.className} style={{
-          fontSize: "28px",
-          color: "#292524",
-          margin: 0,
-          fontWeight: 600,
-          letterSpacing: "-0.01em",
-        }}>
-          {roleLabel === 'HOD' ? 'Department Overview'
-            : roleLabel === 'PROFESSOR' ? 'Faculty Dashboard'
-            : 'My Dashboard'}
-        </h1>
-        <p style={{
-          fontSize: "13px",
-          color: "#A8A29E",
-          margin: "6px 0 0",
-          fontWeight: 400,
-        }}>
-          {subtitle || "Loading…"}
-          {profile?.section ? ` · ${profile.section}` : ""}
-        </p>
+        <div className="flex flex-wrap gap-2 mt-5">
+          {quickLinks.map(([id, label]) => (
+            <button key={id} onClick={() => router.push(`/dashboard/${id}`)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[12.5px] font-medium border border-licet-gold/50 text-licet-cream hover:bg-licet-gold hover:text-licet-indigo transition-colors">
+              {label} <ArrowRight size={13} />
+            </button>
+          ))}
+        </div>
       </section>
 
       {/* Stats */}
-      <section style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-        gap: "16px",
-        marginBottom: "28px",
-      }}>
+      <section className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(210px,1fr))]">
         {loading ? (
           Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} style={{
-              background: "#FFFFFF", border: "1px solid #DDD8D0", borderRadius: "5px",
-              padding: "20px", height: "92px",
-            }}>
-              <div style={{ width: "60%", height: "10px", background: "#F1EFEB", borderRadius: "3px", marginBottom: "16px" }} />
-              <div style={{ width: "40%", height: "20px", background: "#F1EFEB", borderRadius: "3px" }} />
+            <div key={i} className="bg-card border border-border border-t-[3px] border-t-licet-gold p-5 h-[120px] animate-pulse">
+              <div className="w-3/5 h-2.5 bg-muted mb-5" />
+              <div className="w-2/5 h-6 bg-muted" />
             </div>
           ))
         ) : stats.map(({ label, value, sub, icon: Icon }) => (
-          <div key={label} style={{
-            background: "#FFFFFF",
-            border: "1px solid #DDD8D0",
-            borderRadius: "5px",
-            padding: "20px",
-            transition: "box-shadow 0.15s",
-          }}
-            onMouseEnter={e => (e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.04)")}
-            onMouseLeave={e => (e.currentTarget.style.boxShadow = "none")}
-          >
-            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "12px" }}>
-              <span style={{
-                fontSize: "10px",
-                fontWeight: 600,
-                letterSpacing: "0.1em",
-                color: "#A8A29E",
-                textTransform: "uppercase",
-              }}>
-                {label}
+          <div key={label} className="bg-card border border-border border-t-[3px] border-t-licet-gold p-5 hover:shadow-md hover:shadow-licet-indigo/5 transition-shadow">
+            <div className="flex items-start justify-between gap-3">
+              <span className="text-[10.5px] font-bold tracking-[2px] uppercase text-muted-foreground">{label}</span>
+              <span className="w-8 h-8 flex items-center justify-center bg-licet-cream text-licet-indigo shrink-0">
+                <Icon size={15} />
               </span>
-              <div style={{
-                width: "28px",
-                height: "28px",
-                borderRadius: "4px",
-                background: "#FAFAF8",
-                border: "1px solid #E7E5E0",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
-              }}>
-                <Icon size={13} color="#78716C" />
-              </div>
             </div>
-            <p className={serif.className} style={{
-              fontSize: "24px",
-              fontWeight: 600,
-              color: "#292524",
-              margin: "0 0 2px",
-            }}>
-              {value}
-            </p>
-            {sub && (
-              <p style={{ fontSize: "11px", color: "#A8A29E", margin: 0 }}>{sub}</p>
-            )}
+            <p className="font-serif text-[34px] font-semibold leading-none text-licet-indigo mt-3">{value}</p>
+            {sub && <p className="text-[12px] text-muted-foreground mt-1.5">{sub}</p>}
           </div>
         ))}
       </section>
 
-      {/* Activity feed */}
-      <section>
-        <h2 className={serif.className} style={{
-          fontSize: "16px", fontWeight: 600, color: "#292524", margin: "0 0 14px",
-        }}>
-          Recent Activity
-        </h2>
+      {/* Recent news / events — styled like the news panel on licet.ac.in */}
+      <section className="bg-licet-cream p-6 md:p-7">
+        <h2 className="font-serif text-[26px] font-semibold">Recent News / Events</h2>
+        <div className="h-[2px] w-14 bg-licet-indigo/50 mt-2 mb-4" />
 
         {loading ? (
-          <div style={{ background: "#FFFFFF", border: "1px solid #DDD8D0", borderRadius: "5px", padding: "32px", textAlign: "center" }}>
-            <p style={{ fontSize: "12px", color: "#A8A29E", margin: 0 }}>Loading…</p>
-          </div>
+          <p className="text-[13px] text-muted-foreground py-6 text-center">Loading…</p>
         ) : feed.length === 0 ? (
-          <div style={{ background: "#FFFFFF", border: "1px solid #DDD8D0", borderRadius: "5px", padding: "32px", textAlign: "center" }}>
-            <Bell size={20} color="#DDD8D0" style={{ margin: "0 auto 8px" }} />
-            <p style={{ fontSize: "12px", color: "#A8A29E", margin: 0 }}>No recent notices or events.</p>
+          <div className="py-8 text-center">
+            <Bell size={22} className="mx-auto mb-2 text-licet-indigo/30" />
+            <p className="text-[13px] text-muted-foreground">No recent notices or events.</p>
           </div>
         ) : (
-          <div style={{ background: "#FFFFFF", border: "1px solid #DDD8D0", borderRadius: "5px", overflow: "hidden" }}>
-            {feed.map((item, i) => {
+          <ul className="bg-white divide-y divide-border border border-border">
+            {feed.map(item => {
               const Icon = item.kind === "event" ? CalendarDays : item.kind === "alert" ? AlertTriangle : Bell
-              const iconColor = item.kind === "alert" ? "#B45309" : item.kind === "event" ? "#0E7490" : "#78716C"
               return (
-                <div key={item.id} style={{
-                  display: "flex", alignItems: "flex-start", gap: "12px",
-                  padding: "14px 18px",
-                  borderBottom: i < feed.length - 1 ? "1px solid #F1EFEB" : "none",
-                }}>
-                  <div style={{
-                    width: "28px", height: "28px", borderRadius: "4px",
-                    background: "#FAFAF8", border: "1px solid #E7E5E0",
-                    display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-                  }}>
-                    <Icon size={13} color={iconColor} />
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: "13px", color: "#292524", margin: "0 0 2px", fontWeight: 500 }}>
-                      {item.title}
-                    </p>
-                    {item.body && (
-                      <p style={{ fontSize: "12px", color: "#A8A29E", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {item.body}
-                      </p>
-                    )}
-                  </div>
-                  <span style={{ fontSize: "11px", color: "#D6D3D1", flexShrink: 0, whiteSpace: "nowrap" }}>
-                    {item.time}
+                <li key={item.id} className="flex items-start gap-3 px-4 py-3.5">
+                  <span className={`w-8 h-8 flex items-center justify-center shrink-0 ${item.kind === "alert" ? "bg-amber-100 text-amber-700" : "bg-licet-parchment text-licet-indigo"}`}>
+                    <Icon size={15} />
                   </span>
-                </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[14px] font-medium text-licet-indigo">{item.title}</p>
+                    {item.body && <p className="text-[12.5px] text-muted-foreground truncate">{item.body}</p>}
+                  </div>
+                  <span className="text-[11px] text-muted-foreground whitespace-nowrap shrink-0">{item.time}</span>
+                </li>
               )
             })}
-          </div>
+          </ul>
         )}
+        <button onClick={() => router.push('/dashboard/notices')}
+          className="mt-4 inline-flex items-center gap-1.5 font-serif italic text-[18px] text-licet-indigo underline decoration-licet-gold decoration-2 underline-offset-4 hover:text-licet-violet">
+          More news &amp; notices <ArrowRight size={15} />
+        </button>
       </section>
     </div>
   )
