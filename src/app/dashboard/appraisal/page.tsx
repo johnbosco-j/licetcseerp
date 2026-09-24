@@ -188,9 +188,9 @@ export default function AppraisalPage() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <span className="font-mono text-xs text-primary">// SECTION: APPRAISAL & SURVEY</span>
-        <h1 className="text-2xl font-bold tracking-tight mt-1">Faculty Appraisal & Monthly Survey</h1>
-        <p className="font-mono text-xs text-muted-foreground mt-1">
+        <span className="eyebrow">APPRAISAL & SURVEY</span>
+        <h1 className="text-2xl font-semibold tracking-tight mt-2">Faculty Appraisal & Monthly Survey</h1>
+        <p className="text-[13.5px] text-muted-foreground mt-1.5 max-w-3xl">
           Faculty appraisal by students · Monthly teaching quality survey
         </p>
       </div>
@@ -222,7 +222,7 @@ export default function AppraisalPage() {
             <div className="space-y-1">
               <label className="font-mono text-xs text-muted-foreground">Select Faculty to Appraise</label>
               <select value={selectedFaculty} onChange={e => setSelectedFaculty(e.target.value)}
-                className="w-full h-10 px-3 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none">
+                className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none">
                 <option value="">Choose faculty member...</option>
                 {faculty.map(f => <option key={f.id} value={f.id}>{f.full_name}</option>)}
               </select>
@@ -247,11 +247,11 @@ export default function AppraisalPage() {
                   <textarea value={appraisalComment} onChange={e => setAppraisalComment(e.target.value)}
                     placeholder="Any suggestions or feedback..."
                     rows={3}
-                    className="w-full px-3 py-2 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none resize-none" />
+                    className="w-full px-3 py-2 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none resize-none" />
                 </div>
                 <button onClick={submitAppraisal}
                   disabled={saving || Object.keys(appraisalRatings).length < APPRAISAL_QUESTIONS.length}
-                  className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground font-mono text-xs rounded hover:bg-primary/90 disabled:opacity-50">
+                  className="flex items-center gap-2 px-4 py-2 bg-licet-indigo text-white text-[13px] font-semibold rounded-md hover:bg-licet-violet shadow-sm disabled:opacity-50">
                   {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Star className="w-3 h-3" />}
                   {saving ? 'Submitting...' : 'Submit Appraisal'}
                 </button>
@@ -278,13 +278,13 @@ export default function AppraisalPage() {
           <div className="bg-card border border-border rounded-lg p-6 space-y-6">
             <div className="flex items-center justify-between">
               <div>
-                <span className="font-mono text-xs text-primary">// MONTHLY TEACHING QUALITY SURVEY</span>
-                <p className="font-mono text-xs text-muted-foreground mt-1">
+                <span className="eyebrow">MONTHLY TEACHING QUALITY SURVEY</span>
+                <p className="text-[13.5px] text-muted-foreground mt-1.5 max-w-3xl">
                   Rate your overall learning experience for {surveyMonth} {year}
                 </p>
               </div>
               <select value={surveyMonth} onChange={e => setSurveyMonth(e.target.value)}
-                className="h-9 px-3 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none">
+                className="h-9 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none">
                 {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
               </select>
             </div>
@@ -301,7 +301,7 @@ export default function AppraisalPage() {
 
             <button onClick={submitSurvey}
               disabled={saving || Object.keys(surveyRatings).length < SURVEY_QUESTIONS.length}
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground font-mono text-xs rounded hover:bg-primary/90 disabled:opacity-50">
+              className="flex items-center gap-2 px-4 py-2 bg-licet-indigo text-white text-[13px] font-semibold rounded-md hover:bg-licet-violet shadow-sm disabled:opacity-50">
               {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
               {saving ? 'Submitting...' : `Submit Survey for ${surveyMonth}`}
             </button>
@@ -313,7 +313,7 @@ export default function AppraisalPage() {
       {tab === 'results' && (isHOD || isFaculty) && (
         <div className="space-y-6">
           {loadingResults ? (
-            <div className="bg-card border border-border rounded-lg p-12 text-center">
+            <div className="bg-card border border-dashed border-licet-gold/70 rounded-xl p-12 text-center">
               <Loader2 className="w-8 h-8 animate-spin text-muted-foreground mx-auto mb-3" />
               <p className="font-mono text-sm text-muted-foreground">Loading results...</p>
             </div>
@@ -322,8 +322,8 @@ export default function AppraisalPage() {
               {/* Faculty appraisal results */}
               {isHOD && results[0]?.data && (
                 <div className="bg-card border border-border rounded-lg">
-                  <div className="px-6 py-4 border-b border-border">
-                    <span className="font-mono text-xs text-primary">// FACULTY APPRAISAL RESULTS — {year}</span>
+                  <div className="px-6 py-4 border-b border-border bg-licet-paper/70 rounded-t-xl">
+                    <span className="eyebrow">FACULTY APPRAISAL RESULTS — {year}</span>
                   </div>
                   <div className="divide-y divide-border">
                     {results[0].data.map((f: any) => (
@@ -358,7 +358,7 @@ export default function AppraisalPage() {
               {/* Faculty sees their own results */}
               {isFaculty && results[0]?.data && (
                 <div className="bg-card border border-border rounded-lg p-6 space-y-4">
-                  <span className="font-mono text-xs text-primary">// YOUR APPRAISAL RESULTS — {year}</span>
+                  <span className="eyebrow">YOUR APPRAISAL RESULTS — {year}</span>
                   {(() => {
                     const mine = results[0].data.find((f: any) => f.email === profile?.email)
                     if (!mine || mine.reviews === 0) return (
@@ -370,7 +370,7 @@ export default function AppraisalPage() {
                           <p className="text-4xl font-bold text-yellow-500">{mine.avg.toFixed(1)}</p>
                           <div>
                             <StarRating value={Math.round(mine.avg)} />
-                            <p className="font-mono text-xs text-muted-foreground mt-1">{mine.reviews} student review(s)</p>
+                            <p className="text-[13.5px] text-muted-foreground mt-1.5 max-w-3xl">{mine.reviews} student review(s)</p>
                           </div>
                         </div>
                         <div className="space-y-3">
@@ -395,7 +395,7 @@ export default function AppraisalPage() {
               {isHOD && results[1]?.data && (
                 <div className="bg-card border border-border rounded-lg">
                   <div className="px-6 py-4 border-b border-border flex items-center justify-between">
-                    <span className="font-mono text-xs text-primary">// MONTHLY SURVEY RESULTS — {year}</span>
+                    <span className="eyebrow">MONTHLY SURVEY RESULTS — {year}</span>
                     <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)}
                       className="h-8 px-2 bg-background border border-border rounded font-mono text-xs focus:border-primary focus:outline-none">
                       {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
@@ -414,7 +414,7 @@ export default function AppraisalPage() {
                           <p className="text-3xl font-bold text-primary">{monthData.avg.toFixed(1)}</p>
                           <div>
                             <StarRating value={Math.round(monthData.avg)} />
-                            <p className="font-mono text-xs text-muted-foreground mt-1">{monthData.responses} response(s)</p>
+                            <p className="text-[13.5px] text-muted-foreground mt-1.5 max-w-3xl">{monthData.responses} response(s)</p>
                           </div>
                         </div>
                         <div className="space-y-3">

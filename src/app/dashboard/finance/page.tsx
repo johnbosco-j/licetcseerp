@@ -92,8 +92,8 @@ export default function FinancePage() {
 
   if (!isHOD) return (
     <div className="p-6">
-      <div className="bg-card border border-border rounded-lg p-12 text-center">
-        <Wallet className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+      <div className="bg-card border border-dashed border-licet-gold/70 rounded-xl p-12 text-center">
+        <Wallet className="w-12 h-12 p-3 rounded-full bg-licet-cream text-licet-indigo mx-auto mb-3" />
         <p className="font-mono text-sm text-muted-foreground">Finance module is restricted to HOD only</p>
       </div>
     </div>
@@ -103,9 +103,9 @@ export default function FinancePage() {
     <div className="p-6 space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <span className="font-mono text-xs text-primary">// SECTION: FINANCE</span>
-          <h1 className="text-2xl font-bold tracking-tight mt-1">Finance Ledger</h1>
-          <p className="font-mono text-xs text-muted-foreground mt-1">Department budget tracking with tamper-proof entries</p>
+          <span className="eyebrow">FINANCE</span>
+          <h1 className="text-2xl font-semibold tracking-tight mt-2">Finance Ledger</h1>
+          <p className="text-[13.5px] text-muted-foreground mt-1.5 max-w-3xl">Department budget tracking with tamper-proof entries</p>
         </div>
         <div className="flex gap-2">
           <button onClick={exportXLSX}
@@ -113,7 +113,7 @@ export default function FinancePage() {
             <Download className="w-3 h-3" /> Export
           </button>
           <button onClick={() => setShowForm(!showForm)}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground font-mono text-xs rounded hover:bg-primary/90">
+            className="flex items-center gap-2 px-4 py-2 bg-licet-indigo text-white text-[13px] font-semibold rounded-md hover:bg-licet-violet shadow-sm">
             <Plus className="w-3 h-3" /> Add Entry
           </button>
         </div>
@@ -138,9 +138,9 @@ export default function FinancePage() {
 
       {/* Add form */}
       {showForm && (
-        <div className="bg-card border border-primary/30 rounded-lg p-6 space-y-4">
+        <div className="bg-card border border-licet-gold border-t-[3px] rounded-xl p-6 shadow-md space-y-4">
           <div className="flex items-center justify-between">
-            <span className="font-mono text-xs text-primary">// NEW ENTRY</span>
+            <span className="eyebrow">NEW ENTRY</span>
             <button onClick={() => setShowForm(false)}><X className="w-4 h-4 text-muted-foreground" /></button>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -158,7 +158,7 @@ export default function FinancePage() {
             <div className="space-y-1">
               <label className="font-mono text-xs text-muted-foreground">Category</label>
               <select value={form.category} onChange={e => setForm({...form, category: e.target.value})}
-                className="w-full h-10 px-3 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none">
+                className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none">
                 {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
@@ -166,23 +166,23 @@ export default function FinancePage() {
               <label className="font-mono text-xs text-muted-foreground">Amount (₹) *</label>
               <input type="number" value={form.amount} onChange={e => setForm({...form, amount: e.target.value})}
                 placeholder="0.00"
-                className="w-full h-10 px-3 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none" />
+                className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none" />
             </div>
             <div className="space-y-1">
               <label className="font-mono text-xs text-muted-foreground">Reference No.</label>
               <input value={form.reference_no} onChange={e => setForm({...form, reference_no: e.target.value})}
                 placeholder="Invoice / receipt number"
-                className="w-full h-10 px-3 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none" />
+                className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none" />
             </div>
             <div className="sm:col-span-2 space-y-1">
               <label className="font-mono text-xs text-muted-foreground">Description *</label>
               <input value={form.description} onChange={e => setForm({...form, description: e.target.value})}
                 placeholder="What is this transaction for?"
-                className="w-full h-10 px-3 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none" />
+                className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none" />
             </div>
           </div>
           <button onClick={addEntry} disabled={saving || !form.amount || !form.description}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground font-mono text-xs rounded hover:bg-primary/90 disabled:opacity-50">
+            className="flex items-center gap-2 px-4 py-2 bg-licet-indigo text-white text-[13px] font-semibold rounded-md hover:bg-licet-violet shadow-sm disabled:opacity-50">
             {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
             {saving ? 'Saving...' : 'Add Entry'}
           </button>
@@ -191,8 +191,8 @@ export default function FinancePage() {
 
       {/* Ledger table */}
       <div className="bg-card border border-border rounded-lg overflow-hidden">
-        <div className="px-6 py-4 border-b border-border">
-          <span className="font-mono text-xs text-primary">// LEDGER ({ledger.length} entries)</span>
+        <div className="px-6 py-4 border-b border-border bg-licet-paper/70 rounded-t-xl">
+          <span className="eyebrow">LEDGER ({ledger.length} entries)</span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">

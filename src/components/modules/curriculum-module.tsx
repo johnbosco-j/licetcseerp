@@ -451,7 +451,7 @@ export default function CurriculumModule() {
                   width: "100%", height: "38px", padding: "0 10px",
                   border: "1.5px solid #e5e7eb", borderRadius: "6px",
                   fontSize: "13px", color: "#111827", outline: "none",
-                  boxSizing: "border-box", fontFamily: "monospace",
+                  boxSizing: "border-box", fontFamily:'inherit',
                   textTransform: "uppercase",
                 }}
                 onFocus={e => e.target.style.borderColor = "#1d3557"}
@@ -731,7 +731,7 @@ export default function CurriculumModule() {
 
                   {/* Code badge */}
                   <span style={{
-                    fontFamily: "monospace", fontSize: "11px", fontWeight: 700,
+                    fontFamily:'inherit', fontSize: "11px", fontWeight: 700,
                     padding: "3px 8px", borderRadius: "5px",
                     background: "#eff6ff", color: "#1d4ed8",
                     border: "1px solid #bfdbfe", flexShrink: 0,

@@ -1,226 +1,280 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Eye, EyeOff, ArrowRight, Loader2, Shield } from "lucide-react"
-import { authenticateAny } from "@/lib/auth"
-import { Playfair_Display, Source_Sans_3 } from "next/font/google"
+import { Eye, EyeOff, ArrowRight, Loader2, ShieldAlert, GraduationCap, Briefcase, HeartHandshake, Globe2 } from "lucide-react"
+import { signIn } from "@/lib/auth"
+import { supabase } from "@/lib/supabase"
+import { LicetLogo } from "@/components/licet-brand"
 
-const playfair = Playfair_Display({ subsets: ["latin"], weight: ["400", "500", "600", "700", "800"] })
-const sourceSans = Source_Sans_3({ subsets: ["latin"], weight: ["300", "400", "600"] })
+// Photos from the CSE department page on licet.ac.in, stored in /public/cse.
+const SLIDES = [
+  { src: "/cse/lab-workshop.jpg", caption: "Hands-on lab workshop" },
+  { src: "/cse/department-group.jpg", caption: "Department of CSE" },
+  { src: "/cse/trophy-team.jpg", caption: "Inter-college tournament winners" },
+  { src: "/cse/skilling-to-career.jpg", caption: "Skilling to Career" },
+  { src: "/cse/award-ceremony.jpg", caption: "Awards & recognition" },
+]
 
-const QUOTES = [
-  "Forming Leaders with Social Responsibility",
-  "Inspired by Jesuit Pedagogy of Excellence",
-  "A Centre of Global Learning",
-  "Luceat Lux Vestra",
-  "Let Your Light Shine!",
-  "Empowering Minds for Tomorrow's World",
-  "Where Engineering Meets Human Values",
+const MOMENTS = [
+  { src: "/cse/aquatics-medalists.jpg", caption: "Asia Aquatics medalists" },
+  { src: "/cse/swimming-champion.jpg", caption: "National swimming champion" },
+  { src: "/cse/recognition.jpg", caption: "Faculty recognition" },
+  { src: "/cse/department-group.jpg", caption: "Industry interaction" },
+  { src: "/cse/trophy-team.jpg", caption: "Tournament champions" },
+]
+
+const ALUMNI = ["/cse/alumni-1.jpg", "/cse/alumni-4.jpg", "/cse/alumni-5.jpg", "/cse/alumni-6.jpg"]
+
+const NAV = [
+  { label: "About", href: "https://licet.ac.in/about/" },
+  { label: "CSE Department", href: "https://licet.ac.in/computer-science-and-engineering/" },
+  { label: "Placement", href: "https://licet.ac.in/placement/" },
+  { label: "Alumni", href: "https://licet.ac.in/alumni/" },
+  { label: "Examinations", href: "https://licet.ac.in/examination/" },
+]
+
+const PILLARS = [
+  { icon: GraduationCap, title: "Academic Excellence", text: "Preparing students as per the prescribed syllabi of Anna University along with value-added courses and skill-based training." },
+  { icon: Briefcase, title: "Professionalism", text: "Excelling in professionalism through interaction and integration with industries." },
+  { icon: HeartHandshake, title: "Holistic Formation", text: "Focusing on the overall growth of students through sports and cultural activities." },
+  { icon: Globe2, title: "International Exposure", text: "Consistent collaboration with universities of international repute to provide world-class exposure." },
 ]
 
 export default function LoginPage() {
   const router = useRouter()
-  const [formData, setFormData] = useState({ email: "", password: "" })
+  const [email, setEmail]       = useState("")
+  const [password, setPassword] = useState("")
   const [showPass, setShowPass] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState("")
-  const [mounted, setMounted] = useState(false)
-  const [quoteIndex, setQuoteIndex] = useState(0)
-  const [fadeQuote, setFadeQuote] = useState(true)
+  const [loading, setLoading]   = useState(false)
+  const [error, setError]       = useState("")
+  const [slide, setSlide]       = useState(0)
 
   useEffect(() => {
-    setMounted(true)
-    const iv = setInterval(() => {
-      setFadeQuote(false)
-      setTimeout(() => { setQuoteIndex(p => (p + 1) % QUOTES.length); setFadeQuote(true) }, 600)
-    }, 5000)
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session && localStorage.getItem("licet_user")) router.replace("/dashboard")
+    })
+    const iv = setInterval(() => setSlide(s => (s + 1) % SLIDES.length), 5000)
     return () => clearInterval(iv)
-  }, [])
+  }, [router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true); setError("")
-    await new Promise(r => setTimeout(r, 600))
-    const result = await authenticateAny(formData.email.trim(), formData.password.trim())
-    if (result) {
-      const safeResult = { ...result, data: { ...result.data, password: undefined } }
-      localStorage.setItem("licet_user", JSON.stringify(safeResult))
+    setLoading(true)
+    setError("")
+    const { authUser, error: err } = await signIn(email.trim(), password)
+    if (authUser) {
+      localStorage.setItem("licet_user", JSON.stringify(authUser))
       localStorage.removeItem("excelsior_user")
-      router.push("/dashboard")
+      router.replace("/dashboard")
     } else {
-      setError("Invalid credentials. Please try again.")
+      setError(err ?? "Invalid email or password")
       setLoading(false)
     }
   }
 
-  if (!mounted) return null
-
   return (
-    <main className={`min-h-screen flex ${sourceSans.className}`} style={{ background: '#0a1628' }}>
+    <div className="min-h-screen flex flex-col bg-background">
+      {/* Utility strip */}
+      <div className="bg-licet-indigo border-b-[3px] border-licet-gold text-[12px]">
+        <div className="max-w-[1200px] mx-auto px-4 h-9 flex items-center gap-5">
+          <nav className="hidden sm:flex items-center gap-5 text-licet-cream">
+            <a href="https://licet.ac.in/help-desk/" target="_blank" rel="noopener noreferrer" className="hover:text-[#F8D88D]">Help Desk</a>
+            <a href="https://www.aicte.gov.in/opportunities/students/resources_students" target="_blank" rel="noopener noreferrer" className="hover:text-[#F8D88D]">AICTE Resources</a>
+            <a href="http://moodle.licet.ac.in/" target="_blank" rel="noopener noreferrer" className="hover:text-[#F8D88D]">Moodle</a>
+          </nav>
+          <span className="sm:ml-auto text-[13px] text-licet-gold">Anna University Counselling Code : 1450</span>
+        </div>
+      </div>
 
-      {/* ── LEFT PANEL ── */}
-      <div className="hidden lg:flex lg:w-[55%] relative overflow-hidden flex-col">
-        <div className="absolute inset-0" style={{
-          background: 'linear-gradient(145deg, #0a1628 0%, #1a1035 40%, #2d0a1a 75%, #1a0812 100%)'
-        }} />
-        <div className="absolute inset-0 opacity-[0.04]" style={{
-          backgroundImage: 'linear-gradient(#c9a84c 1px, transparent 1px), linear-gradient(90deg, #c9a84c 1px, transparent 1px)',
-          backgroundSize: '60px 60px'
-        }} />
-        <div className="absolute top-[-100px] right-[-100px] w-[500px] h-[500px] rounded-full opacity-10"
-          style={{ background: 'radial-gradient(circle, #c9a84c 0%, transparent 65%)' }} />
-        <div className="absolute bottom-[-80px] left-[-80px] w-[400px] h-[400px] rounded-full opacity-8"
-          style={{ background: 'radial-gradient(circle, #8b1a2e 0%, transparent 65%)' }} />
-        <div className="absolute top-0 right-0 w-[3px] h-full opacity-30"
-          style={{ background: 'linear-gradient(180deg, transparent 0%, #c9a84c 30%, #c9a84c 70%, transparent 100%)' }} />
+      {/* Hero */}
+      <section className="relative overflow-hidden bg-licet-indigo">
+        {SLIDES.map(({ src }, i) => (
+          <img key={src} src={src} alt="" aria-hidden
+            className={`absolute inset-0 w-full h-full object-cover transition-[opacity,transform] duration-[1500ms] ${i === slide ? "opacity-100 scale-100" : "opacity-0 scale-105"}`} />
+        ))}
+        <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, #1A0C4E 3%, rgba(26,12,78,0.55) 45%, rgba(26,12,78,0.85) 100%)" }} />
 
-        <div className="relative z-10 flex flex-col h-full p-14">
-          {/* Logo */}
-          <div className="flex items-center gap-5">
-            <div className="flex-shrink-0 rounded-xl bg-white p-2.5 shadow-lg" style={{ width: '64px', height: '64px' }}>
-              <img src="/images.png" alt="LICET Logo" className="w-full h-full object-contain" />
-            </div>
-            <div>
-              <p className="text-[10px] font-semibold tracking-[0.25em] uppercase mb-0.5" style={{ color: '#c9a84c' }}>
-                Loyola&ndash;ICAM
-              </p>
-              <p className="text-white font-semibold text-sm leading-tight tracking-wide">
-                College of Engineering<br />&amp; Technology
-              </p>
-              <p className="text-[9px] tracking-widest uppercase mt-0.5" style={{ color: '#c9a84c99' }}>
-                An autonomous Jesuit institution
-              </p>
-            </div>
-          </div>
+        {/* Nav band */}
+        <div className="relative max-w-[1200px] mx-auto px-4 pt-4 flex items-center gap-6">
+          <a href="https://licet.ac.in/" target="_blank" rel="noopener noreferrer" aria-label="licet.ac.in">
+            <LicetLogo className="h-[62px] w-auto" />
+          </a>
+          <nav className="hidden lg:flex ml-auto items-center gap-7">
+            {NAV.map(n => (
+              <a key={n.label} href={n.href} target="_blank" rel="noopener noreferrer"
+                className="text-[15px] font-semibold text-white hover:text-[#F8D88D] transition-colors">{n.label}</a>
+            ))}
+          </nav>
+        </div>
 
-          {/* Centre */}
-          <div className="flex-1 flex flex-col justify-center max-w-lg">
-            <div className="flex items-center gap-4 mb-10">
-              <div className="h-[1px] w-12" style={{ background: '#c9a84c' }} />
-              <span className="text-[9px] tracking-[0.3em] uppercase font-semibold" style={{ color: '#c9a84c' }}>
-                Department of CSE
-              </span>
-            </div>
-            <h1 className={`text-6xl font-bold leading-[1.05] text-white mb-4 ${playfair.className}`}>
-              LICET<br />
-              <span style={{
-                background: 'linear-gradient(135deg, #c9a84c 0%, #f0d080 50%, #c9a84c 100%)',
-                WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent'
-              }}>CSE&ndash;ERP</span>
+        <div className="relative max-w-[1200px] mx-auto px-4 py-12 lg:py-20 grid lg:grid-cols-[1fr_420px] gap-10 items-center">
+          <div className="text-white" style={{ animation: "licet-fade 0.8s ease-out both" }}>
+            <p className="text-[12px] font-bold tracking-[3px] uppercase text-licet-gold">Department of Computer Science &amp; Engineering</p>
+            <h1 className="font-display uppercase font-extrabold tracking-[0.02em] text-[40px] sm:text-[60px] leading-[0.95] mt-4 !text-white">
+              Loyola-ICAM
+              <span className="block mt-1 text-licet-gold">CSE ERP</span>
             </h1>
-            <p className="text-base font-light leading-relaxed mb-12" style={{ color: '#94a3b8' }}>
-              The integrated management platform for LICET's Department of Computer Science &amp; Engineering.
+            <div className="h-[3px] w-20 bg-licet-gold mt-5" />
+            <p className="mt-5 max-w-xl text-[16px] font-light leading-relaxed text-white/85">
+              The department&rsquo;s academic portal for attendance, marks, timetables, leave, feedback and more —
+              for students, faculty and the Head of Department.
             </p>
-            <div className="border-l-2 pl-6 py-1" style={{ borderColor: '#c9a84c55' }}>
-              <p className={`text-lg italic font-medium transition-opacity duration-500 ${playfair.className}`}
-                style={{ color: '#c9a84c', opacity: fadeQuote ? 1 : 0 }}>
-                "{QUOTES[quoteIndex]}"
-              </p>
+            <p className="mt-8 text-[12px] font-semibold tracking-[2px] uppercase text-white/70">{SLIDES[slide].caption}</p>
+            <div className="flex gap-2 mt-3" role="tablist" aria-label="Photo slides">
+              {SLIDES.map((_, i) => (
+                <button key={i} onClick={() => setSlide(i)} aria-label={`Show photo ${i + 1}`} aria-selected={i === slide} role="tab"
+                  className={`h-1.5 rounded-full transition-all ${i === slide ? "w-8 bg-licet-gold" : "w-3 bg-white/40 hover:bg-white/70"}`} />
+              ))}
             </div>
           </div>
 
-          {/* Stats */}
-          <div className="grid grid-cols-3 gap-6 pt-8 border-t" style={{ borderColor: '#ffffff0d' }}>
-            {[{ value: '8', label: 'Sections' }, { value: '500+', label: 'Students' }, { value: '17', label: 'Faculty' }].map(({ value, label }) => (
-              <div key={label}>
-                <p className={`text-3xl font-bold text-white ${playfair.className}`}>{value}</p>
-                <p className="text-xs tracking-widest uppercase mt-0.5" style={{ color: '#64748b' }}>{label}</p>
+          {/* Sign-in card */}
+          <div className="bg-white border-t-[3px] border-licet-gold shadow-2xl shadow-black/30 p-7 sm:p-8" style={{ animation: "licet-fade 0.8s 0.15s ease-out both" }}>
+            <div className="flex items-center gap-3">
+              <img src="/images.png" alt="LICET seal" className="w-12 h-12 rounded-full" />
+              <div>
+                <p className="eyebrow">Secure Access</p>
+                <h2 className="font-serif text-[30px] font-semibold leading-tight">Sign in</h2>
+              </div>
+            </div>
+
+            <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+              <div className="space-y-1.5">
+                <label htmlFor="email" className="text-[11px] font-bold tracking-[2px] uppercase text-licet-violet">Email</label>
+                <input id="email" type="email" autoComplete="username" required value={email}
+                  onChange={e => setEmail(e.target.value)} placeholder="you@licet.ac.in"
+                  className="w-full h-11 px-3.5 text-[15px] border border-input bg-licet-paper focus:bg-white focus:border-licet-violet focus:ring-2 focus:ring-licet-gold/40 outline-none transition" />
+              </div>
+              <div className="space-y-1.5">
+                <label htmlFor="password" className="text-[11px] font-bold tracking-[2px] uppercase text-licet-violet">Password</label>
+                <div className="relative">
+                  <input id="password" type={showPass ? "text" : "password"} autoComplete="current-password" required value={password}
+                    onChange={e => setPassword(e.target.value)} placeholder="Enter your password"
+                    className="w-full h-11 px-3.5 pr-11 text-[15px] border border-input bg-licet-paper focus:bg-white focus:border-licet-violet focus:ring-2 focus:ring-licet-gold/40 outline-none transition" />
+                  <button type="button" onClick={() => setShowPass(!showPass)} aria-label={showPass ? "Hide password" : "Show password"}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-licet-indigo">
+                    {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {error && (
+                <div role="alert" className="flex items-start gap-2 px-3 py-2.5 text-[13px] bg-red-50 border border-red-200 text-red-700">
+                  <ShieldAlert className="w-4 h-4 mt-0.5 shrink-0" />{error}
+                </div>
+              )}
+
+              <button type="submit" disabled={loading}
+                className="w-full h-11 flex items-center justify-center gap-2 bg-licet-indigo text-white text-[14px] font-semibold tracking-wide hover:bg-licet-violet disabled:opacity-60 transition-colors">
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <>Sign in <ArrowRight className="w-4 h-4" /></>}
+              </button>
+            </form>
+
+            <p className="mt-5 text-[12px] text-muted-foreground leading-relaxed">
+              Use your college email. Access is based on your role — HOD, faculty or student.
+              Forgot your password? Contact the CSE department office.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Uniqueness of LICET */}
+      <section className="bg-licet-cream">
+        <div className="max-w-[1200px] mx-auto px-4 py-16">
+          <div className="text-center">
+            <h2 className="font-serif italic font-medium text-[40px] sm:text-[50px] leading-tight">Uniqueness of LICET</h2>
+            <p className="text-[12px] font-semibold tracking-[3px] uppercase text-licet-indigo mt-1">A Four-Pillar Approach</p>
+            <div className="h-[2px] w-16 bg-licet-indigo/60 mx-auto mt-4" />
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-10">
+            {PILLARS.map(({ icon: Icon, title, text }) => (
+              <div key={title} className="group bg-licet-indigo text-licet-cream p-7 min-h-[230px] flex flex-col transition-colors hover:bg-[#1E1445]">
+                <Icon className="w-8 h-8 text-licet-gold" strokeWidth={1.5} />
+                <h3 className="font-serif text-[24px] mt-5 text-licet-cream">{title}</h3>
+                <p className="text-[13.5px] leading-relaxed mt-2 text-licet-cream/75">{text}</p>
               </div>
             ))}
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* ── RIGHT PANEL ── */}
-      <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 relative" style={{ background: '#f8f5f0' }}>
-        <div className="absolute inset-0 opacity-[0.015]" style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='4' height='4' viewBox='0 0 4 4' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 3h1v1H1V3zm2-2h1v1H3V1z' fill='%23000000' fill-rule='evenodd'/%3E%3C/svg%3E")`
-        }} />
-
-        <div className="w-full max-w-[400px] relative z-10">
-          {/* Mobile logo */}
-          <div className="flex lg:hidden items-center gap-3 mb-10 justify-center">
-            <div className="flex-shrink-0 rounded-lg bg-white p-1.5 shadow-sm border" style={{ width: '44px', height: '44px', borderColor: '#e2e8f0' }}>
-              <img src="/images.png" alt="LICET" className="w-full h-full object-contain" />
-            </div>
+      {/* CSE in action */}
+      <section className="bg-background">
+        <div className="max-w-[1200px] mx-auto px-4 py-16">
+          <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
-              <p className="font-bold text-sm" style={{ color: '#0a1628' }}>LICET CSE&ndash;ERP</p>
-              <p className="text-xs" style={{ color: '#64748b' }}>Department of Computer Science &amp; Engineering</p>
+              <p className="eyebrow">Department of CSE</p>
+              <h2 className="font-display uppercase font-extrabold text-[34px] sm:text-[42px] leading-none mt-3 !text-licet-indigo">CSE in Action</h2>
             </div>
+            <a href="https://licet.ac.in/computer-science-and-engineering/" target="_blank" rel="noopener noreferrer"
+              className="text-[13px] font-semibold text-licet-violet underline decoration-licet-gold decoration-2 underline-offset-4 hover:text-licet-indigo">
+              Visit the CSE department page
+            </a>
           </div>
-
-          <div className="mb-8">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-6 h-[2px]" style={{ background: '#c9a84c' }} />
-              <span className="text-[10px] font-semibold tracking-[0.2em] uppercase" style={{ color: '#c9a84c' }}>Secure Access</span>
-            </div>
-            <h2 className={`text-3xl font-bold leading-tight ${playfair.className}`} style={{ color: '#0a1628' }}>Welcome back</h2>
-            <p className="text-sm mt-1.5" style={{ color: '#64748b' }}>Sign in to access your dashboard</p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold tracking-wide uppercase" style={{ color: '#475569' }}>Email Address</label>
-              <input type="email" value={formData.email}
-                onChange={e => setFormData({ ...formData, email: e.target.value })}
-                placeholder="you@licet.ac.in" required
-                className="w-full h-12 px-4 text-sm rounded-lg border-2 transition-all outline-none"
-                style={{ background: '#fff', borderColor: '#e2e8f0', color: '#0a1628' }}
-                onFocus={e => (e.currentTarget.style.borderColor = '#c9a84c')}
-                onBlur={e => (e.currentTarget.style.borderColor = '#e2e8f0')} />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold tracking-wide uppercase" style={{ color: '#475569' }}>Password</label>
-              <div className="relative">
-                <input type={showPass ? "text" : "password"} value={formData.password}
-                  onChange={e => setFormData({ ...formData, password: e.target.value })}
-                  placeholder="Enter your password" required
-                  className="w-full h-12 px-4 pr-11 text-sm rounded-lg border-2 transition-all outline-none"
-                  style={{ background: '#fff', borderColor: '#e2e8f0', color: '#0a1628' }}
-                  onFocus={e => (e.currentTarget.style.borderColor = '#c9a84c')}
-                  onBlur={e => (e.currentTarget.style.borderColor = '#e2e8f0')} />
-                <button type="button" onClick={() => setShowPass(!showPass)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2" style={{ color: '#94a3b8' }}>
-                  {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-
-            {error && (
-              <div className="flex items-center gap-2.5 px-4 py-3 rounded-lg text-sm"
-                style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626' }}>
-                <Shield className="w-4 h-4 flex-shrink-0" />{error}
-              </div>
-            )}
-
-            <button type="submit" disabled={loading}
-              className="w-full h-12 rounded-lg font-semibold text-sm tracking-wide flex items-center justify-center gap-2.5 transition-all disabled:opacity-60 hover:brightness-110"
-              style={{ background: 'linear-gradient(135deg, #0a1628 0%, #1e2d4a 100%)', color: '#fff', boxShadow: '0 4px 20px rgba(10,22,40,0.35)' }}>
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <>Sign In <ArrowRight className="w-4 h-4" /></>}
-            </button>
-          </form>
-
-          <div className="flex items-center gap-4 my-8">
-            <div className="flex-1 h-[1px]" style={{ background: '#e2e8f0' }} />
-            <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#c9a84c' }} />
-            <div className="flex-1 h-[1px]" style={{ background: '#e2e8f0' }} />
-          </div>
-
-          <div className="grid grid-cols-3 gap-3">
-            {[{ role: 'HOD', color: '#7c3aed', bg: '#f5f3ff' }, { role: 'Faculty', color: '#0369a1', bg: '#f0f9ff' }, { role: 'Student', color: '#0f766e', bg: '#f0fdfa' }].map(({ role, color, bg }) => (
-              <div key={role} className="text-center py-2.5 rounded-lg text-xs font-semibold tracking-wide" style={{ background: bg, color }}>{role}</div>
+          <div className="grid grid-cols-2 md:grid-cols-4 md:grid-rows-2 gap-3 mt-8 md:h-[480px]">
+            {MOMENTS.map(({ src, caption }, i) => (
+              <figure key={src + i} className={`group relative overflow-hidden bg-licet-indigo ${i === 0 ? "col-span-2 md:row-span-2 aspect-[4/3] md:aspect-auto" : "aspect-[4/3] md:aspect-auto"}`}>
+                <img src={src} alt={caption} loading="lazy" className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                <figcaption className="absolute inset-x-0 bottom-0 p-3 pt-10 text-[12.5px] font-semibold text-white bg-gradient-to-t from-licet-indigo/90 to-transparent">
+                  {caption}
+                </figcaption>
+              </figure>
             ))}
           </div>
-          <p className="text-center text-xs mt-3" style={{ color: '#94a3b8' }}>Access level is determined by your registered role</p>
 
-          <p className="text-center text-[11px] mt-10" style={{ color: '#94a3b8' }}>
-            &copy; 2026 LICET &mdash; Department of Computer Science &amp; Engineering<br />
-            Loyola&ndash;ICAM College of Engineering and Technology, Chennai
+          <div className="mt-14">
+            <p className="eyebrow">Proud alumni</p>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-5">
+              {ALUMNI.map(src => (
+                <img key={src} src={src} alt="CSE alumnus" loading="lazy" className="w-full aspect-video object-cover border border-border" />
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Vision & Quality Policy */}
+      <section className="bg-licet-indigo text-white">
+        <div className="max-w-[1200px] mx-auto px-4 py-14 grid md:grid-cols-2 gap-10">
+          {[
+            { h: "Vision", t: "“To form responsible engineers, who would engineer a just society”" },
+            { h: "Quality Policy", t: "To form engineers who are creative, competent, committed, compassionate and socially responsible" },
+          ].map(({ h, t }) => (
+            <div key={h} className="border-t-2 border-licet-gold/60 pt-6">
+              <h2 className="font-serif italic text-[40px] font-medium !text-licet-gold">{h}</h2>
+              <p className="text-[15px] font-semibold tracking-[1.5px] uppercase mt-2 text-licet-cream leading-relaxed">{t}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="bg-licet-parchment mt-auto">
+        <div className="max-w-[1200px] mx-auto px-4 py-10 grid sm:grid-cols-3 gap-8 text-[14px] text-[#3c3852]">
+          <div>
+            <h3 className="font-serif text-[28px] text-licet-indigo">Contact Us</h3>
+            <p className="mt-2 leading-relaxed">LICET<br />Loyola Campus, Nungambakkam,<br />Chennai – 600034.</p>
+          </div>
+          <div>
+            <h3 className="font-serif text-[28px] text-licet-indigo">Get In Touch</h3>
+            <p className="mt-2 leading-relaxed">Email: licet@licet.ac.in<br />Phone: +91 44 2817 8490</p>
+          </div>
+          <div>
+            <h3 className="font-serif text-[28px] text-licet-indigo">Loyola Institutions</h3>
+            <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+              <a className="hover:text-licet-violet underline-offset-4 hover:underline" href="https://www.loyolacollege.edu/" target="_blank" rel="noopener noreferrer">Loyola College</a>
+              <a className="hover:text-licet-violet underline-offset-4 hover:underline" href="https://liba.edu/" target="_blank" rel="noopener noreferrer">LIBA</a>
+              <a className="hover:text-licet-violet underline-offset-4 hover:underline" href="https://www.loyolacollegeofeducation.in/" target="_blank" rel="noopener noreferrer">LCE</a>
+            </p>
+          </div>
+        </div>
+        <div className="border-t border-[#DCD0B4]">
+          <p className="max-w-[1200px] mx-auto px-4 py-3 text-[12px] text-[#6b6480]">
+            © {new Date().getFullYear()} Loyola-ICAM College of Engineering and Technology (Autonomous) · CSE ERP maintained by the Department of CSE
           </p>
         </div>
-      </div>
-    </main>
+      </footer>
+    </div>
   )
 }

@@ -35,13 +35,13 @@ export default function DashboardError({
       alignItems: "center",
       justifyContent: "center",
       padding: "40px 24px",
-      background: "#f7f8fa",
+      background: "#F9F7F5",
     }}>
       <div style={{
         maxWidth: "480px",
         width: "100%",
         background: "#ffffff",
-        border: "1px solid #e5e7eb",
+        border: "1px solid #E6DCC3",
         borderRadius: "12px",
         padding: "40px",
         textAlign: "center",
@@ -59,7 +59,7 @@ export default function DashboardError({
 
         {/* Heading */}
         <h2 style={{
-          fontSize: "18px", fontWeight: 600, color: "#111827",
+          fontSize: "18px", fontWeight: 600, color: "#1A0C4E",
           margin: "0 0 8px", letterSpacing: "-0.01em",
         }}>
           Something went wrong
@@ -80,7 +80,7 @@ export default function DashboardError({
             background: "#f9fafb", border: "1px solid #f3f4f6",
             marginBottom: "24px",
           }}>
-            <span style={{ fontSize: "11px", color: "#9ca3af", fontFamily: "monospace" }}>
+            <span style={{ fontSize: "11px", color: "#9ca3af", fontFamily:'inherit' }}>
               Ref: {error.digest}
             </span>
           </div>
@@ -91,20 +91,20 @@ export default function DashboardError({
           <button onClick={reset} style={{
             display: "flex", alignItems: "center", gap: "6px",
             padding: "9px 18px", borderRadius: "7px",
-            background: "#1d3557", color: "#ffffff",
+            background: "#1A0C4E", color: "#ffffff",
             border: "none", fontSize: "13px", fontWeight: 600,
             cursor: "pointer", transition: "background 0.15s",
             fontFamily: "inherit",
           }}
             onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = "#16304d"}
-            onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = "#1d3557"}>
+            onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = "#1A0C4E"}>
             <RefreshCw size={14} /> Try again
           </button>
           <button onClick={() => router.push("/dashboard")} style={{
             display: "flex", alignItems: "center", gap: "6px",
             padding: "9px 18px", borderRadius: "7px",
             background: "transparent", color: "#374151",
-            border: "1px solid #e5e7eb", fontSize: "13px", fontWeight: 500,
+            border: "1px solid #E6DCC3", fontSize: "13px", fontWeight: 500,
             cursor: "pointer", transition: "background 0.15s",
             fontFamily: "inherit",
           }}

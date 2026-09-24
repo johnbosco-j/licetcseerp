@@ -9,18 +9,18 @@ export default function GlobalError({
   error: Error & { digest?: string }
   reset: () => void
 }) {
-  useEffect(() => { console.error("[Excelsior Global Error]", error) }, [error])
+  useEffect(() => { console.error("[LICET ERP error]", error) }, [error])
 
   return (
     <html>
-      <body style={{ margin: 0, fontFamily: "system-ui, sans-serif", background: "#f7f8fa" }}>
+      <body style={{ margin: 0, fontFamily: "system-ui, sans-serif", background: "#F9F7F5" }}>
         <div style={{
           minHeight: "100vh", display: "flex", alignItems: "center",
           justifyContent: "center", padding: "40px 24px",
         }}>
           <div style={{
             maxWidth: "440px", width: "100%",
-            background: "#ffffff", border: "1px solid #e5e7eb",
+            background: "#ffffff", border: "1px solid #E6DCC3",
             borderRadius: "12px", padding: "40px", textAlign: "center",
             boxShadow: "0 2px 16px rgba(0,0,0,0.06)",
           }}>
@@ -30,15 +30,15 @@ export default function GlobalError({
               display: "flex", alignItems: "center", justifyContent: "center",
               margin: "0 auto 20px", fontSize: "22px",
             }}>⚠</div>
-            <h2 style={{ fontSize: "18px", fontWeight: 600, color: "#111827", margin: "0 0 8px" }}>
+            <h2 style={{ fontSize: "18px", fontWeight: 600, color: "#1A0C4E", margin: "0 0 8px" }}>
               Application error
             </h2>
             <p style={{ fontSize: "13px", color: "#6b7280", margin: "0 0 24px", lineHeight: 1.6 }}>
-              Excelsior ERP encountered an unexpected error. Please refresh the page or contact the IT department if the problem persists.
+              LICET CSE ERP encountered an unexpected error. Please refresh the page or contact the IT department if the problem persists.
             </p>
             <button onClick={reset} style={{
               padding: "9px 24px", borderRadius: "7px",
-              background: "#1d3557", color: "#ffffff",
+              background: "#1A0C4E", color: "#ffffff",
               border: "none", fontSize: "13px", fontWeight: 600,
               cursor: "pointer", fontFamily: "inherit",
             }}>

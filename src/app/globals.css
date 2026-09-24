@@ -3,32 +3,54 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* LICET palette, taken from licet.ac.in's Elementor kit:
+   indigo #1A0C4E (header, nav, dark bands), #41317E (hover),
+   gold #DCCAA0 / #F8D88D (rules, highlights),
+   cream #F3E5C4, parchment #EFE6D1, off-white #F9F7F5. */
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --radius: 0.625rem;
+  --licet-indigo: #1A0C4E;
+  --licet-indigo-2: #2A1A63;
+  --licet-violet: #41317E;
+  --licet-gold: #DCCAA0;
+  --licet-gold-bright: #F8D88D;
+  --licet-cream: #F3E5C4;
+  --licet-parchment: #EFE6D1;
+  --licet-paper: #F9F7F5;
+
+  --background: #F9F7F5;
+  --foreground: #1E1445;
+  --card: #FFFFFF;
+  --card-foreground: #1E1445;
+  --primary: #1A0C4E;
+  --primary-foreground: #FFFFFF;
+  --secondary: #EFE6D1;
+  --secondary-foreground: #1A0C4E;
+  --accent: #F3E5C4;
+  --accent-foreground: #1A0C4E;
+  --muted: #F3EEE3;
+  --muted-foreground: #6B6480;
+  --border: #E6DCC3;
+  --input: #DCD0B4;
+  --ring: #DCCAA0;
+  --destructive: #B3261E;
+  --radius: 0.375rem;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.145 0 0);
-  --primary: oklch(0.985 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --border: oklch(0.269 0 0);
-  --input: oklch(0.269 0 0);
+  --background: #120838;
+  --foreground: #F9F7F5;
+  --card: #1A0C4E;
+  --card-foreground: #F9F7F5;
+  --primary: #DCCAA0;
+  --primary-foreground: #1A0C4E;
+  --secondary: #2A1A63;
+  --secondary-foreground: #F3E5C4;
+  --accent: #2A1A63;
+  --accent-foreground: #F3E5C4;
+  --muted: #221457;
+  --muted-foreground: #B9B0CF;
+  --border: #33236E;
+  --input: #33236E;
 }
 
 @theme inline {
@@ -38,41 +60,98 @@
   --color-card-foreground: var(--card-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-destructive: var(--destructive);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
+  --color-licet-indigo: var(--licet-indigo);
+  --color-licet-violet: var(--licet-violet);
+  --color-licet-gold: var(--licet-gold);
+  --color-licet-cream: var(--licet-cream);
+  --color-licet-parchment: var(--licet-parchment);
+  --color-licet-paper: var(--licet-paper);
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+  --font-sans: var(--font-dm-sans), "DM Sans", system-ui, sans-serif;
+  /* The app used monospace for labels and figures; LICET's site has no mono face. */
+  --font-mono: var(--font-dm-sans), "DM Sans", system-ui, sans-serif;
+  --font-serif: var(--font-cormorant), "Cormorant Garamond", Georgia, serif;
+  --font-display: var(--font-outfit), "Outfit", system-ui, sans-serif;
 }
 
 @layer base {
   * { @apply border-border outline-ring/50; }
-  body { @apply bg-background text-foreground; }
+  body {
+    @apply bg-background text-foreground font-sans;
+    font-variant-numeric: tabular-nums;
+  }
+  h1, h2 {
+    font-family: var(--font-cormorant), "Cormorant Garamond", Georgia, serif;
+    color: var(--licet-indigo);
+    letter-spacing: 0;
+  }
+  h1 { font-weight: 600; }
+  h1.text-2xl, h1.text-xl { font-size: 2.125rem; line-height: 1.15; }
+  h2.text-lg, h2.text-xl { font-size: 1.5rem; line-height: 1.2; }
+  a { color: inherit; }
+  ::selection { background: var(--licet-gold); color: var(--licet-indigo); }
+}
+
+/* LICET section kicker: small, bold, widely tracked capitals ("A FOUR-PILLAR APPROACH"). */
+.eyebrow {
+  display: flex;
+  width: fit-content;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-dm-sans), "DM Sans", sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--licet-violet);
+  line-height: 1.5;
+}
+.eyebrow::before {
+  content: "";
+  width: 28px;
+  height: 2px;
+  background: var(--licet-gold);
+  flex-shrink: 0;
+}
+
+.licet-divider {
+  height: 2px;
+  width: 64px;
+  background: var(--licet-gold);
+  border: 0;
+  margin: 12px 0 0;
 }
 
 @keyframes float {
   0%, 100% { transform: translateY(0) scale(1); }
   50% { transform: translateY(-30px) scale(1.05); }
 }
-@keyframes dash {
-  from { stroke-dashoffset: 100; }
-  to { stroke-dashoffset: 0; }
-}
-@keyframes dashV {
-  from { stroke-dashoffset: 100; }
-  to { stroke-dashoffset: 0; }
-}
 @keyframes shimmer {
   0% { transform: translateX(-100%); }
   100% { transform: translateX(100%); }
 }
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
+@keyframes licet-fade {
+  from { opacity: 0; transform: translateY(-12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes licet-marquee {
+  from { transform: translateY(0); }
+  to   { transform: translateY(-50%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }
 
 /* Rich Editor Styles */
@@ -83,19 +162,68 @@
   font-size: 0.875rem;
   line-height: 1.6;
 }
-.ProseMirror h1 { font-size: 1.5rem; font-weight: 700; margin: 1rem 0 0.5rem; }
-.ProseMirror h2 { font-size: 1.25rem; font-weight: 600; margin: 0.875rem 0 0.4rem; }
+.ProseMirror h1 { font-size: 1.75rem; font-weight: 600; margin: 1rem 0 0.5rem; }
+.ProseMirror h2 { font-size: 1.4rem; font-weight: 600; margin: 0.875rem 0 0.4rem; }
 .ProseMirror h3 { font-size: 1.1rem; font-weight: 600; margin: 0.75rem 0 0.35rem; }
 .ProseMirror p  { margin: 0.4rem 0; }
 .ProseMirror ul, .ProseMirror ol { padding-left: 1.5rem; margin: 0.4rem 0; }
+.ProseMirror ul { list-style: disc; }
+.ProseMirror ol { list-style: decimal; }
 .ProseMirror li { margin: 0.2rem 0; }
-.ProseMirror hr { border: none; border-top: 1px solid hsl(var(--border)); margin: 1rem 0; }
+.ProseMirror hr { border: none; border-top: 1px solid var(--border); margin: 1rem 0; }
 .ProseMirror strong { font-weight: 700; }
 .ProseMirror em     { font-style: italic; }
 .ProseMirror u      { text-decoration: underline; }
 .ProseMirror s      { text-decoration: line-through; }
 .ProseMirror table  { border-collapse: collapse; width: 100%; margin: 0.75rem 0; }
-.ProseMirror th, .ProseMirror td { border: 1px solid hsl(var(--border)); padding: 6px 10px; font-size: 0.8rem; }
-.ProseMirror th { background: hsl(var(--accent)); font-weight: 600; }
-.ProseMirror blockquote { border-left: 3px solid hsl(var(--primary)); padding-left: 1rem; color: hsl(var(--muted-foreground)); margin: 0.5rem 0; }
-.ProseMirror p.is-editor-empty:first-child::before { content: attr(data-placeholder); color: hsl(var(--muted-foreground)); pointer-events: none; float: left; height: 0; }
+.ProseMirror th, .ProseMirror td { border: 1px solid var(--border); padding: 6px 10px; font-size: 0.8rem; }
+.ProseMirror th { background: var(--accent); font-weight: 600; }
+.ProseMirror blockquote { border-left: 3px solid var(--licet-gold); padding-left: 1rem; color: var(--muted-foreground); margin: 0.5rem 0; }
+.ProseMirror p.is-editor-empty:first-child::before { content: attr(data-placeholder); color: var(--muted-foreground); pointer-events: none; float: left; height: 0; }
+
+/* ── Dashboard polish: modern, formal LICET look for every module page ── */
+#scroll-container > div > .p-6 {
+  padding: 1.5rem 1.25rem 2.5rem;
+  max-width: 1400px;
+}
+@media (min-width: 768px) {
+  #scroll-container > div > .p-6 { padding: 1.5rem 2rem 3rem; }
+}
+#scroll-container .bg-card.border { border-radius: 0.75rem; box-shadow: 0 1px 2px rgb(26 12 78 / 0.04), 0 1px 3px rgb(26 12 78 / 0.03); }
+#scroll-container .bg-card.border.rounded,
+#scroll-container .bg-card.border.rounded-lg { border-radius: 0.75rem; }
+#scroll-container input:not([type=checkbox]):not([type=radio]):focus,
+#scroll-container select:focus,
+#scroll-container textarea:focus {
+  border-color: var(--licet-violet);
+  box-shadow: 0 0 0 3px rgb(220 202 160 / 0.45);
+  outline: none;
+}
+#scroll-container table { border-collapse: separate; border-spacing: 0; }
+#scroll-container thead th {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+  background: var(--licet-paper);
+}
+#scroll-container tbody tr:hover { background: rgb(243 229 196 / 0.28); }
+#scroll-container .bg-primary { background-color: var(--licet-indigo); }
+#scroll-container .bg-primary:hover { background-color: var(--licet-violet); }
+#scroll-container button { transition: background-color .15s, color .15s, border-color .15s, box-shadow .15s; }
+
+/* Status colours: the 500 shades are too light on white for formal documents. */
+#scroll-container .text-green-500, #scroll-container .text-emerald-500 { color: #15803d; }
+#scroll-container .text-red-500, #scroll-container .text-red-400 { color: #b91c1c; }
+#scroll-container .text-yellow-500, #scroll-container .text-amber-500 { color: #a16207; }
+#scroll-container .text-blue-500, #scroll-container .text-blue-400 { color: #1d4ed8; }
+#scroll-container .text-orange-500 { color: #c2410c; }
+#scroll-container .text-purple-500, #scroll-container .text-violet-500 { color: #6d28d9; }
+#scroll-container .text-cyan-500, #scroll-container .text-cyan-400 { color: #0e7490; }
+
+/* Tables: compact formal rows; short values and badges never wrap. */
+#scroll-container tbody td { padding-top: 0.7rem; padding-bottom: 0.7rem; vertical-align: middle; }
+#scroll-container thead th { padding-top: 0.7rem; padding-bottom: 0.7rem; white-space: nowrap; }
+#scroll-container td span, #scroll-container td button, #scroll-container td .font-mono { white-space: nowrap; }
+#scroll-container .overflow-x-auto { -webkit-overflow-scrolling: touch; }

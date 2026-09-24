@@ -196,9 +196,9 @@ export default function TimetablePage() {
     <div className="p-6 space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <span className="font-mono text-xs text-primary">// SECTION: TIMETABLE</span>
-          <h1 className="text-2xl font-bold tracking-tight mt-1">Class Timetable</h1>
-          <p className="font-mono text-xs text-muted-foreground mt-1">
+          <span className="eyebrow">TIMETABLE</span>
+          <h1 className="text-2xl font-semibold tracking-tight mt-2">Class Timetable</h1>
+          <p className="text-[13.5px] text-muted-foreground mt-1.5 max-w-3xl">
             3-part attendance system · Period 1 = 60 min · Periods 2–8 = 50 min each
           </p>
         </div>
@@ -206,14 +206,14 @@ export default function TimetablePage() {
           {saveMsg && <span className="font-mono text-xs text-green-500">{saveMsg}</span>}
           {(isHOD || isFaculty) && !editing && (
             <button onClick={() => setEditing(true)}
-              className="px-4 py-2 bg-primary text-primary-foreground font-mono text-xs rounded hover:bg-primary/90">
+              className="px-4 py-2 bg-licet-indigo text-white text-[13px] font-semibold rounded-md hover:bg-licet-violet shadow-sm">
               Edit Timetable
             </button>
           )}
           {(isHOD || isFaculty) && editing && (
             <div className="flex gap-2">
               <button onClick={() => setShowSatConfig(!showSatConfig)}
-                className="flex items-center gap-1 px-3 py-2 bg-accent font-mono text-xs rounded hover:bg-accent/80">
+                className="flex items-center gap-1 px-3 py-2 border border-border bg-white text-licet-indigo text-[13px] font-semibold rounded-md hover:bg-licet-cream/60">
                 <Settings className="w-3 h-3" /> Saturday
               </button>
               <button onClick={saveTimetable} disabled={saving}
@@ -231,7 +231,7 @@ export default function TimetablePage() {
         <div className="flex flex-wrap gap-2">
           {SECTIONS.map(s => (
             <button key={s} onClick={() => { setSection(s); setEditing(false) }}
-              className={`font-mono text-xs px-3 py-1.5 rounded border transition-all ${section === s ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:border-primary/50'}`}>
+              className={`text-[12.5px] font-medium px-3.5 py-1.5 rounded-full border transition-all ${section === s ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:border-primary/50'}`}>
               {s}
             </button>
           ))}
@@ -241,7 +241,7 @@ export default function TimetablePage() {
       {/* Saturday config */}
       {showSatConfig && editing && (
         <div className="bg-card border border-yellow-500/30 rounded-lg p-4 space-y-3">
-          <span className="font-mono text-xs text-yellow-500">// SATURDAY CONFIGURATION</span>
+          <span className="eyebrow">SATURDAY CONFIGURATION</span>
           <div className="flex flex-wrap items-center gap-6">
             <label className="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" checked={satConfig.enabled}
@@ -254,7 +254,7 @@ export default function TimetablePage() {
                 <div className="flex items-center gap-2">
                   <span className="font-mono text-xs text-muted-foreground">Follows:</span>
                   <select value={satConfig.followsDay} onChange={e => setSatConfig({...satConfig, followsDay: e.target.value})}
-                    className="h-8 px-2 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none">
+                    className="h-8 px-2 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none">
                     {WEEKDAYS.map(d => <option key={d} value={d}>{d}</option>)}
                   </select>
                   <span className="font-mono text-xs text-muted-foreground">timetable</span>
@@ -378,7 +378,7 @@ export default function TimetablePage() {
 
       {/* Period time reference */}
       <div className="bg-card border border-border rounded-lg p-4">
-        <span className="font-mono text-xs text-primary block mb-3">// PERIOD TIME REFERENCE</span>
+        <span className="eyebrow block mb-3">PERIOD TIME REFERENCE</span>
         <div className="grid grid-cols-3 gap-4">
           {PERIOD_PARTS.map(part => (
             <div key={part.part}>
