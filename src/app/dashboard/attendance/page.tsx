@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic"
 import { useEffect, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
+import { notifyAttendanceAbsent } from "@/lib/send-notification"
 import type { AuthUser } from "@/lib/auth"
 import type { Database } from "@/lib/supabase"
 import { Save, Loader2, Calendar, Download, Lock, Unlock, Clock } from "lucide-react"
@@ -200,9 +201,24 @@ export default function AttendancePage() {
     const { data: existing } = await (supabase.from('attendance_alerts' as any) as any)
       .select('id').eq('student_id', studentId).eq('date', date).eq('alert_type', alertType).limit(1)
     if (existing?.length) return
-    await (supabase.from('attendance_alerts' as any) as any).insert({
+    const { data: created } = await (supabase.from('attendance_alerts' as any) as any).insert({
       student_id: studentId, section, date, missed_parts: missedParts, alert_type: alertType,
+    }).select('id').single()
+    if (!created || alertType !== 'ABSENT_ON_NO_INFO') return
+
+    const { data: student } = await supabase.from('profiles')
+      .select('full_name, email').eq('id', studentId).single()
+    if (!student?.email) return
+    const sessions = missedParts.map(p => {
+      const part = PARTS.find(x => x.id === p)
+      return part ? `${part.label} (from ${part.time})` : `Session ${p}`
     })
+    const when = new Date(date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
+    const { success } = await notifyAttendanceAbsent(student.email, student.full_name, section, when, sessions)
+    if (success) {
+      await (supabase.from('attendance_alerts' as any) as any)
+        .update({ email_sent: true, email_sent_at: new Date().toISOString() }).eq('id', created.id)
+    }
   }
 
   const processAlerts = async (
@@ -489,9 +505,9 @@ export default function AttendancePage() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <span className="font-mono text-xs text-primary">// SECTION: ATTENDANCE</span>
-        <h1 className="text-2xl font-bold tracking-tight mt-1">Attendance</h1>
-        <p className="font-mono text-xs text-muted-foreground mt-1">
+        <span className="eyebrow">ATTENDANCE</span>
+        <h1 className="text-2xl font-semibold tracking-tight mt-2">Attendance</h1>
+        <p className="text-[13.5px] text-muted-foreground mt-1.5 max-w-3xl">
           3-part day attendance · Subject-wise attendance · Auto-link between both
         </p>
       </div>
@@ -507,14 +523,14 @@ export default function AttendancePage() {
               { label: 'Overall %',     value: attendance.length ? Math.round(attendance.filter(a => a.status==='PRESENT'||a.status==='LATE').length/attendance.length*100)+'%' : '—' },
             ].map(({ label, value }) => (
               <div key={label} className="bg-card border border-border rounded-lg p-4">
-                <p className="font-mono text-xs text-muted-foreground mb-1">{label}</p>
-                <p className="text-2xl font-bold">{value}</p>
+                <p className="text-[10.5px] font-bold tracking-[1.5px] uppercase text-muted-foreground mb-1">{label}</p>
+                <p className="font-serif text-[30px] font-semibold leading-none text-licet-indigo">{value}</p>
               </div>
             ))}
           </div>
           <div className="bg-card border border-border rounded-lg">
-            <div className="px-6 py-4 border-b border-border">
-              <span className="font-mono text-xs text-primary">// SUBJECTS — CURRENT SEMESTER</span>
+            <div className="px-6 py-4 border-b border-border bg-licet-paper/70 rounded-t-xl">
+              <span className="eyebrow">SUBJECTS — CURRENT SEMESTER</span>
             </div>
             {subjects.map(subject => {
               const pct = calcPct(subject.id)
@@ -576,7 +592,7 @@ export default function AttendancePage() {
                 <div className="space-y-1">
                   <label className="font-mono text-xs text-muted-foreground">Section</label>
                   <select value={selectedSection} onChange={e => { setSelectedSection(e.target.value); setSelectedSubject(null); setMarkingState({}) }}
-                    className="w-full h-10 px-3 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none">
+                    className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none">
                     <option value="">All sections</option>
                     {SECTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
@@ -588,7 +604,7 @@ export default function AttendancePage() {
                   <select value={selectedSubject?.id ?? ''} onChange={e => {
                     const s = subjects.find(s => s.id === e.target.value) ?? null
                     setSelectedSubject(s); setMarkingState({})
-                  }} className="w-full h-10 px-3 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none">
+                  }} className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none">
                     <option value="">Select subject...</option>
                     {subjects.map(s => <option key={s.id} value={s.id}>[{s.section}] {s.code} – {s.name}</option>)}
                   </select>
@@ -598,7 +614,7 @@ export default function AttendancePage() {
                 <label className="font-mono text-xs text-muted-foreground">Date</label>
                 <input type="date" value={selectedDate} max={new Date().toISOString().split('T')[0]}
                   onChange={e => { setSelectedDate(e.target.value); setMarkingState({}) }}
-                  className="w-full h-10 px-3 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none" />
+                  className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none" />
               </div>
             </div>
 
@@ -671,11 +687,11 @@ export default function AttendancePage() {
           {showLockModal && (
             <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
               <div className="bg-card border border-border rounded-lg p-6 w-full max-w-md space-y-4">
-                <span className="font-mono text-xs text-primary">// LOCK ATTENDANCE</span>
+                <span className="eyebrow">LOCK ATTENDANCE</span>
                 <h2 className="font-bold text-sm">{selectedSubject?.name}</h2>
                 <input type="text" value={lockReason} onChange={e => setLockReason(e.target.value)}
                   placeholder="Reason (optional)"
-                  className="w-full h-10 px-3 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none" />
+                  className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none" />
                 <div className="flex gap-3">
                   <button onClick={toggleLock} className="flex-1 h-10 bg-red-600 text-white font-mono text-xs rounded hover:bg-red-700 flex items-center justify-center gap-2">
                     <Lock className="w-3 h-3" /> Confirm Lock
@@ -690,11 +706,11 @@ export default function AttendancePage() {
           {showDayLockModal && (
             <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
               <div className="bg-card border border-border rounded-lg p-6 w-full max-w-md space-y-4">
-                <span className="font-mono text-xs text-primary">// LOCK DAY ATTENDANCE</span>
+                <span className="eyebrow">LOCK DAY ATTENDANCE</span>
                 <h2 className="font-bold text-sm">{selectedSubject?.section ?? selectedSection}</h2>
                 <input type="text" value={dayLockReason} onChange={e => setDayLockReason(e.target.value)}
                   placeholder="Reason (optional)"
-                  className="w-full h-10 px-3 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none" />
+                  className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none" />
                 <div className="flex gap-3">
                   <button onClick={toggleDayLock} className="flex-1 h-10 bg-red-600 text-white font-mono text-xs rounded hover:bg-red-700 flex items-center justify-center gap-2">
                     <Lock className="w-3 h-3" /> Confirm Lock
@@ -723,8 +739,8 @@ export default function AttendancePage() {
                 <div className="bg-card border border-border rounded-lg">
                   <div className="flex items-center justify-between px-6 py-4 border-b border-border">
                     <div>
-                      <span className="font-mono text-xs text-primary">// DAY ATTENDANCE — {PARTS.find(p => p.id === activePart)?.label}</span>
-                      <p className="font-mono text-xs text-muted-foreground mt-1">
+                      <span className="eyebrow">DAY ATTENDANCE — {PARTS.find(p => p.id === activePart)?.label}</span>
+                      <p className="text-[13.5px] text-muted-foreground mt-1.5 max-w-3xl">
                         {selectedSection || selectedSubject?.section} · {selectedDate} · {students.length} students
                       </p>
                     </div>
@@ -733,12 +749,12 @@ export default function AttendancePage() {
                         const next = { ...dayAttendance }
                         students.forEach(s => { if (!next[s.id]) next[s.id] = {}; next[s.id][activePart] = 'PRESENT' })
                         setDayAttendance(next)
-                      }} className="font-mono text-xs px-3 py-1.5 rounded border border-green-500/30 text-green-500 hover:bg-green-500/10">All Present</button>
+                      }} className="text-[12.5px] font-medium px-3.5 py-1.5 rounded-full border border-green-500/30 text-green-500 hover:bg-green-500/10">All Present</button>
                       <button onClick={() => {
                         const next = { ...dayAttendance }
                         students.forEach(s => { if (!next[s.id]) next[s.id] = {}; next[s.id][activePart] = 'ABSENT_ON_NO_INFO' })
                         setDayAttendance(next)
-                      }} className="font-mono text-xs px-3 py-1.5 rounded border border-red-500/30 text-red-500 hover:bg-red-500/10">All Absent</button>
+                      }} className="text-[12.5px] font-medium px-3.5 py-1.5 rounded-full border border-red-500/30 text-red-500 hover:bg-red-500/10">All Absent</button>
                     </div>
                   </div>
 
@@ -779,15 +795,15 @@ export default function AttendancePage() {
                   <div className="px-6 py-4 border-t border-border flex items-center justify-between">
                     <span className={`font-mono text-xs ${saveMsg.startsWith('Error') ? 'text-red-500' : 'text-green-500'}`}>{saveMsg}</span>
                     <button onClick={saveDayAttendance} disabled={saving || !students.length || dayLocked}
-                      className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground font-mono text-xs rounded hover:bg-primary/90 disabled:opacity-50">
+                      className="flex items-center gap-2 px-4 py-2 bg-licet-indigo text-white text-[13px] font-semibold rounded-md hover:bg-licet-violet shadow-sm disabled:opacity-50">
                       {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
                       {dayLocked ? 'Locked' : saving ? 'Saving...' : `Save Part ${activePart} Attendance`}
                     </button>
                   </div>
                 </div>
               ) : (
-                <div className="bg-card border border-border rounded-lg p-12 text-center">
-                  <Clock className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+                <div className="bg-card border border-dashed border-licet-gold/70 rounded-xl p-12 text-center">
+                  <Clock className="w-12 h-12 p-3 rounded-full bg-licet-cream text-licet-indigo mx-auto mb-3" />
                   <p className="font-mono text-sm text-muted-foreground">Select a section to mark day attendance</p>
                 </div>
               )}
@@ -800,16 +816,16 @@ export default function AttendancePage() {
               <div className="bg-card border border-border rounded-lg">
                 <div className="flex items-center justify-between px-6 py-4 border-b border-border">
                   <div>
-                    <span className="font-mono text-xs text-primary">// SUBJECT ATTENDANCE</span>
-                    <h2 className="font-bold text-sm mt-1">{selectedSubject.code} — {selectedSubject.name}</h2>
+                    <span className="eyebrow">SUBJECT ATTENDANCE</span>
+                    <h2 className="font-serif text-[19px] font-semibold text-licet-indigo mt-1">{selectedSubject.code} — {selectedSubject.name}</h2>
                     <p className="font-mono text-xs text-muted-foreground">{selectedSubject.section} · {selectedDate}</p>
                   </div>
                   {!isLocked && (
                     <div className="flex gap-2">
                       <button onClick={() => { const n: Record<string, Status4> = {}; students.forEach(s => n[s.id]='PRESENT'); setMarkingState(n) }}
-                        className="font-mono text-xs px-3 py-1.5 rounded border border-green-500/30 text-green-500 hover:bg-green-500/10">All Present</button>
+                        className="text-[12.5px] font-medium px-3.5 py-1.5 rounded-full border border-green-500/30 text-green-500 hover:bg-green-500/10">All Present</button>
                       <button onClick={() => { const n: Record<string, Status4> = {}; students.forEach(s => n[s.id]='ABSENT_ON_NO_INFO'); setMarkingState(n) }}
-                        className="font-mono text-xs px-3 py-1.5 rounded border border-red-500/30 text-red-500 hover:bg-red-500/10">All Absent</button>
+                        className="text-[12.5px] font-medium px-3.5 py-1.5 rounded-full border border-red-500/30 text-red-500 hover:bg-red-500/10">All Absent</button>
                     </div>
                   )}
                 </div>
@@ -852,15 +868,15 @@ export default function AttendancePage() {
                 <div className="px-6 py-4 border-t border-border flex items-center justify-between">
                   <span className={`font-mono text-xs ${saveMsg.startsWith('Error') ? 'text-red-500' : 'text-green-500'}`}>{saveMsg}</span>
                   <button onClick={saveAttendance} disabled={saving || isLocked || !students.length}
-                    className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground font-mono text-xs rounded hover:bg-primary/90 disabled:opacity-50">
+                    className="flex items-center gap-2 px-4 py-2 bg-licet-indigo text-white text-[13px] font-semibold rounded-md hover:bg-licet-violet shadow-sm disabled:opacity-50">
                     {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
                     {isLocked ? 'Locked' : saving ? 'Saving...' : 'Save Attendance'}
                   </button>
                 </div>
               </div>
             ) : (
-              <div className="bg-card border border-border rounded-lg p-12 text-center">
-                <Calendar className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+              <div className="bg-card border border-dashed border-licet-gold/70 rounded-xl p-12 text-center">
+                <Calendar className="w-12 h-12 p-3 rounded-full bg-licet-cream text-licet-indigo mx-auto mb-3" />
                 <p className="font-mono text-sm text-muted-foreground">Select a subject to mark attendance</p>
               </div>
             )

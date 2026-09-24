@@ -60,12 +60,14 @@ export default function NoticesPage() {
     // Filter expired
     query = query.or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
 
-    // Students only see notices relevant to them
+    // Only real notices — other audience prefixes store documents, timetables, feedback, etc.
     if (isStudent) {
       const section = (authUser.data as { section?: string })?.section ?? ''
       query = query.in('audience', ['ALL', 'STUDENTS', section])
     } else if (isFaculty) {
-      query = query.in('audience', ['ALL', 'PROFESSOR', ...SECTIONS])
+      query = query.in('audience', ['ALL', 'PROFESSOR', 'FACULTY', ...SECTIONS])
+    } else {
+      query = query.in('audience', ['ALL', 'STUDENTS', 'PROFESSOR', 'FACULTY', ...SECTIONS])
     }
 
     const { data } = await query
@@ -118,16 +120,16 @@ export default function NoticesPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <span className="font-mono text-xs text-primary">// SECTION: NOTICES</span>
-          <h1 className="text-2xl font-bold tracking-tight mt-1">Notices & Announcements</h1>
-          <p className="font-mono text-xs text-muted-foreground mt-1">
+          <span className="eyebrow">NOTICES</span>
+          <h1 className="text-2xl font-semibold tracking-tight mt-2">Notices & Announcements</h1>
+          <p className="text-[13.5px] text-muted-foreground mt-1.5 max-w-3xl">
             {isStudent ? 'Circulars and announcements from your department'
               : 'Post and manage departmental notices'}
           </p>
         </div>
         {canPost && (
           <button onClick={() => setShowForm(!showForm)}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground font-mono text-xs rounded hover:bg-primary/90 transition-colors">
+            className="flex items-center gap-2 px-4 py-2 bg-licet-indigo text-white text-[13px] font-semibold rounded-md hover:bg-licet-violet shadow-sm transition-colors">
             <Plus className="w-3 h-3" />
             Post Notice
           </button>
@@ -136,9 +138,9 @@ export default function NoticesPage() {
 
       {/* Post form */}
       {showForm && canPost && (
-        <div className="bg-card border border-primary/30 rounded-lg p-6 space-y-4">
+        <div className="bg-card border border-licet-gold border-t-[3px] rounded-xl p-6 shadow-md space-y-4">
           <div className="flex items-center justify-between">
-            <span className="font-mono text-xs text-primary">// NEW NOTICE</span>
+            <span className="eyebrow">NEW NOTICE</span>
             <button onClick={() => setShowForm(false)} className="text-muted-foreground hover:text-foreground">
               <X className="w-4 h-4" />
             </button>
@@ -148,19 +150,19 @@ export default function NoticesPage() {
               <label className="font-mono text-xs text-muted-foreground">Title *</label>
               <input value={form.title} onChange={e => setForm({...form, title: e.target.value})}
                 placeholder="Notice title..."
-                className="w-full h-10 px-3 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none" />
+                className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none" />
             </div>
             <div className="sm:col-span-2 space-y-1">
               <label className="font-mono text-xs text-muted-foreground">Body *</label>
               <textarea value={form.body} onChange={e => setForm({...form, body: e.target.value})}
                 placeholder="Notice content..."
                 rows={4}
-                className="w-full px-3 py-2 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none resize-none" />
+                className="w-full px-3 py-2 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none resize-none" />
             </div>
             <div className="space-y-1">
               <label className="font-mono text-xs text-muted-foreground">Audience</label>
               <select value={form.audience} onChange={e => setForm({...form, audience: e.target.value})}
-                className="w-full h-10 px-3 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none">
+                className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none">
                 <option value="ALL">All (Students + Faculty)</option>
                 <option value="PROFESSOR">Faculty Only</option>
                 <option value="STUDENTS">All Students</option>
@@ -171,7 +173,7 @@ export default function NoticesPage() {
               <label className="font-mono text-xs text-muted-foreground">Expires On (optional)</label>
               <input type="date" value={form.expires_at} onChange={e => setForm({...form, expires_at: e.target.value})}
                 min={new Date().toISOString().split('T')[0]}
-                className="w-full h-10 px-3 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none" />
+                className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none" />
             </div>
             <div className="sm:col-span-2 flex items-center gap-3">
               <button
@@ -181,7 +183,7 @@ export default function NoticesPage() {
                 {form.is_urgent ? 'Marked Urgent' : 'Mark as Urgent'}
               </button>
               <button onClick={postNotice} disabled={saving || !form.title || !form.body}
-                className="flex items-center gap-2 px-4 py-1.5 bg-primary text-primary-foreground font-mono text-xs rounded hover:bg-primary/90 disabled:opacity-50 transition-colors">
+                className="flex items-center gap-2 px-4 py-1.5 bg-licet-indigo text-white text-[13px] font-semibold rounded-md hover:bg-licet-violet shadow-sm disabled:opacity-50 transition-colors">
                 {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Bell className="w-3 h-3" />}
                 {saving ? 'Posting...' : 'Post Notice'}
               </button>
@@ -213,7 +215,7 @@ export default function NoticesPage() {
         <div className="flex flex-wrap gap-2">
           {['ALL', 'PROFESSOR', 'STUDENTS', ...SECTIONS].map(aud => (
             <button key={aud} onClick={() => setFilterAudience(aud)}
-              className={`font-mono text-xs px-3 py-1.5 rounded border transition-all ${filterAudience === aud ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:border-primary/50'}`}>
+              className={`text-[12.5px] font-medium px-3.5 py-1.5 rounded-full border transition-all ${filterAudience === aud ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:border-primary/50'}`}>
               {aud}
             </button>
           ))}
@@ -223,12 +225,12 @@ export default function NoticesPage() {
       {/* Notices list */}
       <div className="space-y-3">
         {loading ? (
-          <div className="bg-card border border-border rounded-lg p-12 text-center">
+          <div className="bg-card border border-dashed border-licet-gold/70 rounded-xl p-12 text-center">
             <Loader2 className="w-6 h-6 animate-spin mx-auto text-muted-foreground" />
           </div>
         ) : filtered.length === 0 ? (
-          <div className="bg-card border border-border rounded-lg p-12 text-center">
-            <Bell className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+          <div className="bg-card border border-dashed border-licet-gold/70 rounded-xl p-12 text-center">
+            <Bell className="w-12 h-12 p-3 rounded-full bg-licet-cream text-licet-indigo mx-auto mb-3" />
             <p className="font-mono text-sm text-muted-foreground">No notices yet</p>
           </div>
         ) : filtered.map(notice => {

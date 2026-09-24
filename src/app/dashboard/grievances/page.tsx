@@ -1,7 +1,7 @@
 "use client"
 
 export const dynamic = "force-dynamic"
-import { sendEmail, emailTemplates } from "@/lib/email"
+import { notifyGrievanceUpdate } from "@/lib/send-notification"
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
@@ -96,8 +96,7 @@ export default function GrievancesPage() {
       const { data: student } = await supabase.from('profiles')
         .select('full_name, email').eq('id', g.student_id).single()
       if (student?.email) {
-        const tmpl = emailTemplates.grievanceUpdate(student.full_name, g.subject_line, status, res)
-        await sendEmail({ to: student.email, ...tmpl })
+        await notifyGrievanceUpdate(student.email, student.full_name, g.subject_line, status, res)
       }
     }
     setExpanded(null)
@@ -116,15 +115,15 @@ export default function GrievancesPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <span className="font-mono text-xs text-primary">// SECTION: GRIEVANCES</span>
-          <h1 className="text-2xl font-bold tracking-tight mt-1">Grievances</h1>
-          <p className="font-mono text-xs text-muted-foreground mt-1">
+          <span className="eyebrow">GRIEVANCES</span>
+          <h1 className="text-2xl font-semibold tracking-tight mt-2">Grievances</h1>
+          <p className="text-[13.5px] text-muted-foreground mt-1.5 max-w-3xl">
             {isHOD ? 'Track and resolve student grievances' : 'Submit and track your grievances'}
           </p>
         </div>
         {isStudent && (
           <button onClick={() => setShowForm(!showForm)}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground font-mono text-xs rounded hover:bg-primary/90 transition-colors">
+            className="flex items-center gap-2 px-4 py-2 bg-licet-indigo text-white text-[13px] font-semibold rounded-md hover:bg-licet-violet shadow-sm transition-colors">
             <Plus className="w-3 h-3" /> New Grievance
           </button>
         )}
@@ -138,7 +137,7 @@ export default function GrievancesPage() {
           { label: 'Resolved',    value: stats.resolved,    color: 'text-green-500' },
         ].map(({ label, value, color }) => (
           <div key={label} className="bg-card border border-border rounded-lg p-4">
-            <p className="font-mono text-xs text-muted-foreground mb-1">{label}</p>
+            <p className="text-[10.5px] font-bold tracking-[1.5px] uppercase text-muted-foreground mb-1">{label}</p>
             <p className={`text-2xl font-bold ${color}`}>{value}</p>
           </div>
         ))}
@@ -146,9 +145,9 @@ export default function GrievancesPage() {
 
       {/* Submit form */}
       {showForm && isStudent && (
-        <div className="bg-card border border-primary/30 rounded-lg p-6 space-y-4">
+        <div className="bg-card border border-licet-gold border-t-[3px] rounded-xl p-6 shadow-md space-y-4">
           <div className="flex items-center justify-between">
-            <span className="font-mono text-xs text-primary">// NEW GRIEVANCE</span>
+            <span className="eyebrow">NEW GRIEVANCE</span>
             <button onClick={() => setShowForm(false)}><X className="w-4 h-4 text-muted-foreground" /></button>
           </div>
           <div className="space-y-4">
@@ -156,7 +155,7 @@ export default function GrievancesPage() {
               <div className="space-y-1">
                 <label className="font-mono text-xs text-muted-foreground">Category</label>
                 <select value={form.category} onChange={e => setForm({...form, category: e.target.value})}
-                  className="w-full h-10 px-3 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none">
+                  className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none">
                   {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
@@ -164,7 +163,7 @@ export default function GrievancesPage() {
                 <label className="font-mono text-xs text-muted-foreground">Subject *</label>
                 <input value={form.subject_line} onChange={e => setForm({...form, subject_line: e.target.value})}
                   placeholder="Brief subject of grievance"
-                  className="w-full h-10 px-3 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none" />
+                  className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none" />
               </div>
             </div>
             <div className="space-y-1">
@@ -172,11 +171,11 @@ export default function GrievancesPage() {
               <textarea value={form.description} onChange={e => setForm({...form, description: e.target.value})}
                 placeholder="Describe your grievance in detail..."
                 rows={4}
-                className="w-full px-3 py-2 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none resize-none" />
+                className="w-full px-3 py-2 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none resize-none" />
             </div>
           </div>
           <button onClick={submitGrievance} disabled={saving || !form.subject_line || !form.description}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground font-mono text-xs rounded hover:bg-primary/90 disabled:opacity-50">
+            className="flex items-center gap-2 px-4 py-2 bg-licet-indigo text-white text-[13px] font-semibold rounded-md hover:bg-licet-violet shadow-sm disabled:opacity-50">
             {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <AlertTriangle className="w-3 h-3" />}
             {saving ? 'Submitting...' : 'Submit Grievance'}
           </button>
@@ -186,7 +185,7 @@ export default function GrievancesPage() {
       {/* Grievances list */}
       <div className="space-y-3">
         {grievances.length === 0 ? (
-          <div className="bg-card border border-border rounded-lg p-12 text-center">
+          <div className="bg-card border border-dashed border-licet-gold/70 rounded-xl p-12 text-center">
             <CheckCircle2 className="w-8 h-8 text-green-500 mx-auto mb-3" />
             <p className="font-mono text-sm text-muted-foreground">No grievances — all is well!</p>
           </div>
@@ -198,7 +197,7 @@ export default function GrievancesPage() {
               <div className="flex items-start gap-4 p-5 cursor-pointer" onClick={() => setExpanded(isExp ? null : g.id)}>
                 <div className="flex-1 min-w-0">
                   {isHOD && applicant && (
-                    <p className="font-mono text-xs text-muted-foreground mb-1">
+                    <p className="text-[10.5px] font-bold tracking-[1.5px] uppercase text-muted-foreground mb-1">
                       {applicant.full_name} · {applicant.section}
                     </p>
                   )}
@@ -207,7 +206,7 @@ export default function GrievancesPage() {
                     <span className={`font-mono text-xs px-2 py-0.5 rounded border ${STATUS_COLORS[g.status] ?? ''}`}>{g.status}</span>
                   </div>
                   <p className="font-medium text-sm">{g.subject_line}</p>
-                  <p className="font-mono text-xs text-muted-foreground mt-1">
+                  <p className="text-[13.5px] text-muted-foreground mt-1.5 max-w-3xl">
                     {new Date(g.created_at).toLocaleDateString()}
                   </p>
                 </div>
@@ -227,7 +226,7 @@ export default function GrievancesPage() {
                       <textarea value={resolution} onChange={e => setResolution(e.target.value)}
                         placeholder="Add resolution or response..."
                         rows={2}
-                        className="w-full px-3 py-2 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none resize-none" />
+                        className="w-full px-3 py-2 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none resize-none" />
                       <div className="flex gap-2 flex-wrap">
                         {g.status === 'OPEN' && (
                           <button onClick={() => updateStatus(g.id, 'IN_PROGRESS')}
@@ -240,7 +239,7 @@ export default function GrievancesPage() {
                           <CheckCircle2 className="w-3 h-3" /> Mark Resolved
                         </button>
                         <button onClick={() => updateStatus(g.id, 'CLOSED', resolution)}
-                          className="flex items-center gap-1 px-3 py-1.5 bg-accent font-mono text-xs rounded hover:bg-accent/80">
+                          className="flex items-center gap-1 px-3 py-1.5 border border-border bg-white text-licet-indigo text-[13px] font-semibold rounded-md hover:bg-licet-cream/60">
                           Close
                         </button>
                       </div>

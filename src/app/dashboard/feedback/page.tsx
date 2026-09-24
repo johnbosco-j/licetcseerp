@@ -52,11 +52,12 @@ export default function FeedbackPage() {
   const [comment, setComment]   = useState('')
   const [saving, setSaving]     = useState(false)
   const [saved, setSaved]       = useState<string[]>([])
-  const [hodView, setHodView]   = useState<any[]>([])
+  const [summary, setSummary]   = useState<Record<string, { avg: number; count: number }>>({})
+  const [submitError, setSubmitError] = useState('')
   const [loadingStats, setLoadingStats] = useState(false)
   const [selectedSection, setSelectedSection] = useState('II CSE-A')
 
-  const isHOD     = authUser?.type === 'staff' && authUser.data.role === 'HOD'
+  const isStaff   = authUser?.type === 'staff'
   const isStudent = authUser?.type === 'student'
   const SECTIONS  = ['I CSE-A','I CSE-B','II CSE-A','II CSE-B','III CSE-A','III CSE-B','IV CSE-A','IV CSE-B']
   const currentSem = (s: string) => getActiveSemester(s)
@@ -71,6 +72,13 @@ export default function FeedbackPage() {
   }, [router])
 
   useEffect(() => {
+    if (!isStudent || !profile) return
+    supabase.from('announcements').select('audience')
+      .eq('created_by', profile.id).like('audience', 'FEEDBACK:%')
+      .then(({ data }) => { if (data) setSaved(data.map(r => r.audience.slice('FEEDBACK:'.length))) })
+  }, [isStudent, profile])
+
+  useEffect(() => {
     if (!authUser) return
     if (isStudent) {
       const section = (authUser.data as { section?: string })?.section ?? ''
@@ -81,32 +89,52 @@ export default function FeedbackPage() {
   }, [authUser, isStudent])
 
   useEffect(() => {
-    if (!isHOD) return
-    setLoadingStats(true)
-    supabase.from('subjects').select('*')
-      .eq('section', selectedSection).eq('semester', currentSem(selectedSection)).order('name')
-      .then(({ data }) => {
-        if (data) setSubjects(data)
-        setLoadingStats(false)
-      })
-  }, [isHOD, selectedSection])
+    if (!isStaff) return
+    let cancelled = false
+    const load = async () => {
+      setLoadingStats(true)
+      const { data: subs } = await supabase.from('subjects').select('*')
+        .eq('section', selectedSection).eq('semester', currentSem(selectedSection)).order('name')
+      const list = subs ?? []
+      const { data: rows } = list.length
+        ? await supabase.from('announcements').select('audience, body').in('audience', list.map(s => `FEEDBACK:${s.id}`))
+        : { data: [] }
+      const agg: Record<string, { total: number; count: number }> = {}
+      for (const r of rows ?? []) {
+        try {
+          const avg = Number(JSON.parse(r.body).avgRating)
+          if (!avg) continue
+          const id = r.audience.slice('FEEDBACK:'.length)
+          agg[id] = { total: (agg[id]?.total ?? 0) + avg, count: (agg[id]?.count ?? 0) + 1 }
+        } catch { /* skip malformed rows */ }
+      }
+      if (cancelled) return
+      setSubjects(list)
+      setSummary(Object.fromEntries(Object.entries(agg).map(([id, v]) => [id, { avg: v.total / v.count, count: v.count }])))
+      setLoadingStats(false)
+    }
+    load()
+    return () => { cancelled = true }
+  }, [isStaff, selectedSection])
 
   const submitFeedback = async () => {
     if (!profile || !selected || ratings.some(r => r === 0)) return
     setSaving(true)
+    setSubmitError('')
     const avgRating = ratings.reduce((a, b) => a + b, 0) / ratings.length
 
-    // Store as announcement with structured data (using announcements table as proxy)
-    await supabase.from('announcements').insert({
-      title: `FEEDBACK:${selected.id}:${profile.id}`,
+    const { error } = await supabase.from('announcements').insert({
+      title: `Course feedback — ${selected.code}`,
       body: JSON.stringify({ ratings, comment, avgRating }),
-      audience: 'PROFESSOR',
+      audience: `FEEDBACK:${selected.id}`,
       is_urgent: false,
       created_by: profile.id,
       department_id: '00000000-0000-0000-0000-000000000001'
     })
 
     setSaving(false)
+    // 23505 = already submitted for this subject
+    if (error && error.code !== '23505') { setSubmitError('Could not submit feedback. Please try again.'); return }
     setSaved(prev => [...prev, selected.id])
     setSelected(null)
     setRatings([0, 0, 0, 0, 0])
@@ -127,41 +155,50 @@ export default function FeedbackPage() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <span className="font-mono text-xs text-primary">// SECTION: FEEDBACK</span>
-        <h1 className="text-2xl font-bold tracking-tight mt-1">Course Feedback</h1>
-        <p className="font-mono text-xs text-muted-foreground mt-1">
+        <span className="eyebrow">FEEDBACK</span>
+        <h1 className="text-2xl font-semibold tracking-tight mt-2">Course Feedback</h1>
+        <p className="text-[13.5px] text-muted-foreground mt-1.5 max-w-3xl">
           {isStudent ? 'Rate your courses to help improve teaching quality'
             : 'View aggregated feedback for courses'}
         </p>
       </div>
 
-      {/* HOD view */}
-      {isHOD && (
+      {/* Staff summary */}
+      {isStaff && (
         <div className="space-y-4">
           <div className="flex flex-wrap gap-2">
             {SECTIONS.map(s => (
               <button key={s} onClick={() => setSelectedSection(s)}
-                className={`font-mono text-xs px-3 py-1.5 rounded border transition-all ${selectedSection === s ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:border-primary/50'}`}>
+                className={`text-[12.5px] font-medium px-3.5 py-1.5 rounded-full border transition-all ${selectedSection === s ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:border-primary/50'}`}>
                 {s}
               </button>
             ))}
           </div>
           <div className="bg-card border border-border rounded-lg">
-            <div className="px-6 py-4 border-b border-border">
-              <span className="font-mono text-xs text-primary">// FEEDBACK SUMMARY — {selectedSection}</span>
+            <div className="px-6 py-4 border-b border-border bg-licet-paper/70 rounded-t-xl">
+              <span className="eyebrow">FEEDBACK SUMMARY — {selectedSection}</span>
             </div>
-            {subjects.map(subject => (
-              <div key={subject.id} className="flex items-center gap-4 px-6 py-4 border-b border-border last:border-0">
-                <div className="flex-1 min-w-0">
-                  <p className="font-mono text-xs text-muted-foreground">{subject.code}</p>
-                  <p className="text-sm font-medium">{subject.name}</p>
+            {loadingStats && (
+              <div className="px-6 py-8 flex justify-center"><Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /></div>
+            )}
+            {!loadingStats && subjects.length === 0 && (
+              <p className="px-6 py-8 text-sm text-muted-foreground text-center">No subjects configured for {selectedSection} this semester.</p>
+            )}
+            {!loadingStats && subjects.map(subject => {
+              const s = summary[subject.id]
+              return (
+                <div key={subject.id} className="flex items-center gap-4 px-6 py-4 border-b border-border last:border-0">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-mono text-xs text-muted-foreground">{subject.code}</p>
+                    <p className="text-sm font-medium">{subject.name}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-mono text-xs text-muted-foreground">{s ? `${s.count} response${s.count === 1 ? '' : 's'}` : 'No responses yet'}</p>
+                    <p className="text-yellow-600 text-lg font-bold">★ {s ? s.avg.toFixed(2) : '—'}</p>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="font-mono text-xs text-muted-foreground">Avg Rating</p>
-                  <p className="text-yellow-500 text-lg font-bold">★ —</p>
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       )}
@@ -194,10 +231,10 @@ export default function FeedbackPage() {
               })}
             </div>
           ) : (
-            <div className="bg-card border border-primary/30 rounded-lg p-6 space-y-6">
+            <div className="bg-card border border-licet-gold border-t-[3px] rounded-xl p-6 shadow-md space-y-6">
               <div>
-                <span className="font-mono text-xs text-primary">// FEEDBACK FOR</span>
-                <h2 className="font-bold text-sm mt-1">{selected.name}</h2>
+                <span className="eyebrow">FEEDBACK FOR</span>
+                <h2 className="font-serif text-[19px] font-semibold text-licet-indigo mt-1">{selected.name}</h2>
                 <p className="font-mono text-xs text-muted-foreground">{selected.code}</p>
               </div>
 
@@ -217,21 +254,22 @@ export default function FeedbackPage() {
                 <textarea value={comment} onChange={e => setComment(e.target.value)}
                   placeholder="Any additional feedback..."
                   rows={3}
-                  className="w-full px-3 py-2 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none resize-none" />
+                  className="w-full px-3 py-2 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none resize-none" />
               </div>
 
               <div className="flex gap-3">
                 <button onClick={submitFeedback} disabled={saving || ratings.some(r => r === 0)}
-                  className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground font-mono text-xs rounded hover:bg-primary/90 disabled:opacity-50">
+                  className="flex items-center gap-2 px-4 py-2 bg-licet-indigo text-white text-[13px] font-semibold rounded-md hover:bg-licet-violet shadow-sm disabled:opacity-50">
                   {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Star className="w-3 h-3" />}
                   {saving ? 'Submitting...' : 'Submit Feedback'}
                 </button>
                 <button onClick={() => setSelected(null)}
-                  className="px-4 py-2 bg-accent font-mono text-xs rounded hover:bg-accent/80">
+                  className="px-4 py-2 border border-border bg-white text-licet-indigo text-[13px] font-semibold rounded-md hover:bg-licet-cream/60">
                   Cancel
                 </button>
               </div>
 
+              {submitError && <p className="font-mono text-xs text-red-600">{submitError}</p>}
               {ratings.some(r => r === 0) && (
                 <p className="font-mono text-xs text-muted-foreground">Please rate all questions before submitting</p>
               )}

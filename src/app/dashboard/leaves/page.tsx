@@ -1,7 +1,7 @@
 "use client"
 
 export const dynamic = "force-dynamic"
-import { sendEmail, emailTemplates } from "@/lib/email"
+import { notifyLeaveDecision } from "@/lib/send-notification"
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
@@ -103,12 +103,11 @@ export default function LeavesPage() {
       const { data: applicant } = await supabase.from('profiles')
         .select('full_name, email').eq('id', leave.applicant_id).single()
       if (applicant?.email) {
-        const tmpl = emailTemplates.leaveDecision(
-          applicant.full_name, status, leave.leave_type,
-          new Date(leave.from_date).toLocaleDateString(),
-          new Date(leave.to_date).toLocaleDateString()
+        await notifyLeaveDecision(
+          applicant.email, applicant.full_name, status, leave.leave_type,
+          new Date(leave.from_date).toLocaleDateString('en-IN'),
+          new Date(leave.to_date).toLocaleDateString('en-IN')
         )
-        await sendEmail({ to: applicant.email, ...tmpl })
       }
     }
     loadLeaves()
@@ -132,15 +131,15 @@ export default function LeavesPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <span className="font-mono text-xs text-primary">// SECTION: LEAVES</span>
-          <h1 className="text-2xl font-bold tracking-tight mt-1">Leave Management</h1>
-          <p className="font-mono text-xs text-muted-foreground mt-1">
+          <span className="eyebrow">LEAVES</span>
+          <h1 className="text-2xl font-semibold tracking-tight mt-2">Leave Management</h1>
+          <p className="text-[13.5px] text-muted-foreground mt-1.5 max-w-3xl">
             {isHOD ? 'Review and approve leave applications' : 'Apply and track your leave requests'}
           </p>
         </div>
         {!isHOD && (
           <button onClick={() => setShowForm(!showForm)}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground font-mono text-xs rounded hover:bg-primary/90 transition-colors">
+            className="flex items-center gap-2 px-4 py-2 bg-licet-indigo text-white text-[13px] font-semibold rounded-md hover:bg-licet-violet shadow-sm transition-colors">
             <Plus className="w-3 h-3" /> Apply Leave
           </button>
         )}
@@ -155,7 +154,7 @@ export default function LeavesPage() {
           { label: 'Rejected', value: stats.rejected, color: 'text-red-500' },
         ].map(({ label, value, color }) => (
           <div key={label} className="bg-card border border-border rounded-lg p-4">
-            <p className="font-mono text-xs text-muted-foreground mb-1">{label}</p>
+            <p className="text-[10.5px] font-bold tracking-[1.5px] uppercase text-muted-foreground mb-1">{label}</p>
             <p className={`text-2xl font-bold ${color}`}>{value}</p>
           </div>
         ))}
@@ -163,16 +162,16 @@ export default function LeavesPage() {
 
       {/* Apply form */}
       {showForm && (
-        <div className="bg-card border border-primary/30 rounded-lg p-6 space-y-4">
+        <div className="bg-card border border-licet-gold border-t-[3px] rounded-xl p-6 shadow-md space-y-4">
           <div className="flex items-center justify-between">
-            <span className="font-mono text-xs text-primary">// NEW LEAVE APPLICATION</span>
+            <span className="eyebrow">NEW LEAVE APPLICATION</span>
             <button onClick={() => setShowForm(false)}><X className="w-4 h-4 text-muted-foreground" /></button>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1">
               <label className="font-mono text-xs text-muted-foreground">Leave Type</label>
               <select value={form.leave_type} onChange={e => setForm({...form, leave_type: e.target.value})}
-                className="w-full h-10 px-3 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none">
+                className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none">
                 {LEAVE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
@@ -180,13 +179,13 @@ export default function LeavesPage() {
               <div className="space-y-1">
                 <label className="font-mono text-xs text-muted-foreground">From Date</label>
                 <input type="date" value={form.from_date} onChange={e => setForm({...form, from_date: e.target.value})}
-                  className="w-full h-10 px-3 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none" />
+                  className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none" />
               </div>
               <div className="space-y-1">
                 <label className="font-mono text-xs text-muted-foreground">To Date</label>
                 <input type="date" value={form.to_date} onChange={e => setForm({...form, to_date: e.target.value})}
                   min={form.from_date}
-                  className="w-full h-10 px-3 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none" />
+                  className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none" />
               </div>
             </div>
             <div className="sm:col-span-2 space-y-1">
@@ -194,7 +193,7 @@ export default function LeavesPage() {
               <textarea value={form.reason} onChange={e => setForm({...form, reason: e.target.value})}
                 placeholder="Describe the reason for leave..."
                 rows={3}
-                className="w-full px-3 py-2 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none resize-none" />
+                className="w-full px-3 py-2 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none resize-none" />
             </div>
             {form.from_date && form.to_date && (
               <div className="sm:col-span-2 font-mono text-xs text-muted-foreground">
@@ -204,12 +203,12 @@ export default function LeavesPage() {
           </div>
           <div className="flex gap-3">
             <button onClick={applyLeave} disabled={saving || !form.from_date || !form.to_date || !form.reason}
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground font-mono text-xs rounded hover:bg-primary/90 disabled:opacity-50 transition-colors">
+              className="flex items-center gap-2 px-4 py-2 bg-licet-indigo text-white text-[13px] font-semibold rounded-md hover:bg-licet-violet shadow-sm disabled:opacity-50 transition-colors">
               {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Heart className="w-3 h-3" />}
               {saving ? 'Submitting...' : 'Submit Application'}
             </button>
             <button onClick={() => setShowForm(false)}
-              className="px-4 py-2 bg-accent font-mono text-xs rounded hover:bg-accent/80 transition-colors">
+              className="px-4 py-2 border border-border bg-white text-licet-indigo text-[13px] font-semibold rounded-md hover:bg-licet-cream/60 transition-colors">
               Cancel
             </button>
           </div>
@@ -220,7 +219,7 @@ export default function LeavesPage() {
       <div className="flex gap-2">
         {(['ALL','PENDING','APPROVED','REJECTED'] as const).map(f => (
           <button key={f} onClick={() => setFilter(f)}
-            className={`font-mono text-xs px-3 py-1.5 rounded border transition-all ${filter === f ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:border-primary/50'}`}>
+            className={`text-[12.5px] font-medium px-3.5 py-1.5 rounded-full border transition-all ${filter === f ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:border-primary/50'}`}>
             {f} {f !== 'ALL' && `(${stats[f.toLowerCase() as keyof typeof stats]})`}
           </button>
         ))}
@@ -229,8 +228,8 @@ export default function LeavesPage() {
       {/* Leaves list */}
       <div className="space-y-3">
         {filtered.length === 0 ? (
-          <div className="bg-card border border-border rounded-lg p-12 text-center">
-            <Heart className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+          <div className="bg-card border border-dashed border-licet-gold/70 rounded-xl p-12 text-center">
+            <Heart className="w-12 h-12 p-3 rounded-full bg-licet-cream text-licet-indigo mx-auto mb-3" />
             <p className="font-mono text-sm text-muted-foreground">No leave applications found</p>
           </div>
         ) : filtered.map(leave => {
@@ -258,7 +257,7 @@ export default function LeavesPage() {
                     </span>
                     <span className="font-mono text-xs text-muted-foreground">{days} day(s)</span>
                   </div>
-                  <p className="font-mono text-xs text-muted-foreground mb-1">
+                  <p className="text-[10.5px] font-bold tracking-[1.5px] uppercase text-muted-foreground mb-1">
                     {new Date(leave.from_date).toLocaleDateString()} → {new Date(leave.to_date).toLocaleDateString()}
                   </p>
                   <p className="text-sm text-muted-foreground">{leave.reason}</p>

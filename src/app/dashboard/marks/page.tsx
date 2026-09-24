@@ -9,37 +9,17 @@ import type { AuthUser } from "@/lib/auth"
 import type { Database } from "@/lib/supabase"
 import { Save, Loader2, BarChart3, Download, Lock, Unlock } from "lucide-react"
 import * as XLSX from "xlsx"
+import { courseResult, courseType as regulationCourseType, markSplit, type MarkMap } from "@/lib/regulations"
 
 type Profile = Database['public']['Tables']['profiles']['Row']
 type Subject = Database['public']['Tables']['subjects']['Row']
 
-// Course type detection
+// Course type from the R2024 curriculum (projects use the lab-style CIA components)
 type CourseType = 'THEORY' | 'LAB_INTEGRATED' | 'LAB' | 'FORMATION'
 
 function getCourseType(subject: Subject): CourseType {
-  const code = subject.code
-  // Lab only courses end in 21,22 etc with 0 credits theory
-  if (code.startsWith('CS24321') || code.startsWith('CS24322') ||
-      code.startsWith('CS24421') || code.startsWith('CS24422') ||
-      code.startsWith('CY24121') || code.startsWith('PH24121') ||
-      code.startsWith('GE24121') || code.startsWith('GE24122') ||
-      code.startsWith('CS24221') || code.startsWith('CS24721') ||
-      code.startsWith('CS24821')) return 'LAB'
-  // Lab integrated (has both theory and lab periods)
-  if (code.startsWith('GE24112') || code.startsWith('GE24111') ||
-      code.startsWith('CS24311') || code.startsWith('CS24312') ||
-      code.startsWith('CS24411') || code.startsWith('CS24412') ||
-      code.startsWith('CS24413') || code.startsWith('CS24511') ||
-      code.startsWith('CS24512') || code.startsWith('CS24611') ||
-      code.startsWith('CS24612') || code.startsWith('CS24613') ||
-      code.startsWith('CS24711')) return 'LAB_INTEGRATED'
-  // Formation courses
-  if (code.startsWith('FC') || code.startsWith('BS24321') ||
-      code.startsWith('GE24503') || code.startsWith('BS24502') ||
-      code.startsWith('GE24622') || code.startsWith('CS24423') ||
-      code.startsWith('GE24621') || code.startsWith('CS24722') ||
-      code.startsWith('HS24321')) return 'FORMATION'
-  return 'THEORY'
+  const t = regulationCourseType(subject.code)
+  return t === 'PROJECT' ? 'LAB' : t
 }
 
 // CIA component structure per course type
@@ -72,29 +52,15 @@ interface MarksEntry {
   gradePoint?: number
 }
 
-// Grade computation
-function computeGrade(total: number): { grade: string; point: number } {
-  if (total >= 91) return { grade: 'O',  point: 10 }
-  if (total >= 81) return { grade: 'A+', point: 9 }
-  if (total >= 71) return { grade: 'A',  point: 8 }
-  if (total >= 61) return { grade: 'B+', point: 7 }
-  if (total >= 56) return { grade: 'B',  point: 6 }
-  if (total >= 50) return { grade: 'C',  point: 5 }
-  return { grade: 'U', point: 0 }
-}
-
-// Theory: CIA = (CIA1_total + CIA2_total) / 200 * 40
-function computeTheoryCIA(cia1: CIAComponents, cia2: CIAComponents): number {
-  const cia1Total = (cia1.ct / 30 * 20) + (cia1.cat / 60 * 40) + (cia1.activity / 10 * 40)
-  const cia2Total = (cia2.ct / 30 * 20) + (cia2.cat / 60 * 40) + (cia2.activity / 10 * 40)
-  return Math.round((cia1Total + cia2Total) / 2 / 100 * 40)
-}
-
-// Lab: CIA = (Lab1 + Lab2) / 200 * 60
-function computeLabCIA(lab1: LabCIAComponents, lab2: LabCIAComponents): number {
-  const lab1Total = (lab1.experiments + lab1.record + lab1.viva + lab1.labAssessment)
-  const lab2Total = (lab2.experiments + lab2.record + lab2.viva + lab2.labAssessment)
-  return Math.round((lab1Total + lab2Total) / 2 / 100 * 60)
+function entryToMarks(e: MarksEntry, includeSee: boolean): MarkMap {
+  const m: MarkMap = {
+    CIA1_CT: e.cia1.ct, CIA1_CAT: e.cia1.cat, CIA1_ACTIVITY: e.cia1.activity,
+    CIA2_CT: e.cia2.ct, CIA2_CAT: e.cia2.cat, CIA2_ACTIVITY: e.cia2.activity,
+    CIA1_EXP: e.labCia1?.experiments, CIA1_RECORD: e.labCia1?.record, CIA1_VIVA: e.labCia1?.viva, CIA1_LAB: e.labCia1?.labAssessment,
+    CIA2_EXP: e.labCia2?.experiments, CIA2_RECORD: e.labCia2?.record, CIA2_VIVA: e.labCia2?.viva, CIA2_LAB: e.labCia2?.labAssessment,
+  }
+  if (includeSee) m.SEM_END = e.semesterEnd
+  return m
 }
 
 const GRADE_COLORS: Record<string, string> = {
@@ -105,6 +71,14 @@ const GRADE_COLORS: Record<string, string> = {
   'B':  'text-yellow-500 bg-yellow-500/10',
   'C':  'text-orange-500 bg-orange-500/10',
   'U':  'text-red-500 bg-red-500/10',
+}
+
+const FIELD_EXAM_TYPE: Record<string, string> = {
+  'cia1.ct': 'CIA1_CT', 'cia1.cat': 'CIA1_CAT', 'cia1.activity': 'CIA1_ACTIVITY',
+  'cia2.ct': 'CIA2_CT', 'cia2.cat': 'CIA2_CAT', 'cia2.activity': 'CIA2_ACTIVITY',
+  'labCia1.experiments': 'CIA1_EXP', 'labCia1.record': 'CIA1_RECORD', 'labCia1.viva': 'CIA1_VIVA', 'labCia1.labAssessment': 'CIA1_LAB',
+  'labCia2.experiments': 'CIA2_EXP', 'labCia2.record': 'CIA2_RECORD', 'labCia2.viva': 'CIA2_VIVA', 'labCia2.labAssessment': 'CIA2_LAB',
+  semesterEnd: 'SEM_END',
 }
 
 const defaultCIA = (): CIAComponents => ({ ct: 0, cat: 0, activity: 0 })
@@ -119,6 +93,9 @@ export default function MarksPage() {
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null)
   const [selectedSection, setSelectedSection] = useState('')
   const [marksData, setMarksData]   = useState<Record<string, MarksEntry>>({})
+  // `${studentId}|${exam_type}` for marks that exist in the DB or were typed in;
+  // only these are saved, so untouched fields are not stored as zeros.
+  const [entered, setEntered]       = useState<Set<string>>(new Set())
   const [saving, setSaving]         = useState(false)
   const [saveMsg, setSaveMsg]       = useState('')
   const [isLocked, setIsLocked]     = useState(false)
@@ -195,10 +172,12 @@ export default function MarksPage() {
     if (!data) return
 
     const entries: Record<string, MarksEntry> = {}
+    setEntered(new Set(data.map(m => `${m.student_id}|${m.exam_type}`)))
     // Group by student
     students.forEach(s => {
       const studentMarks = data.filter(m => m.student_id === s.id)
-      const get = (type: string) => studentMarks.find(m => m.exam_type === type)?.marks_obtained ?? 0
+      // numeric columns arrive as strings ("45.00")
+      const get = (type: string) => Number(studentMarks.find(m => m.exam_type === type)?.marks_obtained ?? 0)
 
       const cia1: CIAComponents = {
         ct: get('CIA1_CT'), cat: get('CIA1_CAT'), activity: get('CIA1_ACTIVITY')
@@ -277,7 +256,8 @@ export default function MarksPage() {
         studentId: s.id, cia1: defaultCIA(), cia2: defaultCIA(),
         labCia1: defaultLabCIA(), labCia2: defaultLabCIA(), semesterEnd: 0
       }
-      const { internal, total, grade, gradePoint } = computeTotals(entry, ct)
+      const hasSee = marksRaw.some((m: any) => m.student_id === s.id && m.exam_type === 'SEM_END')
+      const { internal, total, grade, gradePoint } = computeTotals(entry, selectedSubject.code, hasSee)
       const row: any = {
         'S.No': idx + 1,
         'Student Name': s.full_name,
@@ -347,7 +327,7 @@ export default function MarksPage() {
     const rows = subs.map(sub => {
       const ct = getCourseType(sub)
       const subjectMarks = (marksRaw ?? []).filter((m: any) => m.subject_id === sub.id)
-      const get = (type: string) => subjectMarks.find((m: any) => m.exam_type === type)?.marks_obtained ?? 0
+      const get = (type: string) => Number(subjectMarks.find((m: any) => m.exam_type === type)?.marks_obtained ?? 0)
 
       const entry: MarksEntry = {
         studentId: student.id,
@@ -357,7 +337,8 @@ export default function MarksPage() {
         labCia2: { experiments: get('CIA2_EXP'), record: get('CIA2_RECORD'), viva: get('CIA2_VIVA'), labAssessment: get('CIA2_LAB') },
         semesterEnd: get('SEM_END')
       }
-      const { internal, total, grade, gradePoint } = computeTotals(entry, ct)
+      const hasSee = subjectMarks.some((m: any) => m.exam_type === 'SEM_END')
+      const { internal, total, grade, gradePoint } = computeTotals(entry, sub.code, hasSee)
       return {
         'Code': sub.code,
         'Subject': sub.name,
@@ -407,32 +388,15 @@ export default function MarksPage() {
     })
   }, [students, isStudent])
 
-  // Compute totals
-  const computeTotals = (entry: MarksEntry, courseType: CourseType) => {
-    if (courseType === 'THEORY') {
-      const internal = computeTheoryCIA(entry.cia1, entry.cia2)
-      const total = internal + entry.semesterEnd
-      const { grade, point: gradePoint } = computeGrade(total)
-      return { internal, total, grade, gradePoint }
-    }
-    if (courseType === 'LAB') {
-      const internal = computeLabCIA(entry.labCia1 ?? defaultLabCIA(), entry.labCia2 ?? defaultLabCIA())
-      const total = internal + entry.semesterEnd
-      const { grade, point: gradePoint } = computeGrade(total)
-      return { internal, total, grade, gradePoint }
-    }
-    if (courseType === 'LAB_INTEGRATED') {
-      const theoryInternal = computeTheoryCIA(entry.cia1, entry.cia2)
-      const labInternal = computeLabCIA(entry.labCia1 ?? defaultLabCIA(), entry.labCia2 ?? defaultLabCIA())
-      const internal = Math.round((theoryInternal + labInternal) / 2)
-      const total = internal + entry.semesterEnd
-      const { grade, point: gradePoint } = computeGrade(total)
-      return { internal, total, grade, gradePoint }
-    }
-    return { internal: 0, total: 0, grade: '—', gradePoint: 0 }
+  // Compute totals (Regulations 2024, clauses 11–13)
+  const computeTotals = (entry: MarksEntry, subjectCode: string, includeSee: boolean) => {
+    const r = courseResult(subjectCode, entryToMarks(entry, includeSee))
+    return { internal: r.internal, total: r.total, grade: r.grade, gradePoint: r.gradePoint, reason: r.reason, pending: r.pending }
   }
 
   const updateMark = (studentId: string, field: string, value: number) => {
+    const examType = FIELD_EXAM_TYPE[field]
+    if (examType) setEntered(prev => new Set(prev).add(`${studentId}|${examType}`))
     setMarksData(prev => {
       const entry = prev[studentId] ?? {
         studentId, cia1: defaultCIA(), cia2: defaultCIA(),
@@ -451,6 +415,13 @@ export default function MarksPage() {
       }
       return { ...prev, [studentId]: { ...entry, [field]: value } }
     })
+  }
+
+  const clearMark = (studentId: string, field: string) => {
+    const key = `${studentId}|${FIELD_EXAM_TYPE[field]}`
+    setEntered(prev => { const next = new Set(prev); next.delete(key); return next })
+    updateMark(studentId, field, 0)
+    setEntered(prev => { const next = new Set(prev); next.delete(key); return next })
   }
 
   const saveMarks = async () => {
@@ -490,17 +461,25 @@ export default function MarksPage() {
         records.push({ ...base, exam_type: 'CIA2_LAB',    marks_obtained: l2.labAssessment, max_marks: 25 })
       }
       records.push({ ...base, exam_type: 'SEM_END', marks_obtained: entry.semesterEnd,
-        max_marks: courseType === 'THEORY' ? 60 : courseType === 'LAB' ? 40 : 50 })
+        max_marks: courseType === 'FORMATION' ? 100 : markSplit(regulationCourseType(selectedSubject.code)).see })
     })
 
-    const { error } = await supabase.from('marks').upsert(records, {
+    const toSave = records.filter(r => entered.has(`${r.student_id}|${r.exam_type}`))
+    if (!toSave.length) {
+      setSaving(false)
+      setSaveMsg('Nothing to save — enter some marks first')
+      setTimeout(() => setSaveMsg(''), 4000)
+      return
+    }
+    const { error } = await supabase.from('marks').upsert(toSave, {
       onConflict: 'student_id,subject_id,exam_type'
     })
 
     setSaving(false)
     if (error) setSaveMsg('Error: ' + error.message)
     else {
-      setSaveMsg(`✓ Marks saved for ${students.length} students`)
+      const count = new Set(toSave.map(r => r.student_id)).size
+      setSaveMsg(`✓ Marks saved for ${count} student${count === 1 ? '' : 's'}`)
       setTimeout(() => setSaveMsg(''), 4000)
     }
   }
@@ -526,10 +505,10 @@ export default function MarksPage() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <span className="font-mono text-xs text-primary">// SECTION: MARKS</span>
-        <h1 className="text-2xl font-bold tracking-tight mt-1">Marks & Grades</h1>
-        <p className="font-mono text-xs text-muted-foreground mt-1">
-          LICET R2024 — CT(/30)→20% · CAT(/60)→40% · Activity(/10)→40% · CIA×2→40 · SEE→60
+        <span className="eyebrow">MARKS</span>
+        <h1 className="text-2xl font-semibold tracking-tight mt-2">Marks & Grades</h1>
+        <p className="text-[13.5px] text-muted-foreground mt-1.5 max-w-3xl">
+          LICET Regulations 2024 · Pass: total ≥ 50% with ≥ 45% in both internal and semester-end · Theory 40/60 · Lab-integrated 50/50 · Lab 60/40 · Formation 100 internal
         </p>
       </div>
 
@@ -537,29 +516,20 @@ export default function MarksPage() {
       {isStudent && (
         <div className="space-y-4">
           <div className="bg-card border border-border rounded-lg">
-            <div className="px-6 py-4 border-b border-border">
-              <span className="font-mono text-xs text-primary">// YOUR MARKS</span>
-              <h2 className="font-bold text-sm mt-1">Current Semester Performance</h2>
+            <div className="px-6 py-4 border-b border-border bg-licet-paper/70 rounded-t-xl">
+              <span className="eyebrow">YOUR MARKS</span>
+              <h2 className="font-serif text-[19px] font-semibold text-licet-indigo mt-1">Current Semester Performance</h2>
             </div>
             {subjects.length === 0 ? (
               <div className="px-6 py-12 text-center font-mono text-sm text-muted-foreground">No subjects found</div>
             ) : subjects.map(subject => {
               const sm = myMarks[subject.id] ?? {}
               const ct = getCourseType(subject)
-              let internal = 0, semEnd = sm['SEM_END'] ?? 0, total = 0
-
-              if (ct === 'THEORY') {
-                const cia1: CIAComponents = { ct: sm['CIA1_CT']??0, cat: sm['CIA1_CAT']??0, activity: sm['CIA1_ACTIVITY']??0 }
-                const cia2: CIAComponents = { ct: sm['CIA2_CT']??0, cat: sm['CIA2_CAT']??0, activity: sm['CIA2_ACTIVITY']??0 }
-                internal = computeTheoryCIA(cia1, cia2)
-              } else if (ct === 'LAB') {
-                const l1: LabCIAComponents = { experiments: sm['CIA1_EXP']??0, record: sm['CIA1_RECORD']??0, viva: sm['CIA1_VIVA']??0, labAssessment: sm['CIA1_LAB']??0 }
-                const l2: LabCIAComponents = { experiments: sm['CIA2_EXP']??0, record: sm['CIA2_RECORD']??0, viva: sm['CIA2_VIVA']??0, labAssessment: sm['CIA2_LAB']??0 }
-                internal = computeLabCIA(l1, l2)
-              }
-              total = internal + semEnd
+              const result = courseResult(subject.code, sm)
+              const { internal, total, grade } = result
+              const semEnd = result.see ?? 0
+              const split = markSplit(regulationCourseType(subject.code))
               const hasData = Object.keys(sm).length > 0
-              const { grade } = computeGrade(total)
 
               return (
                 <div key={subject.id} className="flex items-center gap-4 px-6 py-4 border-b border-border last:border-0 hover:bg-accent/30 transition-colors">
@@ -572,11 +542,11 @@ export default function MarksPage() {
                     <div className="flex items-center gap-4 text-right">
                       <div>
                         <p className="font-mono text-xs text-muted-foreground">Internal</p>
-                        <p className="font-mono text-sm font-bold">{internal}/{ct==='LAB'?60:40}</p>
+                        <p className="font-mono text-sm font-bold">{internal}/{split.internal}</p>
                       </div>
                       <div>
                         <p className="font-mono text-xs text-muted-foreground">SEE</p>
-                        <p className="font-mono text-sm font-bold">{semEnd}/{ct==='THEORY'?60:ct==='LAB'?40:50}</p>
+                        <p className="font-mono text-sm font-bold">{result.see === null ? '—' : semEnd}/{split.see}</p>
                       </div>
                       <div>
                         <p className="font-mono text-xs text-muted-foreground">Total</p>
@@ -604,7 +574,7 @@ export default function MarksPage() {
                 <div className="space-y-1">
                   <label className="font-mono text-xs text-muted-foreground">Section</label>
                   <select value={selectedSection} onChange={e => { setSelectedSection(e.target.value); setSelectedSubject(null) }}
-                    className="w-full h-10 px-3 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none">
+                    className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none">
                     <option value="">All sections</option>
                     {SECTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
@@ -615,7 +585,7 @@ export default function MarksPage() {
                 <select value={selectedSubject?.id ?? ''} onChange={e => {
                   const s = subjects.find(s => s.id === e.target.value) ?? null
                   setSelectedSubject(s); setMarksData({})
-                }} className="w-full h-10 px-3 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none">
+                }} className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none">
                   <option value="">Select subject...</option>
                   {subjects.map(s => <option key={s.id} value={s.id}>[{s.section}] {s.code} – {s.name}</option>)}
                 </select>
@@ -628,7 +598,7 @@ export default function MarksPage() {
                 <div className="space-y-1 flex-1 min-w-[200px]">
                   <label className="font-mono text-xs text-muted-foreground">Student-wise report</label>
                   <select value={exportStudentId} onChange={e => setExportStudentId(e.target.value)}
-                    className="w-full h-10 px-3 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none">
+                    className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none">
                     <option value="">Select student...</option>
                     {students.map(s => <option key={s.id} value={s.id}>{s.full_name} ({(s as any).roll_number ?? s.email})</option>)}
                   </select>
@@ -669,15 +639,15 @@ export default function MarksPage() {
             <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
               <div className="bg-card border border-border rounded-lg p-6 w-full max-w-md space-y-4">
                 <div>
-                  <span className="font-mono text-xs text-primary">// LOCK MARKS</span>
-                  <h2 className="font-bold text-sm mt-1">Lock {selectedSubject?.name}</h2>
-                  <p className="font-mono text-xs text-muted-foreground mt-1">Faculty cannot edit marks after locking.</p>
+                  <span className="eyebrow">LOCK MARKS</span>
+                  <h2 className="font-serif text-[19px] font-semibold text-licet-indigo mt-1">Lock {selectedSubject?.name}</h2>
+                  <p className="text-[13.5px] text-muted-foreground mt-1.5 max-w-3xl">Faculty cannot edit marks after locking.</p>
                 </div>
                 <div className="space-y-1">
                   <label className="font-mono text-xs text-muted-foreground">Reason (optional)</label>
                   <input type="text" value={lockReason} onChange={e => setLockReason(e.target.value)}
                     placeholder="e.g. CIA 1 finalized"
-                    className="w-full h-10 px-3 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none" />
+                    className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none" />
                 </div>
                 <div className="flex gap-3">
                   <button onClick={toggleLock}
@@ -685,7 +655,7 @@ export default function MarksPage() {
                     <Lock className="w-3 h-3" /> Confirm Lock
                   </button>
                   <button onClick={() => setShowLockModal(false)}
-                    className="flex-1 h-10 bg-accent font-mono text-xs rounded hover:bg-accent/80">
+                    className="flex-1 h-10 border border-border bg-white text-licet-indigo text-[13px] font-semibold rounded-md hover:bg-licet-cream/60">
                     Cancel
                   </button>
                 </div>
@@ -696,11 +666,11 @@ export default function MarksPage() {
           {selectedSubject && (
             <div className="bg-card border border-border rounded-lg">
               {/* Header */}
-              <div className="px-6 py-4 border-b border-border">
+              <div className="px-6 py-4 border-b border-border bg-licet-paper/70 rounded-t-xl">
                 <div className="flex items-start justify-between">
                   <div>
-                    <span className="font-mono text-xs text-primary">// MARKS ENTRY</span>
-                    <h2 className="font-bold text-sm mt-1">{selectedSubject.code} — {selectedSubject.name}</h2>
+                    <span className="eyebrow">MARKS ENTRY</span>
+                    <h2 className="font-serif text-[19px] font-semibold text-licet-indigo mt-1">{selectedSubject.code} — {selectedSubject.name}</h2>
                     <p className="font-mono text-xs text-muted-foreground">
                       {selectedSubject.section} · {courseType} · {students.length} students
                     </p>
@@ -731,7 +701,7 @@ export default function MarksPage() {
                       <>
                         <span className="w-16 text-center">CT /30</span>
                         <span className="w-16 text-center">CAT /60</span>
-                        <span className="w-16 text-center">Act /10</span>
+                        {courseType === 'THEORY' && <span className="w-16 text-center">Act /10</span>}
                         <span className="w-16 text-center">→/100</span>
                       </>
                     )}
@@ -747,7 +717,7 @@ export default function MarksPage() {
                   </>
                 ) : activeTab === 'sem' ? (
                   <span className="w-24 text-center">
-                    SEE /{courseType === 'THEORY' ? 60 : courseType === 'LAB' ? 40 : 50}
+                    {courseType === 'FORMATION' ? 'Assessment /100' : `SEE /${markSplit(regulationCourseType(selectedSubject?.code)).see}`}
                   </span>
                 ) : (
                   <>
@@ -769,19 +739,25 @@ export default function MarksPage() {
                     studentId: student.id, cia1: defaultCIA(), cia2: defaultCIA(),
                     labCia1: defaultLabCIA(), labCia2: defaultLabCIA(), semesterEnd: 0
                   }
-                  const { internal, total, grade, gradePoint } = computeTotals(entry, courseType)
+                  const { internal, total, grade, gradePoint, reason } = computeTotals(entry, selectedSubject!.code, entered.has(`${student.id}|SEM_END`))
 
                   const cia = activeTab === 'cia1' ? entry.cia1 : entry.cia2
                   const labCia = activeTab === 'cia1' ? (entry.labCia1 ?? defaultLabCIA()) : (entry.labCia2 ?? defaultLabCIA())
                   const ciaPrefix = activeTab === 'cia1' ? 'cia1' : 'cia2'
                   const labPrefix = activeTab === 'cia1' ? 'labCia1' : 'labCia2'
 
-                  const ciaSubtotal = Math.round((cia.ct / 30 * 20) + (cia.cat / 60 * 40) + (cia.activity / 10 * 40))
+                  // Table 6 (theory: CT 20 + CAT 40 + activity 40); Table 8 (lab-integrated: CT + CAT only)
+                  const ciaSubtotal = courseType === 'LAB_INTEGRATED'
+                    ? Math.round(((cia.ct / 30 * 20) + (cia.cat / 60 * 40)) / 60 * 100)
+                    : Math.round((cia.ct / 30 * 20) + (cia.cat / 60 * 40) + (cia.activity / 10 * 40))
                   const labSubtotal = labCia.experiments + labCia.record + labCia.viva + labCia.labAssessment
 
                   const numInput = (field: string, value: number, max: number) => (
-                    <input type="number" min={0} max={max} value={value || ''}
-                      onChange={e => updateMark(student.id, field, Math.min(max, Math.max(0, Number(e.target.value))))}
+                    <input type="number" min={0} max={max} step="0.5"
+                      value={entered.has(`${student.id}|${FIELD_EXAM_TYPE[field]}`) ? value : ''}
+                      onChange={e => e.target.value === ''
+                        ? clearMark(student.id, field)
+                        : updateMark(student.id, field, Math.min(max, Math.max(0, Number(e.target.value))))}
                       className="w-full h-7 px-1 bg-background border border-border rounded font-mono text-xs text-center focus:border-primary focus:outline-none"
                       placeholder="0"
                     />
@@ -800,7 +776,7 @@ export default function MarksPage() {
                             <>
                               <div className="w-16">{numInput(`${ciaPrefix}.ct`, cia.ct, 30)}</div>
                               <div className="w-16">{numInput(`${ciaPrefix}.cat`, cia.cat, 60)}</div>
-                              <div className="w-16">{numInput(`${ciaPrefix}.activity`, cia.activity, 10)}</div>
+                              {courseType === 'THEORY' && <div className="w-16">{numInput(`${ciaPrefix}.activity`, cia.activity, 10)}</div>}
                               <div className="w-16 text-center font-mono text-xs font-bold text-primary">{ciaSubtotal}</div>
                             </>
                           )}
@@ -819,7 +795,7 @@ export default function MarksPage() {
                       {activeTab === 'sem' && (
                         <div className="w-24">
                           {numInput('semesterEnd', entry.semesterEnd,
-                            courseType === 'THEORY' ? 60 : courseType === 'LAB' ? 40 : 50)}
+                            courseType === 'FORMATION' ? 100 : markSplit(regulationCourseType(selectedSubject?.code)).see)}
                         </div>
                       )}
 
@@ -828,7 +804,7 @@ export default function MarksPage() {
                           <div className="w-16 text-center font-mono text-xs font-bold">{internal}</div>
                           <div className="w-16 text-center font-mono text-xs">{entry.semesterEnd}</div>
                           <div className="w-16 text-center font-mono text-xs font-bold">{total}</div>
-                          <div className={`w-12 text-center font-mono text-xs font-bold px-1 py-0.5 rounded ${GRADE_COLORS[grade] ?? ''}`}>{grade}</div>
+                          <div title={reason} className={`w-12 text-center font-mono text-xs font-bold px-1 py-0.5 rounded ${GRADE_COLORS[grade] ?? ''}`}>{grade}</div>
                           <div className="w-12 text-center font-mono text-xs">{gradePoint}</div>
                         </>
                       )}
@@ -844,13 +820,13 @@ export default function MarksPage() {
                   {activeTab === 'summary' && students.length > 0 && (
                     <div className="font-mono text-xs text-muted-foreground">
                       Class avg: {Math.round(
-                        students.reduce((sum, s) => sum + (computeTotals(marksData[s.id] ?? { studentId: s.id, cia1: defaultCIA(), cia2: defaultCIA(), labCia1: defaultLabCIA(), labCia2: defaultLabCIA(), semesterEnd: 0 }, courseType).total), 0) / students.length
+                        students.reduce((sum, s) => sum + (computeTotals(marksData[s.id] ?? { studentId: s.id, cia1: defaultCIA(), cia2: defaultCIA(), labCia1: defaultLabCIA(), labCia2: defaultLabCIA(), semesterEnd: 0 }, selectedSubject!.code, entered.has(`${s.id}|SEM_END`)).total), 0) / students.length
                       )}/100
                     </div>
                   )}
                 </div>
                 <button onClick={saveMarks} disabled={saving || !students.length || isLocked}
-                  className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground font-mono text-xs rounded hover:bg-primary/90 disabled:opacity-50 transition-colors">
+                  className="flex items-center gap-2 px-4 py-2 bg-licet-indigo text-white text-[13px] font-semibold rounded-md hover:bg-licet-violet shadow-sm disabled:opacity-50 transition-colors">
                   {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
                   {isLocked ? 'Locked' : saving ? 'Saving...' : 'Save Marks'}
                 </button>
@@ -859,8 +835,8 @@ export default function MarksPage() {
           )}
 
           {!selectedSubject && (
-            <div className="bg-card border border-border rounded-lg p-12 text-center">
-              <BarChart3 className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+            <div className="bg-card border border-dashed border-licet-gold/70 rounded-xl p-12 text-center">
+              <BarChart3 className="w-12 h-12 p-3 rounded-full bg-licet-cream text-licet-indigo mx-auto mb-3" />
               <p className="font-mono text-sm text-muted-foreground">Select a subject to enter marks</p>
             </div>
           )}
