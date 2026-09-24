@@ -118,11 +118,16 @@ export default function AnalyticsPage() {
   }, [isHOD, isFaculty, activeTab])
 
   const runAnalytics = async () => {
-    if (!students.length) return
     setLoading(true)
     setAnalytics([])
     const results: StudentAnalytics[] = []
     try {
+      // Fetch the selected section here so a quick section change can't run on the previous list.
+      const { data: students, error } = await supabase.from('profiles').select('*')
+        .eq('role', 'STUDENT').eq('section', section).eq('is_active', true).order('full_name')
+      if (error) throw error
+      if (!students?.length) { setLoading(false); return }
+      setStudents(students)
       const stats = await loadStudentStats(students.map(s => s.id))
       for (const student of students) {
         const st = stats[student.id]

@@ -1,0 +1,319 @@
+"use client"
+
+import { useEffect, useState } from "react"
+import Link from "next/link"
+import {
+  BookOpen, Users, CalendarClock, ClipboardCheck, Award, Heart, Lock, ShieldAlert, BellRing, KeyRound,
+  CalendarDays, Bell, AlertTriangle, UserCheck, Clock3,
+} from "lucide-react"
+import { supabase } from "@/lib/supabase"
+import { courseType } from "@/lib/regulations"
+import {
+  SECTIONS, currentSemester, semesterStart, dayPhase, loadTodaysTimetables, loadSectionAttendance,
+  loadStudentAttendance, loadUpcomingEvents, loadNotices, timeAgo, fmtDate,
+  type SectionAttendance, type StudentAttendance, type EventItem, type NoticeItem,
+} from "@/lib/dashboard"
+import { academicYear, semesterTerm } from "@/lib/utils"
+import { Hero, HeroChip, HeroPanel, Kpi, KpiSkeleton, Panel, PanelEmpty, Bar, AttPct, Pill, Initials, ListRow, Schedule, phaseLabel } from "./widgets"
+
+type Subject = { id: string; code: string; name: string; semester: number; section: string; credits: number }
+type Profile = { id: string; full_name: string; advisor_section: string | null }
+type Leave = { id: string; leave_type: string; from_date: string; to_date: string; status: string; created_at: string }
+
+const TYPE_LABEL: Record<string, string> = { THEORY: 'Theory', LAB_INTEGRATED: 'Theory + Lab', LAB: 'Laboratory', PROJECT: 'Project', FORMATION: 'Formation' }
+
+interface FacultyData {
+  subjects: (Subject & { strength: number; graded: number; assessments: string[]; locked: string[] })[]
+  todayItems: { period: number; code: string; name: string; meta: string }[]
+  attendanceRecords: number
+  advisor: null | {
+    section: string; strength: number; att: SectionAttendance | undefined; low: StudentAttendance[]
+    alerts: number; mustChange: number
+  }
+  leaves: Leave[]
+  notices: NoticeItem[]
+  events: EventItem[]
+}
+
+async function loadFaculty(me: Profile): Promise<FacultyData> {
+  const { data: allMine } = await supabase.from('subjects').select('id, code, name, semester, section, credits').eq('faculty_id', me.id)
+  const subjects = (allMine ?? []).filter(s => SECTIONS.includes(s.section) && s.semester === currentSemester(s.section)) as Subject[]
+  const ids = subjects.map(s => s.id)
+  const sections = [...new Set([...subjects.map(s => s.section), ...(me.advisor_section ? [me.advisor_section] : [])])]
+  const head = { count: 'exact' as const, head: true }
+
+  const [studentsRes, marksRes, locksRes, todayTT, attRes, leavesRes, notices, events, advisorAtt, advisorLow, alertsRes, mustRes] = await Promise.all([
+    sections.length ? supabase.from('profiles').select('section').eq('role', 'STUDENT').eq('is_active', true).in('section', sections).range(0, 4999) : Promise.resolve({ data: [] as { section: string | null }[] }),
+    ids.length ? supabase.from('marks').select('subject_id, student_id, exam_type').in('subject_id', ids).range(0, 19999) : Promise.resolve({ data: [] as { subject_id: string; student_id: string; exam_type: string }[] }),
+    ids.length ? supabase.from('subject_locks').select('subject_id, lock_type').in('subject_id', ids) : Promise.resolve({ data: [] as { subject_id: string; lock_type: string }[] }),
+    loadTodaysTimetables(SECTIONS),
+    supabase.from('day_attendance').select('id', head).eq('marked_by', me.id).gte('date', semesterStart()),
+    supabase.from('leaves').select('id, leave_type, from_date, to_date, status, created_at').eq('applicant_id', me.id).order('created_at', { ascending: false }).limit(4),
+    loadNotices(['ALL', 'PROFESSOR', 'FACULTY', ...SECTIONS], 5),
+    loadUpcomingEvents(4),
+    me.advisor_section ? loadSectionAttendance() : Promise.resolve({} as Record<string, SectionAttendance>),
+    me.advisor_section ? loadStudentAttendance(me.advisor_section) : Promise.resolve([] as StudentAttendance[]),
+    me.advisor_section ? supabase.from('attendance_alerts').select('id', head).eq('section', me.advisor_section).is('cleared_at', null) : Promise.resolve({ count: 0 }),
+    me.advisor_section ? supabase.from('profiles').select('id', head).eq('role', 'STUDENT').eq('section', me.advisor_section).eq('must_change_password', true) : Promise.resolve({ count: 0 }),
+  ])
+
+  const strength: Record<string, number> = {}
+  for (const r of studentsRes.data ?? []) if (r.section) strength[r.section] = (strength[r.section] ?? 0) + 1
+
+  const marks = marksRes.data ?? []
+  const todayItems = Object.entries(todayTT).flatMap(([section, slots]) =>
+    slots.filter(x => ids.includes(x.slot.subjectId)).map(x => ({ period: x.period.no, code: x.slot.subjectCode, name: x.slot.subjectName, meta: section }))
+  ).sort((a, b) => a.period - b.period)
+
+  return {
+    subjects: subjects.map(s => {
+      const m = marks.filter(x => x.subject_id === s.id)
+      return {
+        ...s,
+        strength: strength[s.section] ?? 0,
+        graded: new Set(m.map(x => x.student_id)).size,
+        assessments: [...new Set(m.map(x => x.exam_type))],
+        locked: (locksRes.data ?? []).filter(l => l.subject_id === s.id).map(l => l.lock_type),
+      }
+    }).sort((a, b) => a.section.localeCompare(b.section) || a.code.localeCompare(b.code)),
+    todayItems,
+    attendanceRecords: attRes.count ?? 0,
+    advisor: me.advisor_section ? {
+      section: me.advisor_section,
+      strength: strength[me.advisor_section] ?? 0,
+      att: advisorAtt[me.advisor_section],
+      low: advisorLow.filter(s => s.sessions > 0 && s.pct < 75).sort((a, b) => a.pct - b.pct),
+      alerts: alertsRes.count ?? 0,
+      mustChange: mustRes.count ?? 0,
+    } : null,
+    leaves: (leavesRes.data ?? []) as Leave[],
+    notices, events,
+  }
+}
+
+const ASSESSMENT_ORDER = ['CIA1', 'CIA2', 'SEM_END']
+function assessmentSummary(types: string[]) {
+  return ASSESSMENT_ORDER.map(k => ({ k, label: k === 'SEM_END' ? 'SEE' : k.replace('CIA', 'CIA '), done: types.some(t => t.startsWith(k)) }))
+}
+
+export default function FacultyDashboard({ me, name, greeting }: { me: Profile | null; name: string; greeting: string }) {
+  const [d, setD] = useState<FacultyData | null>(null)
+  const [error, setError] = useState(false)
+  const [now, setNow] = useState(() => new Date())
+
+  useEffect(() => {
+    if (!me) return
+    loadFaculty(me).then(setD).catch(() => setError(true))
+    const t = setInterval(() => setNow(new Date()), 60_000)
+    return () => clearInterval(t)
+  }, [me])
+
+  const phase = dayPhase(now, d ? d.todayItems.length > 0 : true)
+  const nextClass = d?.todayItems.find(i => (phase.kind === 'period' && i.period >= phase.period.no) || (phase.kind === 'break' && i.period >= phase.next.no) || phase.kind === 'before')
+  const students = d ? [...new Set(d.subjects.map(s => s.section))].reduce((a, s) => a + (d.subjects.find(x => x.section === s)?.strength ?? 0), 0) : 0
+  const gradedPct = d && d.subjects.length ? Math.round(d.subjects.reduce((a, s) => a + (s.strength ? s.graded / s.strength : 0), 0) / d.subjects.length * 100) : null
+  const pendingLeaves = d?.leaves.filter(l => l.status === 'PENDING').length ?? 0
+  const advAttPct = d?.advisor?.att?.sessions ? d.advisor.att.present / d.advisor.att.sessions * 100 : null
+
+  return (
+    <div className="space-y-6">
+      <Hero
+        kicker={`${greeting}${name ? `, ${name}` : ''}`}
+        title="Faculty Dashboard"
+        subtitle={`${now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} · Department of Computer Science & Engineering`}
+        chips={<>
+          <HeroChip tone="gold">{semesterTerm()} · {academicYear(new Date(), true)}</HeroChip>
+          <HeroChip tone={phase.kind === 'period' ? 'live' : 'plain'}>{phaseLabel(phase)}</HeroChip>
+          {me?.advisor_section && <HeroChip>Class advisor · {me.advisor_section}</HeroChip>}
+        </>}
+        actions={[
+          { href: '/dashboard/attendance', label: 'Mark attendance' },
+          { href: '/dashboard/marks', label: 'Enter marks' },
+          { href: '/dashboard/timetable', label: 'Timetable' },
+          { href: '/dashboard/notices', label: 'Post a notice' },
+        ]}
+        aside={
+          <HeroPanel title={nextClass ? (phase.kind === 'period' && nextClass.period === phase.period.no ? 'Current class' : 'Next class') : 'Your classes'}>
+            {!d ? <div className="h-[72px] animate-pulse rounded bg-white/10" /> : nextClass ? (
+              <div>
+                <p className="font-serif text-[24px] font-semibold leading-tight text-white">{nextClass.name}</p>
+                <p className="text-[12.5px] text-licet-cream/80 mt-1">{nextClass.code} · {nextClass.meta} · Period {nextClass.period}</p>
+              </div>
+            ) : (
+              <p className="text-[13px] text-licet-cream/85">{d.todayItems.length ? 'No more classes today.' : 'No classes on your timetable today.'}</p>
+            )}
+          </HeroPanel>
+        }
+      />
+
+      {error && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-800 flex items-center gap-2">
+          <AlertTriangle size={15} /> Some figures could not be loaded. Check your connection and refresh the page.
+        </div>
+      )}
+
+      <section className="grid gap-4 grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
+        {!d ? <KpiSkeleton count={5} /> : <>
+          <Kpi label="My courses" value={d.subjects.length} icon={BookOpen} href="/dashboard/subjects"
+            sub={d.subjects.length ? `${d.subjects.reduce((a, s) => a + Number(s.credits || 0), 0)} credits · ${semesterTerm().toLowerCase()}` : 'No courses allotted yet'} />
+          <Kpi label="Students taught" value={students} icon={Users} sub={`${[...new Set(d.subjects.map(s => s.section))].length} section(s)`} />
+          <Kpi label="Classes today" value={d.todayItems.length} icon={CalendarClock} href="/dashboard/timetable"
+            sub={d.todayItems.length ? d.todayItems.map(i => `P${i.period}`).join(' · ') : 'Free day'} />
+          <Kpi label="Marks entry progress" value={gradedPct == null ? '—' : `${gradedPct}%`} icon={Award} href="/dashboard/marks"
+            sub="Students with marks across your courses" />
+          <Kpi label="Attendance marked" value={d.attendanceRecords.toLocaleString('en-IN')} icon={ClipboardCheck} href="/dashboard/attendance"
+            sub="Session records this semester" />
+        </>}
+      </section>
+
+      <section className="grid gap-6 xl:grid-cols-[1fr_1.4fr]">
+        <Panel kicker={now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' })} title="Today’s schedule" href="/dashboard/timetable" hrefLabel="Timetable">
+          {!d ? <div className="h-56 animate-pulse" /> : (
+            <Schedule items={d.todayItems} phase={phase}
+              empty={<PanelEmpty icon={CalendarClock}>You have no classes on the timetable today.</PanelEmpty>} />
+          )}
+        </Panel>
+
+        <Panel kicker={`${semesterTerm()} · ${academicYear()}`} title="My courses" href="/dashboard/marks" hrefLabel="Enter marks">
+          {!d ? <div className="h-56 animate-pulse" /> : d.subjects.length === 0 ? (
+            <PanelEmpty icon={BookOpen}>No courses have been allotted to you for this semester. The HOD allots courses from the Subjects page.</PanelEmpty>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-[13px]">
+                <thead>
+                  <tr className="text-left text-[10.5px] font-bold tracking-[1.5px] uppercase text-muted-foreground bg-licet-paper/60">
+                    <th className="px-5 py-2.5">Course</th>
+                    <th className="px-3 py-2.5">Section</th>
+                    <th className="px-3 py-2.5">Assessments</th>
+                    <th className="px-5 py-2.5 w-[150px]">Marks entered</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {d.subjects.map(s => {
+                    const type = courseType(s.code)
+                    return (
+                      <tr key={s.id} className="hover:bg-licet-cream/25">
+                        <td className="px-5 py-3">
+                          <p className="font-medium text-licet-indigo">{s.name}</p>
+                          <p className="text-[11.5px] text-muted-foreground">{s.code} · {TYPE_LABEL[type] ?? type} · {s.credits} cr</p>
+                        </td>
+                        <td className="px-3 py-3 whitespace-nowrap">
+                          <span className="text-licet-indigo">{s.section}</span>
+                          <p className="text-[11.5px] text-muted-foreground">Sem {s.semester} · {s.strength} students</p>
+                        </td>
+                        <td className="px-3 py-3">
+                          <div className="flex flex-wrap gap-1">
+                            {assessmentSummary(s.assessments).map(a => <Pill key={a.k} tone={a.done ? 'green' : 'neutral'}>{a.label}</Pill>)}
+                            {s.locked.length > 0 && <Pill tone="gold"><Lock size={10} />Locked</Pill>}
+                          </div>
+                        </td>
+                        <td className="px-5 py-3">
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1"><Bar value={s.graded} max={s.strength || 1} /></div>
+                            <span className="text-[12px] tabular-nums text-muted-foreground">{s.graded}/{s.strength}</span>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Panel>
+      </section>
+
+      {d?.advisor && (
+        <Panel kicker="Class advisor" title={`${d.advisor.section} at a glance`} href="/dashboard/students" hrefLabel="Students">
+          <div className="grid lg:grid-cols-[320px_1fr] divide-y lg:divide-y-0 lg:divide-x divide-border">
+            <div className="p-5 grid grid-cols-2 gap-4">
+              {[
+                { icon: Users, label: 'Students', value: d.advisor.strength, tone: '' },
+                { icon: UserCheck, label: 'Attendance', value: advAttPct == null ? '—' : `${Math.round(advAttPct)}%`, tone: advAttPct == null ? '' : advAttPct >= 75 ? 'text-green-800' : advAttPct >= 65 ? 'text-amber-800' : 'text-red-800' },
+                { icon: BellRing, label: 'Open alerts', value: d.advisor.alerts, tone: d.advisor.alerts ? 'text-amber-800' : '' },
+                { icon: KeyRound, label: 'Default passwords', value: d.advisor.mustChange, tone: '' },
+              ].map(x => (
+                <div key={x.label} className="rounded-lg border border-border p-3">
+                  <p className="flex items-center gap-1.5 text-[10.5px] font-bold tracking-wider uppercase text-muted-foreground"><x.icon size={12} />{x.label}</p>
+                  <p className={`font-serif text-[26px] font-semibold leading-none mt-2 ${x.tone || 'text-licet-indigo'}`}>{x.value}</p>
+                </div>
+              ))}
+              <div className="col-span-2 flex flex-wrap gap-2">
+                <Link href="/dashboard/alerts" className="text-[12px] font-semibold text-licet-violet hover:underline">Clear alerts →</Link>
+                <Link href="/dashboard/accounts" className="text-[12px] font-semibold text-licet-violet hover:underline">Reset a password →</Link>
+              </div>
+            </div>
+            <div>
+              <p className="px-5 pt-4 text-[10.5px] font-bold tracking-[1.5px] uppercase text-muted-foreground">Students below 75% attendance</p>
+              {d.advisor.low.length === 0 ? <PanelEmpty icon={ShieldAlert}>No student in {d.advisor.section} is below 75% this semester.</PanelEmpty> : (
+                <ul className="divide-y divide-border max-h-[260px] overflow-y-auto">
+                  {d.advisor.low.map(s => (
+                    <li key={s.student_id} className="flex items-center gap-3 px-5 py-2.5">
+                      <Initials name={s.full_name} />
+                      <p className="flex-1 min-w-0 text-[13.5px] text-licet-indigo truncate">{s.full_name}</p>
+                      <span className="text-[11.5px] text-muted-foreground">{s.present}/{s.sessions}</span>
+                      <Pill tone={s.pct < 65 ? 'red' : 'amber'}>{s.pct < 65 ? 'SA' : 'Condonation'}</Pill>
+                      <span className="w-11 text-right"><AttPct value={s.pct} /></span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </Panel>
+      )}
+
+      <section className="grid gap-6 lg:grid-cols-3">
+        <Panel kicker="Latest" title="Notices" href="/dashboard/notices">
+          {!d ? <div className="h-40 animate-pulse" /> : d.notices.length === 0 ? <PanelEmpty icon={Bell}>No active notices.</PanelEmpty> : (
+            <ul className="divide-y divide-border">
+              {d.notices.map(n => (
+                <ListRow key={n.id} href="/dashboard/notices">
+                  <span className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${n.urgent ? 'bg-red-50 text-red-800' : 'bg-licet-cream text-licet-indigo'}`}>{n.urgent ? <AlertTriangle size={15} /> : <Bell size={15} />}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[13.5px] font-medium text-licet-indigo truncate">{n.title}</p>
+                    <p className="text-[11.5px] text-muted-foreground">{timeAgo(n.created_at)}</p>
+                  </div>
+                </ListRow>
+              ))}
+            </ul>
+          )}
+        </Panel>
+        <Panel kicker="Calendar" title="Upcoming events" href="/dashboard/events">
+          {!d ? <div className="h-40 animate-pulse" /> : d.events.length === 0 ? <PanelEmpty icon={CalendarDays}>No upcoming events scheduled.</PanelEmpty> : (
+            <ul className="divide-y divide-border">
+              {d.events.map(e => (
+                <ListRow key={e.id} href="/dashboard/events">
+                  <span className="w-11 h-11 rounded-lg bg-licet-indigo text-white flex flex-col items-center justify-center shrink-0">
+                    <span className="text-[9px] font-bold tracking-wider uppercase text-licet-gold">{new Date(e.date).toLocaleDateString('en-IN', { month: 'short' })}</span>
+                    <span className="font-serif text-[18px] font-semibold leading-none">{new Date(e.date).getDate()}</span>
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[13.5px] font-medium text-licet-indigo truncate">{e.title}</p>
+                    {e.venue && <p className="text-[11.5px] text-muted-foreground truncate">{e.venue}</p>}
+                  </div>
+                </ListRow>
+              ))}
+            </ul>
+          )}
+        </Panel>
+        <Panel kicker="Requests" title="My leave applications" href="/dashboard/leaves" actions={pendingLeaves > 0 ? <Pill tone="amber">{pendingLeaves} pending</Pill> : undefined}>
+          {!d ? <div className="h-40 animate-pulse" /> : d.leaves.length === 0 ? <PanelEmpty icon={Heart}>You have not applied for leave.</PanelEmpty> : (
+            <ul className="divide-y divide-border">
+              {d.leaves.map(l => (
+                <ListRow key={l.id} href="/dashboard/leaves">
+                  <span className="w-8 h-8 rounded-lg bg-licet-cream text-licet-indigo flex items-center justify-center shrink-0"><Clock3 size={15} /></span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[13.5px] font-medium text-licet-indigo">{l.leave_type}</p>
+                    <p className="text-[11.5px] text-muted-foreground">{fmtDate(l.from_date)}{l.to_date !== l.from_date ? ` – ${fmtDate(l.to_date)}` : ''}</p>
+                  </div>
+                  <Pill tone={l.status === 'APPROVED' ? 'green' : l.status === 'REJECTED' ? 'red' : 'amber'}>{l.status.charAt(0) + l.status.slice(1).toLowerCase()}</Pill>
+                </ListRow>
+              ))}
+            </ul>
+          )}
+        </Panel>
+      </section>
+    </div>
+  )
+}
