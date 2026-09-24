@@ -151,9 +151,9 @@ export default function AlertsPage() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <span className="font-mono text-xs text-primary">// SECTION: ALERTS</span>
-        <h1 className="text-2xl font-bold tracking-tight mt-1">Attendance Alerts</h1>
-        <p className="font-mono text-xs text-muted-foreground mt-1">
+        <span className="eyebrow">ALERTS</span>
+        <h1 className="text-2xl font-semibold tracking-tight mt-2">Attendance Alerts</h1>
+        <p className="text-[13.5px] text-muted-foreground mt-1.5 max-w-3xl">
           {isStudent ? 'Your attendance alerts from faculty / HOD' : 'Alerts for absent and late students — students must meet HOD to clear'}
         </p>
       </div>
@@ -161,17 +161,17 @@ export default function AlertsPage() {
       {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
         <div className="bg-card border border-border rounded-lg p-4">
-          <p className="font-mono text-xs text-muted-foreground mb-1">Pending</p>
+          <p className="text-[10.5px] font-bold tracking-[1.5px] uppercase text-muted-foreground mb-1">Pending</p>
           <p className="text-2xl font-bold text-red-500">{pendingCount}</p>
         </div>
         {!isStudent && (
           <div className="bg-card border border-border rounded-lg p-4">
-            <p className="font-mono text-xs text-muted-foreground mb-1">Met HOD (pending clear)</p>
+            <p className="text-[10.5px] font-bold tracking-[1.5px] uppercase text-muted-foreground mb-1">Met HOD (pending clear)</p>
             <p className="text-2xl font-bold text-yellow-500">{metHODCount}</p>
           </div>
         )}
         <div className="bg-card border border-border rounded-lg p-4">
-          <p className="font-mono text-xs text-muted-foreground mb-1">Resolved</p>
+          <p className="text-[10.5px] font-bold tracking-[1.5px] uppercase text-muted-foreground mb-1">Resolved</p>
           <p className="text-2xl font-bold text-green-500">{resolvedCount}</p>
         </div>
       </div>
@@ -183,7 +183,7 @@ export default function AlertsPage() {
             <div className="space-y-1">
               <label className="font-mono text-xs text-muted-foreground">Section</label>
               <select value={filterSection} onChange={e => setFilterSection(e.target.value)}
-                className="h-9 px-3 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none">
+                className="h-9 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none">
                 <option value="">All sections</option>
                 {SECTIONS.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
@@ -211,13 +211,13 @@ export default function AlertsPage() {
 
       {/* Alert list */}
       {loading ? (
-        <div className="bg-card border border-border rounded-lg p-12 text-center">
+        <div className="bg-card border border-dashed border-licet-gold/70 rounded-xl p-12 text-center">
           <Clock className="w-8 h-8 text-muted-foreground mx-auto mb-3 animate-spin" />
           <p className="font-mono text-sm text-muted-foreground">Loading alerts…</p>
         </div>
       ) : visibleAlerts.length === 0 ? (
-        <div className="bg-card border border-border rounded-lg p-12 text-center">
-          <Bell className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+        <div className="bg-card border border-dashed border-licet-gold/70 rounded-xl p-12 text-center">
+          <Bell className="w-12 h-12 p-3 rounded-full bg-licet-cream text-licet-indigo mx-auto mb-3" />
           <p className="font-mono text-sm text-muted-foreground">
             {pendingCount === 0 ? 'No alerts — all clear!' : 'No alerts to show. Enable "Show resolved" to see past alerts.'}
           </p>
@@ -264,7 +264,7 @@ export default function AlertsPage() {
                     </p>
                   )}
                   {isResolved && (
-                    <p className="font-mono text-xs text-muted-foreground mt-1">
+                    <p className="text-[13.5px] text-muted-foreground mt-1.5 max-w-3xl">
                       Resolved {alert.cleared_at ? alert.cleared_at.slice(0,10) : ''}
                     </p>
                   )}
@@ -273,20 +273,20 @@ export default function AlertsPage() {
                   {/* Student: Mark Met HOD */}
                   {isStudent && !hasMet && !isResolved && (
                     <button onClick={() => markMetHOD(alert.id)}
-                      className="font-mono text-xs px-3 py-1.5 rounded border border-green-500/30 text-green-500 hover:bg-green-500/10 whitespace-nowrap">
+                      className="text-[12.5px] font-medium px-3.5 py-1.5 rounded-full border border-green-500/30 text-green-500 hover:bg-green-500/10 whitespace-nowrap">
                       Met HOD
                     </button>
                   )}
                   {/* HOD: Clear or Reopen */}
                   {isHOD && !isResolved && (
                     <button onClick={() => clearAlert(alert.id)}
-                      className="font-mono text-xs px-3 py-1.5 rounded border border-primary/30 text-primary hover:bg-primary/10 whitespace-nowrap">
+                      className="text-[12.5px] font-medium px-3.5 py-1.5 rounded-full border border-primary/30 text-primary hover:bg-primary/10 whitespace-nowrap">
                       Clear
                     </button>
                   )}
                   {isHOD && isResolved && showResolved && (
                     <button onClick={() => reopenAlert(alert.id)}
-                      className="font-mono text-xs px-3 py-1.5 rounded border border-border text-muted-foreground hover:border-primary/50 whitespace-nowrap">
+                      className="text-[12.5px] font-medium px-3.5 py-1.5 rounded-full border border-border text-muted-foreground hover:border-primary/50 whitespace-nowrap">
                       Reopen
                     </button>
                   )}

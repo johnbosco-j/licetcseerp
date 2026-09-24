@@ -123,9 +123,9 @@ export default function InventoryPage() {
     <div className="p-6 space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <span className="font-mono text-xs text-primary">// SECTION: INVENTORY</span>
-          <h1 className="text-2xl font-bold tracking-tight mt-1">Lab & Asset Management</h1>
-          <p className="font-mono text-xs text-muted-foreground mt-1">Track department computers, network gear, and lab equipment.</p>
+          <span className="eyebrow">INVENTORY</span>
+          <h1 className="text-2xl font-semibold tracking-tight mt-2">Lab & Asset Management</h1>
+          <p className="text-[13.5px] text-muted-foreground mt-1.5 max-w-3xl">Track department computers, network gear, and lab equipment.</p>
         </div>
         <div className="flex gap-2">
           <button onClick={exportXLSX} disabled={inventory.length === 0}
@@ -134,7 +134,7 @@ export default function InventoryPage() {
           </button>
           {isHOD && (
             <button onClick={() => setShowForm(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground font-mono text-xs rounded hover:bg-primary/90 transition-colors">
+              className="flex items-center gap-2 px-4 py-2 bg-licet-indigo text-white text-[13px] font-semibold rounded-md hover:bg-licet-violet shadow-sm transition-colors">
               <Plus className="w-3 h-3" /> Add Asset
             </button>
           )}
@@ -161,9 +161,9 @@ export default function InventoryPage() {
 
       {/* Add Form */}
       {showForm && isHOD && (
-        <div className="bg-card border border-primary/30 rounded-lg p-6 space-y-4">
+        <div className="bg-card border border-licet-gold border-t-[3px] rounded-xl p-6 shadow-md space-y-4">
           <div className="flex items-center justify-between">
-            <span className="font-mono text-xs text-primary">// NEW ASSET ENTRY</span>
+            <span className="eyebrow">NEW ASSET ENTRY</span>
             <button onClick={() => setShowForm(false)}><X className="w-4 h-4 text-muted-foreground hover:text-foreground" /></button>
           </div>
           
@@ -172,32 +172,32 @@ export default function InventoryPage() {
               <label className="font-mono text-xs text-muted-foreground">Asset Tag (ID) *</label>
               <input value={form.asset_tag} onChange={e => setForm({...form, asset_tag: e.target.value})}
                 placeholder="e.g. LICET-CSE-PC01"
-                className="w-full h-10 px-3 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none uppercase" />
+                className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none uppercase" />
             </div>
             <div className="sm:col-span-2 space-y-1">
               <label className="font-mono text-xs text-muted-foreground">Asset Name / Model *</label>
               <input value={form.name} onChange={e => setForm({...form, name: e.target.value})}
                 placeholder="e.g. Dell Optiplex 7090, Intel i7, 16GB RAM"
-                className="w-full h-10 px-3 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none" />
+                className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none" />
             </div>
             <div className="space-y-1">
               <label className="font-mono text-xs text-muted-foreground">Category</label>
               <select value={form.category} onChange={e => setForm({...form, category: e.target.value})}
-                className="w-full h-10 px-3 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none">
+                className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none">
                 {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
             <div className="space-y-1">
               <label className="font-mono text-xs text-muted-foreground">Location</label>
               <select value={form.location} onChange={e => setForm({...form, location: e.target.value})}
-                className="w-full h-10 px-3 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none">
+                className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none">
                 {LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
               </select>
             </div>
             <div className="space-y-1">
               <label className="font-mono text-xs text-muted-foreground">Initial Status</label>
               <select value={form.status} onChange={e => setForm({...form, status: e.target.value as any})}
-                className="w-full h-10 px-3 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none">
+                className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none">
                 <option value="OPERATIONAL">Operational</option>
                 <option value="MAINTENANCE">Maintenance</option>
                 <option value="RETIRED">Retired</option>
@@ -207,27 +207,27 @@ export default function InventoryPage() {
               <label className="font-mono text-xs text-muted-foreground">Purchase Value (₹)</label>
               <input type="number" value={form.purchase_value} onChange={e => setForm({...form, purchase_value: e.target.value})}
                 placeholder="0.00"
-                className="w-full h-10 px-3 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none" />
+                className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none" />
             </div>
             <div className="space-y-1">
               <label className="font-mono text-xs text-muted-foreground">Purchase Date</label>
               <input type="date" value={form.purchase_date} onChange={e => setForm({...form, purchase_date: e.target.value})}
-                className="w-full h-10 px-3 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none" />
+                className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none" />
             </div>
             <div className="space-y-1">
               <label className="font-mono text-xs text-muted-foreground">Next Service Due</label>
               <input type="date" value={form.next_service_date} onChange={e => setForm({...form, next_service_date: e.target.value})}
-                className="w-full h-10 px-3 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none" />
+                className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none" />
             </div>
           </div>
           <div className="flex gap-3 pt-2">
             <button onClick={saveAsset} disabled={saving || !form.asset_tag || !form.name}
-              className="flex-1 h-10 bg-primary text-primary-foreground font-mono text-xs rounded hover:bg-primary/90 flex items-center justify-center gap-2 disabled:opacity-50">
+              className="flex-1 h-10 bg-licet-indigo text-white text-[13px] font-semibold rounded-md hover:bg-licet-violet shadow-sm flex items-center justify-center gap-2 disabled:opacity-50">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
               {saving ? 'Saving...' : 'Save Asset'}
             </button>
             <button onClick={() => setShowForm(false)}
-              className="flex-1 h-10 bg-accent font-mono text-xs rounded hover:bg-accent/80">
+              className="flex-1 h-10 border border-border bg-white text-licet-indigo text-[13px] font-semibold rounded-md hover:bg-licet-cream/60">
               Cancel
             </button>
           </div>
@@ -241,7 +241,7 @@ export default function InventoryPage() {
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input type="text" value={search} onChange={e => setSearch(e.target.value)}
               placeholder="Search asset tag or model..."
-              className="w-full h-9 pl-9 pr-3 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none" />
+              className="w-full h-9 pl-9 pr-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none" />
           </div>
         </div>
         <div className="overflow-x-auto">
@@ -261,7 +261,7 @@ export default function InventoryPage() {
               ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="p-12 text-center">
-                    <Package className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+                    <Package className="w-12 h-12 p-3 rounded-full bg-licet-cream text-licet-indigo mx-auto mb-3" />
                     <p className="font-mono text-sm text-muted-foreground">No assets found</p>
                   </td>
                 </tr>

@@ -8,6 +8,7 @@ import type { Database } from "@/lib/supabase"
 import { getActiveSemester } from '@/lib/semester';
 import { Search, Edit2, Trash2, Plus, Loader2, Download, X, Users, AlertTriangle, Check } from "lucide-react"
 import { addStudentAdmin, deleteStudentAdmin } from "@/app/actions"
+import { getAccessToken } from "@/lib/auth"
 import * as XLSX from "xlsx"
 
 type Profile = Database['public']['Tables']['profiles']['Row']
@@ -83,8 +84,7 @@ export function StudentsModule() {
       if (updErr) setFormError(updErr.message)
       else { setShowForm(false); loadStudents() }
     } else {
-      const password = form.email.split('@')[0] + '123'
-      const res = await addStudentAdmin({ ...form, password })
+      const res = await addStudentAdmin(await getAccessToken() ?? '', form)
       if (res.error) setFormError(res.error)
       else { setShowForm(false); loadStudents() }
     }
@@ -95,7 +95,7 @@ export function StudentsModule() {
     if (!confirm(`Delete ${name}? This will also remove their attendance and marks records.`)) return
     setDeleteError("")
     setIsLoading(true)
-    const res = await deleteStudentAdmin(id)
+    const res = await deleteStudentAdmin(await getAccessToken() ?? '', id)
     if (res.error) { setDeleteError(res.error); setIsLoading(false) }
     else loadStudents()
   }

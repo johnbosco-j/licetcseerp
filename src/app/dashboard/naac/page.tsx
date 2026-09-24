@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
+import { printHtml } from "@/lib/print"
 import { RichEditor } from "@/components/rich-editor"
 import type { AuthUser } from "@/lib/auth"
 import { FileText, Save, Loader2, Download, BookOpen, Award } from "lucide-react"
@@ -212,23 +213,14 @@ export default function NAACPage() {
   }
 
   const printDoc = () => {
-    const win = window.open('', '_blank')
-    if (!win) return
     const title = DOCS.find(d => d.key === activeDoc)?.label ?? 'Document'
-    win.document.write(`<!DOCTYPE html><html><head><title>${title}</title>
-    <style>body{font-family:'Times New Roman',serif;font-size:11pt;margin:2.5cm;line-height:1.7}
-    h1{font-size:14pt;font-weight:bold}h2{font-size:13pt}h3{font-size:12pt}h4{font-size:11pt}
-    table{border-collapse:collapse;width:100%;margin:.4cm 0;font-size:10pt}
-    th,td{border:1px solid #000;padding:4px 8px}th{background:#f0f0f0;font-weight:bold}
-    @media print{body{margin:2cm}}</style></head><body>${content}</body></html>`)
-    win.document.close()
-    win.print()
+    printHtml(title, `body{font-family:'Times New Roman',serif;font-size:11pt;margin:2.5cm;line-height:1.7} h1{font-size:14pt;font-weight:bold}h2{font-size:13pt}h3{font-size:12pt}h4{font-size:11pt} table{border-collapse:collapse;width:100%;margin:.4cm 0;font-size:10pt} th,td{border:1px solid #000;padding:4px 8px}th{background:#f0f0f0;font-weight:bold} @media print{body{margin:2cm}}`, content)
   }
 
   if (!isHOD) return (
     <div className="p-6">
-      <div className="bg-card border border-border rounded-lg p-12 text-center">
-        <Award className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+      <div className="bg-card border border-dashed border-licet-gold/70 rounded-xl p-12 text-center">
+        <Award className="w-12 h-12 p-3 rounded-full bg-licet-cream text-licet-indigo mx-auto mb-3" />
         <p className="font-mono text-sm text-muted-foreground">NAAC/NBA module is restricted to HOD</p>
       </div>
     </div>
@@ -237,9 +229,9 @@ export default function NAACPage() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <span className="font-mono text-xs text-primary">// SECTION: NAAC / NBA</span>
-        <h1 className="text-2xl font-bold tracking-tight mt-1">NAAC & NBA Accreditation</h1>
-        <p className="font-mono text-xs text-muted-foreground mt-1">
+        <span className="eyebrow">NAAC / NBA</span>
+        <h1 className="text-2xl font-semibold tracking-tight mt-2">NAAC & NBA Accreditation</h1>
+        <p className="text-[13.5px] text-muted-foreground mt-1.5 max-w-3xl">
           Self Study Report (SSR) for NAAC · Self Assessment Report (SAR) for NBA
         </p>
       </div>
@@ -258,19 +250,19 @@ export default function NAACPage() {
                       {saved ? (
                         <p className="font-mono text-xs text-green-500 mt-1">✓ Last saved — click to continue editing</p>
                       ) : (
-                        <p className="font-mono text-xs text-muted-foreground mt-1">Not started — template ready</p>
+                        <p className="text-[13.5px] text-muted-foreground mt-1.5 max-w-3xl">Not started — template ready</p>
                       )}
                     </div>
                   </div>
                   <div className="flex gap-2">
                     <button onClick={() => openDoc(key, template)}
-                      className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground font-mono text-xs rounded hover:bg-primary/90 transition-colors">
+                      className="flex items-center gap-2 px-4 py-2 bg-licet-indigo text-white text-[13px] font-semibold rounded-md hover:bg-licet-violet shadow-sm transition-colors">
                       <FileText className="w-3 h-3" />
                       {saved ? 'Continue Editing' : 'Start Document'}
                     </button>
                     {saved && (
                       <button onClick={() => { openDoc(key, template); setTimeout(printDoc, 500) }}
-                        className="flex items-center gap-2 px-4 py-2 bg-accent font-mono text-xs rounded hover:bg-accent/80 transition-colors">
+                        className="flex items-center gap-2 px-4 py-2 border border-border bg-white text-licet-indigo text-[13px] font-semibold rounded-md hover:bg-licet-cream/60 transition-colors">
                         <Download className="w-3 h-3" /> Print / PDF
                       </button>
                     )}
@@ -293,11 +285,11 @@ export default function NAACPage() {
             <div className="flex items-center gap-2">
               {saveMsg && <span className="font-mono text-xs text-green-500">{saveMsg}</span>}
               <button onClick={printDoc}
-                className="flex items-center gap-2 px-3 py-2 bg-accent font-mono text-xs rounded hover:bg-accent/80">
+                className="flex items-center gap-2 px-3 py-2 border border-border bg-white text-licet-indigo text-[13px] font-semibold rounded-md hover:bg-licet-cream/60">
                 <Download className="w-3 h-3" /> Print / PDF
               </button>
               <button onClick={saveDoc} disabled={saving}
-                className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground font-mono text-xs rounded hover:bg-primary/90 disabled:opacity-50">
+                className="flex items-center gap-2 px-4 py-2 bg-licet-indigo text-white text-[13px] font-semibold rounded-md hover:bg-licet-violet shadow-sm disabled:opacity-50">
                 {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
                 {saving ? 'Saving...' : 'Save Document'}
               </button>
@@ -310,7 +302,7 @@ export default function NAACPage() {
           </div>
           {/* Upload supporting documents */}
           <div className="bg-card border border-border rounded-lg p-4 space-y-3">
-            <span className="font-mono text-xs text-primary">// UPLOAD SUPPORTING DOCUMENTS</span>
+            <span className="eyebrow">UPLOAD SUPPORTING DOCUMENTS</span>
             <p className="font-mono text-xs text-muted-foreground">
               Upload certificates, approval letters, supporting PDFs for {DOCS.find(d => d.key === activeDoc)?.label}
             </p>
@@ -374,7 +366,7 @@ function NAACSummary() {
 
   return (
     <div className="bg-card border border-border rounded-lg p-6">
-      <span className="font-mono text-xs text-primary block mb-4">// LIVE DATA FOR NAAC/NBA REPORTS</span>
+      <span className="eyebrow block mb-4">LIVE DATA FOR NAAC/NBA REPORTS</span>
       <div className="grid grid-cols-3 sm:grid-cols-6 gap-4">
         {[
           { label: 'Total Students',  value: data.students },

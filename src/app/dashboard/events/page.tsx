@@ -134,15 +134,15 @@ export default function EventsPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <span className="font-mono text-xs text-primary">// SECTION: EVENTS</span>
-          <h1 className="text-2xl font-bold tracking-tight mt-1">Events & Association</h1>
-          <p className="font-mono text-xs text-muted-foreground mt-1">
+          <span className="eyebrow">EVENTS</span>
+          <h1 className="text-2xl font-semibold tracking-tight mt-2">Events & Association</h1>
+          <p className="text-[13.5px] text-muted-foreground mt-1.5 max-w-3xl">
             Guest lectures, industrial visits, workshops, symposiums and association events
           </p>
         </div>
         {canPost && (
           <button onClick={() => setShowForm(!showForm)}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground font-mono text-xs rounded hover:bg-primary/90">
+            className="flex items-center gap-2 px-4 py-2 bg-licet-indigo text-white text-[13px] font-semibold rounded-md hover:bg-licet-violet shadow-sm">
             <Plus className="w-3 h-3" /> Add Event
           </button>
         )}
@@ -157,7 +157,7 @@ export default function EventsPage() {
             <button key={type} onClick={() => setFilter(filter === type ? 'ALL' : type)}
               className={`bg-card border rounded-lg p-3 text-center transition-all ${filter === type ? 'border-primary' : 'border-border hover:border-primary/50'}`}>
               <Icon className={`w-4 h-4 mx-auto mb-1 ${meta.color.split(' ')[0]}`} />
-              <p className="text-lg font-bold">{count}</p>
+              <p className="font-serif text-[22px] font-semibold text-licet-indigo">{count}</p>
               <p className="font-mono text-xs text-muted-foreground leading-tight">{meta.label.split(' ')[0]}</p>
             </button>
           )
@@ -166,16 +166,16 @@ export default function EventsPage() {
 
       {/* Post form */}
       {showForm && canPost && (
-        <div className="bg-card border border-primary/30 rounded-lg p-6 space-y-4">
+        <div className="bg-card border border-licet-gold border-t-[3px] rounded-xl p-6 shadow-md space-y-4">
           <div className="flex items-center justify-between">
-            <span className="font-mono text-xs text-primary">// NEW EVENT</span>
+            <span className="eyebrow">NEW EVENT</span>
             <button onClick={() => setShowForm(false)}><X className="w-4 h-4 text-muted-foreground" /></button>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1">
               <label className="font-mono text-xs text-muted-foreground">Event Type</label>
               <select value={form.type} onChange={e => setForm({...form, type: e.target.value})}
-                className="w-full h-10 px-3 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none">
+                className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none">
                 {Object.entries(EVENT_TYPES).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
               </select>
             </div>
@@ -183,18 +183,18 @@ export default function EventsPage() {
               <label className="font-mono text-xs text-muted-foreground">Title *</label>
               <input value={form.title} onChange={e => setForm({...form, title: e.target.value})}
                 placeholder="Event title"
-                className="w-full h-10 px-3 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none" />
+                className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none" />
             </div>
             <div className="space-y-1">
               <label className="font-mono text-xs text-muted-foreground">Date *</label>
               <input type="date" value={form.date} onChange={e => setForm({...form, date: e.target.value})}
-                className="w-full h-10 px-3 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none" />
+                className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none" />
             </div>
             <div className="space-y-1">
               <label className="font-mono text-xs text-muted-foreground">Venue</label>
               <input value={form.venue} onChange={e => setForm({...form, venue: e.target.value})}
                 placeholder="e.g. Seminar Hall, Room 301"
-                className="w-full h-10 px-3 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none" />
+                className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none" />
             </div>
             {(form.type === 'GUEST_LECTURE' || form.type === 'WORKSHOP') && (
               <>
@@ -202,20 +202,20 @@ export default function EventsPage() {
                   <label className="font-mono text-xs text-muted-foreground">Speaker/Resource Person</label>
                   <input value={form.speaker} onChange={e => setForm({...form, speaker: e.target.value})}
                     placeholder="Name and designation"
-                    className="w-full h-10 px-3 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none" />
+                    className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none" />
                 </div>
                 <div className="space-y-1">
                   <label className="font-mono text-xs text-muted-foreground">Organization</label>
                   <input value={form.organization} onChange={e => setForm({...form, organization: e.target.value})}
                     placeholder="Company / Institution"
-                    className="w-full h-10 px-3 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none" />
+                    className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none" />
                 </div>
               </>
             )}
             <div className="space-y-1">
               <label className="font-mono text-xs text-muted-foreground">For Sections</label>
               <select value={form.sections} onChange={e => setForm({...form, sections: e.target.value})}
-                className="w-full h-10 px-3 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none">
+                className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none">
                 <option value="ALL">All Sections</option>
                 {['I CSE-A','I CSE-B','II CSE-A','II CSE-B','III CSE-A','III CSE-B','IV CSE-A','IV CSE-B'].map(s => (
                   <option key={s} value={s}>{s}</option>
@@ -227,11 +227,11 @@ export default function EventsPage() {
               <textarea value={form.description} onChange={e => setForm({...form, description: e.target.value})}
                 placeholder="Event description, agenda, objectives..."
                 rows={3}
-                className="w-full px-3 py-2 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none resize-none" />
+                className="w-full px-3 py-2 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none resize-none" />
             </div>
           </div>
           <button onClick={postEvent} disabled={saving || !form.title || !form.date}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground font-mono text-xs rounded hover:bg-primary/90 disabled:opacity-50">
+            className="flex items-center gap-2 px-4 py-2 bg-licet-indigo text-white text-[13px] font-semibold rounded-md hover:bg-licet-violet shadow-sm disabled:opacity-50">
             {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Calendar className="w-3 h-3" />}
             {saving ? 'Posting...' : 'Post Event'}
           </button>
@@ -241,7 +241,7 @@ export default function EventsPage() {
       {/* Upcoming */}
       {upcoming.length > 0 && (
         <div className="space-y-3">
-          <h2 className="font-mono text-xs text-primary">// UPCOMING ({upcoming.length})</h2>
+          <h2 className="eyebrow">UPCOMING ({upcoming.length})</h2>
           {upcoming.map(e => <EventCard key={e.id} event={e} />)}
         </div>
       )}
@@ -249,14 +249,14 @@ export default function EventsPage() {
       {/* Past */}
       {past.length > 0 && (
         <div className="space-y-3">
-          <h2 className="font-mono text-xs text-muted-foreground">// PAST EVENTS ({past.length})</h2>
+          <h2 className="eyebrow">PAST EVENTS ({past.length})</h2>
           {past.map(e => <EventCard key={e.id} event={e} />)}
         </div>
       )}
 
       {events.length === 0 && (
-        <div className="bg-card border border-border rounded-lg p-12 text-center">
-          <Calendar className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+        <div className="bg-card border border-dashed border-licet-gold/70 rounded-xl p-12 text-center">
+          <Calendar className="w-12 h-12 p-3 rounded-full bg-licet-cream text-licet-indigo mx-auto mb-3" />
           <p className="font-mono text-sm text-muted-foreground">No events yet</p>
         </div>
       )}

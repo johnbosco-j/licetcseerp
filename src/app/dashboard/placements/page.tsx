@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
+import { safeUrl } from "@/lib/utils"
 import type { AuthUser } from "@/lib/auth"
 import type { Database } from "@/lib/supabase"
 import { Plus, X, Award, Building, Loader2, ExternalLink } from "lucide-react"
@@ -77,16 +78,16 @@ export default function PlacementsPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <span className="font-mono text-xs text-primary">// SECTION: PLACEMENTS</span>
-          <h1 className="text-2xl font-bold tracking-tight mt-1">Placements</h1>
-          <p className="font-mono text-xs text-muted-foreground mt-1">
+          <span className="eyebrow">PLACEMENTS</span>
+          <h1 className="text-2xl font-semibold tracking-tight mt-2">Placements</h1>
+          <p className="text-[13.5px] text-muted-foreground mt-1.5 max-w-3xl">
             {isStudent ? 'Active placement drives and opportunities'
               : 'Manage placement drives and company visits'}
           </p>
         </div>
         {isHOD && (
           <button onClick={() => setShowForm(!showForm)}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground font-mono text-xs rounded hover:bg-primary/90">
+            className="flex items-center gap-2 px-4 py-2 bg-licet-indigo text-white text-[13px] font-semibold rounded-md hover:bg-licet-violet shadow-sm">
             <Plus className="w-3 h-3" /> Add Drive
           </button>
         )}
@@ -99,17 +100,17 @@ export default function PlacementsPage() {
           { label: 'Closed Drives',   value: inactive.length },
         ].map(({ label, value }) => (
           <div key={label} className="bg-card border border-border rounded-lg p-4">
-            <p className="font-mono text-xs text-muted-foreground mb-1">{label}</p>
-            <p className="text-2xl font-bold">{value}</p>
+            <p className="text-[10.5px] font-bold tracking-[1.5px] uppercase text-muted-foreground mb-1">{label}</p>
+            <p className="font-serif text-[30px] font-semibold leading-none text-licet-indigo">{value}</p>
           </div>
         ))}
       </div>
 
       {/* Add form */}
       {showForm && isHOD && (
-        <div className="bg-card border border-primary/30 rounded-lg p-6 space-y-4">
+        <div className="bg-card border border-licet-gold border-t-[3px] rounded-xl p-6 shadow-md space-y-4">
           <div className="flex items-center justify-between">
-            <span className="font-mono text-xs text-primary">// NEW PLACEMENT DRIVE</span>
+            <span className="eyebrow">NEW PLACEMENT DRIVE</span>
             <button onClick={() => setShowForm(false)}><X className="w-4 h-4 text-muted-foreground" /></button>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -124,7 +125,7 @@ export default function PlacementsPage() {
                 <label className="font-mono text-xs text-muted-foreground">{label}</label>
                 <input type={type ?? 'text'} value={(form as any)[key]} placeholder={placeholder}
                   onChange={e => setForm({...form, [key]: e.target.value})}
-                  className="w-full h-10 px-3 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none" />
+                  className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none" />
               </div>
             ))}
             <div className="sm:col-span-2 space-y-1">
@@ -132,11 +133,11 @@ export default function PlacementsPage() {
               <textarea value={form.description} onChange={e => setForm({...form, description: e.target.value})}
                 placeholder="Job description, eligibility criteria..."
                 rows={3}
-                className="w-full px-3 py-2 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none resize-none" />
+                className="w-full px-3 py-2 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none resize-none" />
             </div>
           </div>
           <button onClick={postPlacement} disabled={saving || !form.company_name || !form.role_title}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground font-mono text-xs rounded hover:bg-primary/90 disabled:opacity-50">
+            className="flex items-center gap-2 px-4 py-2 bg-licet-indigo text-white text-[13px] font-semibold rounded-md hover:bg-licet-violet shadow-sm disabled:opacity-50">
             {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Award className="w-3 h-3" />}
             {saving ? 'Posting...' : 'Post Drive'}
           </button>
@@ -145,10 +146,10 @@ export default function PlacementsPage() {
 
       {/* Active drives */}
       <div className="space-y-3">
-        <h2 className="font-mono text-xs text-primary">// ACTIVE DRIVES ({active.length})</h2>
+        <h2 className="eyebrow">ACTIVE DRIVES ({active.length})</h2>
         {active.length === 0 ? (
           <div className="bg-card border border-border rounded-lg p-8 text-center">
-            <Building className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+            <Building className="w-12 h-12 p-3 rounded-full bg-licet-cream text-licet-indigo mx-auto mb-3" />
             <p className="font-mono text-sm text-muted-foreground">No active placement drives</p>
           </div>
         ) : active.map(p => (
@@ -161,19 +162,19 @@ export default function PlacementsPage() {
                   {p.package_lpa && <span className="font-mono text-xs text-primary">₹{p.package_lpa} LPA</span>}
                 </div>
                 <p className="text-sm text-muted-foreground">{p.role_title}</p>
-                {p.visit_date && <p className="font-mono text-xs text-muted-foreground mt-1">Visit: {new Date(p.visit_date).toLocaleDateString()}</p>}
+                {p.visit_date && <p className="text-[13.5px] text-muted-foreground mt-1.5 max-w-3xl">Visit: {new Date(p.visit_date).toLocaleDateString()}</p>}
                 {p.description && <p className="text-sm text-muted-foreground mt-2">{p.description}</p>}
               </div>
               <div className="flex flex-col gap-2 flex-shrink-0">
                 {p.apply_url && (
-                  <a href={p.apply_url} target="_blank" rel="noopener noreferrer"
-                    className="flex items-center gap-1 px-3 py-1.5 bg-primary text-primary-foreground font-mono text-xs rounded hover:bg-primary/90 transition-colors">
+                  <a href={safeUrl(p.apply_url)} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-1 px-3 py-1.5 bg-licet-indigo text-white text-[13px] font-semibold rounded-md hover:bg-licet-violet shadow-sm transition-colors">
                     <ExternalLink className="w-3 h-3" /> Apply
                   </a>
                 )}
                 {isHOD && (
                   <button onClick={() => toggleActive(p.id, p.is_active)}
-                    className="px-3 py-1.5 bg-accent font-mono text-xs rounded hover:bg-accent/80">
+                    className="px-3 py-1.5 border border-border bg-white text-licet-indigo text-[13px] font-semibold rounded-md hover:bg-licet-cream/60">
                     Close Drive
                   </button>
                 )}
@@ -186,7 +187,7 @@ export default function PlacementsPage() {
       {/* Past drives */}
       {inactive.length > 0 && (
         <div className="space-y-3">
-          <h2 className="font-mono text-xs text-muted-foreground">// PAST DRIVES ({inactive.length})</h2>
+          <h2 className="eyebrow">PAST DRIVES ({inactive.length})</h2>
           {inactive.map(p => (
             <div key={p.id} className="bg-card border border-border rounded-lg p-4 opacity-60 hover:opacity-80 transition-all">
               <div className="flex items-center justify-between">

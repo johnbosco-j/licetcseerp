@@ -587,9 +587,9 @@ export default function SubjectsPage() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <span className="font-mono text-xs text-primary">// SECTION: SUBJECTS</span>
-        <h1 className="text-2xl font-bold tracking-tight mt-1">Subjects</h1>
-        <p className="font-mono text-xs text-muted-foreground mt-1">
+        <span className="eyebrow">SUBJECTS</span>
+        <h1 className="text-2xl font-semibold tracking-tight mt-2">Subjects</h1>
+        <p className="text-[13.5px] text-muted-foreground mt-1.5 max-w-3xl">
           {isStudent ? 'Your current semester subjects with course outcomes'
             : 'Manage subject assignments and view course details'}
         </p>
@@ -599,10 +599,10 @@ export default function SubjectsPage() {
         <div style={{display:'flex',borderBottom:'1px solid #e5e7eb'}}>
           {(['view','manage'] as const).map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)} style={{
-              fontFamily:'monospace',fontSize:'12px',padding:'8px 20px',
-              borderBottom: activeTab===tab ? '2px solid #722F37' : '2px solid transparent',
+              fontFamily:'inherit',fontSize:'12px',padding:'8px 20px',
+              borderBottom: activeTab===tab ? '2px solid #DCCAA0' : '2px solid transparent',
               borderTop:'none',borderLeft:'none',borderRight:'none',
-              color: activeTab===tab ? '#722F37' : '#6b7280',
+              color: activeTab===tab ? '#1A0C4E' : '#6B6480',
               fontWeight: activeTab===tab ? 600 : 400,
               background:'none',cursor:'pointer',
             }}>
@@ -620,7 +620,7 @@ export default function SubjectsPage() {
             <div className="flex flex-wrap gap-2">
               {SECTIONS.map(s => (
                 <button key={s} onClick={() => setSelectedSection(s)}
-                  className={`font-mono text-xs px-3 py-1.5 rounded border transition-all ${selectedSection === s ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:border-primary/50'}`}>
+                  className={`text-[12.5px] font-medium px-3.5 py-1.5 rounded-full border transition-all ${selectedSection === s ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:border-primary/50'}`}>
                   {s}
                 </button>
               ))}
@@ -635,8 +635,8 @@ export default function SubjectsPage() {
               { label: 'Total Credits',  value: subjects.reduce((sum, s) => sum + Number(s.credits), 0) },
             ].map(({ label, value }) => (
               <div key={label} className="bg-card border border-border rounded-lg p-4">
-                <p className="font-mono text-xs text-muted-foreground mb-1">{label}</p>
-                <p className="text-2xl font-bold">{value}</p>
+                <p className="text-[10.5px] font-bold tracking-[1.5px] uppercase text-muted-foreground mb-1">{label}</p>
+                <p className="font-serif text-[30px] font-semibold leading-none text-licet-indigo">{value}</p>
               </div>
             ))}
           </div>
@@ -649,8 +649,8 @@ export default function SubjectsPage() {
 
           <div className="space-y-3">
             {subjects.length === 0 ? (
-              <div className="bg-card border border-border rounded-lg p-12 text-center">
-                <BookOpen className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+              <div className="bg-card border border-dashed border-licet-gold/70 rounded-xl p-12 text-center">
+                <BookOpen className="w-12 h-12 p-3 rounded-full bg-licet-cream text-licet-indigo mx-auto mb-3" />
                 <p className="font-mono text-sm text-muted-foreground">No subjects found</p>
               </div>
             ) : subjects.map(subject => {
@@ -692,12 +692,12 @@ export default function SubjectsPage() {
                     <div className="px-6 pb-6 space-y-4 border-t border-border pt-4">
                       {isHOD && (
                         <div className="space-y-2">
-                          <label className="font-mono text-xs text-primary">// FACULTY ASSIGNMENT</label>
+                          <label className="eyebrow">FACULTY ASSIGNMENT</label>
                           <div className="flex items-center gap-3">
                             <select
                               value={assignedFacultyId ?? ''}
                               onChange={e => assignFaculty(subject.id, e.target.value)}
-                              className="flex-1 h-10 px-3 bg-background border border-border rounded font-mono text-sm focus:border-primary focus:outline-none">
+                              className="flex-1 h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none">
                               <option value="">— Unassigned —</option>
                               {USERS.filter(u => u.role !== 'HOD').map(u => (
                                 <option key={u.email} value={faculty.find(f => f.email === u.email)?.id ?? ''}>
@@ -711,7 +711,7 @@ export default function SubjectsPage() {
                       )}
                       {cos.length > 0 && (
                         <div className="space-y-2">
-                          <label className="font-mono text-xs text-primary">// COURSE OUTCOMES</label>
+                          <label className="eyebrow">COURSE OUTCOMES</label>
                           <div className="space-y-1">
                             {cos.map((co, i) => (
                               <div key={i} className="flex items-start gap-3 py-1.5 border-b border-border last:border-0">
@@ -723,25 +723,25 @@ export default function SubjectsPage() {
                         </div>
                       )}
                       <div className="space-y-2">
-                        <label className="font-mono text-xs text-primary">// ASSESSMENT PATTERN</label>
+                        <label className="eyebrow">ASSESSMENT PATTERN</label>
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                           {ct === 'THEORY' && (<>
-                            <div className="bg-accent rounded p-3 text-center"><p className="font-mono text-xs text-muted-foreground">CIA (Internal)</p><p className="text-lg font-bold">40</p><p className="font-mono text-xs text-muted-foreground">marks</p></div>
-                            <div className="bg-accent rounded p-3 text-center"><p className="font-mono text-xs text-muted-foreground">SEE (External)</p><p className="text-lg font-bold">60</p><p className="font-mono text-xs text-muted-foreground">marks</p></div>
-                            <div className="bg-accent rounded p-3 text-center"><p className="font-mono text-xs text-muted-foreground">CT /30 → 20%</p><p className="text-lg font-bold">×2</p><p className="font-mono text-xs text-muted-foreground">CIA1+CIA2</p></div>
-                            <div className="bg-accent rounded p-3 text-center"><p className="font-mono text-xs text-muted-foreground">CAT /60 → 40%</p><p className="text-lg font-bold">×2</p><p className="font-mono text-xs text-muted-foreground">CIA1+CIA2</p></div>
+                            <div className="bg-licet-cream/60 border border-licet-gold/40 rounded-lg p-3 text-center"><p className="font-mono text-xs text-muted-foreground">CIA (Internal)</p><p className="font-serif text-[22px] font-semibold text-licet-indigo">40</p><p className="font-mono text-xs text-muted-foreground">marks</p></div>
+                            <div className="bg-licet-cream/60 border border-licet-gold/40 rounded-lg p-3 text-center"><p className="font-mono text-xs text-muted-foreground">SEE (External)</p><p className="font-serif text-[22px] font-semibold text-licet-indigo">60</p><p className="font-mono text-xs text-muted-foreground">marks</p></div>
+                            <div className="bg-licet-cream/60 border border-licet-gold/40 rounded-lg p-3 text-center"><p className="font-mono text-xs text-muted-foreground">CT /30 → 20%</p><p className="font-serif text-[22px] font-semibold text-licet-indigo">×2</p><p className="font-mono text-xs text-muted-foreground">CIA1+CIA2</p></div>
+                            <div className="bg-licet-cream/60 border border-licet-gold/40 rounded-lg p-3 text-center"><p className="font-mono text-xs text-muted-foreground">CAT /60 → 40%</p><p className="font-serif text-[22px] font-semibold text-licet-indigo">×2</p><p className="font-mono text-xs text-muted-foreground">CIA1+CIA2</p></div>
                           </>)}
                           {ct === 'LAB' && (<>
-                            <div className="bg-accent rounded p-3 text-center"><p className="font-mono text-xs text-muted-foreground">CIA (Internal)</p><p className="text-lg font-bold">60</p><p className="font-mono text-xs text-muted-foreground">marks</p></div>
-                            <div className="bg-accent rounded p-3 text-center"><p className="font-mono text-xs text-muted-foreground">SEE (External)</p><p className="text-lg font-bold">40</p><p className="font-mono text-xs text-muted-foreground">marks</p></div>
-                            <div className="bg-accent rounded p-3 text-center"><p className="font-mono text-xs text-muted-foreground">Experiments</p><p className="text-lg font-bold">25%</p></div>
-                            <div className="bg-accent rounded p-3 text-center"><p className="font-mono text-xs text-muted-foreground">Record+Viva+Lab</p><p className="text-lg font-bold">75%</p></div>
+                            <div className="bg-licet-cream/60 border border-licet-gold/40 rounded-lg p-3 text-center"><p className="font-mono text-xs text-muted-foreground">CIA (Internal)</p><p className="font-serif text-[22px] font-semibold text-licet-indigo">60</p><p className="font-mono text-xs text-muted-foreground">marks</p></div>
+                            <div className="bg-licet-cream/60 border border-licet-gold/40 rounded-lg p-3 text-center"><p className="font-mono text-xs text-muted-foreground">SEE (External)</p><p className="font-serif text-[22px] font-semibold text-licet-indigo">40</p><p className="font-mono text-xs text-muted-foreground">marks</p></div>
+                            <div className="bg-licet-cream/60 border border-licet-gold/40 rounded-lg p-3 text-center"><p className="font-mono text-xs text-muted-foreground">Experiments</p><p className="font-serif text-[22px] font-semibold text-licet-indigo">25%</p></div>
+                            <div className="bg-licet-cream/60 border border-licet-gold/40 rounded-lg p-3 text-center"><p className="font-mono text-xs text-muted-foreground">Record+Viva+Lab</p><p className="font-serif text-[22px] font-semibold text-licet-indigo">75%</p></div>
                           </>)}
                           {ct === 'LAB+THEORY' && (<>
-                            <div className="bg-accent rounded p-3 text-center"><p className="font-mono text-xs text-muted-foreground">CIA (Internal)</p><p className="text-lg font-bold">50</p><p className="font-mono text-xs text-muted-foreground">marks</p></div>
-                            <div className="bg-accent rounded p-3 text-center"><p className="font-mono text-xs text-muted-foreground">SEE (External)</p><p className="text-lg font-bold">50</p><p className="font-mono text-xs text-muted-foreground">marks</p></div>
-                            <div className="bg-accent rounded p-3 text-center"><p className="font-mono text-xs text-muted-foreground">Theory Component</p><p className="text-lg font-bold">CT+CAT</p></div>
-                            <div className="bg-accent rounded p-3 text-center"><p className="font-mono text-xs text-muted-foreground">Lab Component</p><p className="text-lg font-bold">Practical</p></div>
+                            <div className="bg-licet-cream/60 border border-licet-gold/40 rounded-lg p-3 text-center"><p className="font-mono text-xs text-muted-foreground">CIA (Internal)</p><p className="font-serif text-[22px] font-semibold text-licet-indigo">50</p><p className="font-mono text-xs text-muted-foreground">marks</p></div>
+                            <div className="bg-licet-cream/60 border border-licet-gold/40 rounded-lg p-3 text-center"><p className="font-mono text-xs text-muted-foreground">SEE (External)</p><p className="font-serif text-[22px] font-semibold text-licet-indigo">50</p><p className="font-mono text-xs text-muted-foreground">marks</p></div>
+                            <div className="bg-licet-cream/60 border border-licet-gold/40 rounded-lg p-3 text-center"><p className="font-mono text-xs text-muted-foreground">Theory Component</p><p className="font-serif text-[22px] font-semibold text-licet-indigo">CT+CAT</p></div>
+                            <div className="bg-licet-cream/60 border border-licet-gold/40 rounded-lg p-3 text-center"><p className="font-mono text-xs text-muted-foreground">Lab Component</p><p className="font-serif text-[22px] font-semibold text-licet-indigo">Practical</p></div>
                           </>)}
                         </div>
                       </div>
