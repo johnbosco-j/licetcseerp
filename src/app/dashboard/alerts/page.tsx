@@ -30,8 +30,8 @@ interface Alert {
 const SECTIONS = ['I CSE-A','I CSE-B','II CSE-A','II CSE-B','III CSE-A','III CSE-B','IV CSE-A','IV CSE-B']
 
 const ALERT_LABELS: Record<string, { label: string; color: string }> = {
-  ABSENT_ON_NO_INFO: { label: 'Absent (No Info)',   color: 'text-red-500 bg-red-500/10 border-red-500/20' },
-  LATE_THRESHOLD:    { label: '3× Late This Month', color: 'text-yellow-500 bg-yellow-500/10 border-yellow-500/20' },
+  ABSENT_ON_NO_INFO: { label: 'Absent (No Info)',   color: 'text-red-700 bg-red-50 border-red-200' },
+  LATE_THRESHOLD:    { label: '3× Late This Month', color: 'text-amber-700 bg-amber-50 border-amber-200' },
 }
 
 export default function AlertsPage() {
@@ -162,17 +162,17 @@ export default function AlertsPage() {
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
         <div className="bg-card border border-border rounded-lg p-4">
           <p className="text-[10.5px] font-bold tracking-[1.5px] uppercase text-muted-foreground mb-1">Pending</p>
-          <p className="text-2xl font-bold text-red-500">{pendingCount}</p>
+          <p className="text-2xl font-bold text-red-700">{pendingCount}</p>
         </div>
         {!isStudent && (
           <div className="bg-card border border-border rounded-lg p-4">
             <p className="text-[10.5px] font-bold tracking-[1.5px] uppercase text-muted-foreground mb-1">Met HOD (pending clear)</p>
-            <p className="text-2xl font-bold text-yellow-500">{metHODCount}</p>
+            <p className="text-2xl font-bold text-amber-700">{metHODCount}</p>
           </div>
         )}
         <div className="bg-card border border-border rounded-lg p-4">
           <p className="text-[10.5px] font-bold tracking-[1.5px] uppercase text-muted-foreground mb-1">Resolved</p>
-          <p className="text-2xl font-bold text-green-500">{resolvedCount}</p>
+          <p className="text-2xl font-bold text-green-700">{resolvedCount}</p>
         </div>
       </div>
 
@@ -195,7 +195,7 @@ export default function AlertsPage() {
           </label>
           {isHOD && pendingCount > 0 && (
             <button onClick={clearAllMetHOD} disabled={bulkClearing}
-              className="ml-auto flex items-center gap-2 h-9 px-4 bg-green-600 text-white font-mono text-xs rounded hover:bg-green-700 disabled:opacity-50">
+              className="ml-auto flex items-center gap-2 h-9 px-4 bg-green-700 text-white text-[13px] font-semibold rounded-md hover:bg-green-800 disabled:opacity-50">
               <CheckCheck className="w-3.5 h-3.5" />
               {bulkClearing ? 'Clearing...' : `Clear All — Met HOD (${pendingCount})`}
             </button>
@@ -204,7 +204,7 @@ export default function AlertsPage() {
       )}
 
       {actionMsg && (
-        <div className="font-mono text-xs text-green-500 bg-green-500/10 border border-green-500/20 px-4 py-2 rounded">
+        <div className="font-mono text-xs text-green-700 bg-green-50 border border-green-200 px-4 py-2 rounded">
           {actionMsg}
         </div>
       )}
@@ -219,7 +219,7 @@ export default function AlertsPage() {
         <div className="bg-card border border-dashed border-licet-gold/70 rounded-xl p-12 text-center">
           <Bell className="w-12 h-12 p-3 rounded-full bg-licet-cream text-licet-indigo mx-auto mb-3" />
           <p className="font-mono text-sm text-muted-foreground">
-            {pendingCount === 0 ? 'No alerts — all clear!' : 'No alerts to show. Enable "Show resolved" to see past alerts.'}
+            {pendingCount === 0 ? 'No pending alerts.' : 'No alerts to show. Enable "Show resolved" to see past alerts.'}
           </p>
         </div>
       ) : (
@@ -234,10 +234,10 @@ export default function AlertsPage() {
               <div key={alert.id} className={`flex items-start gap-4 px-6 py-4 ${isResolved ? 'opacity-60' : ''}`}>
                 <div className="mt-0.5 flex-shrink-0">
                   {isResolved
-                    ? <CheckCircle className="w-4 h-4 text-green-500" />
+                    ? <CheckCircle className="w-4 h-4 text-green-700" />
                     : hasMet
-                      ? <AlertTriangle className="w-4 h-4 text-yellow-500" />
-                      : <XCircle className="w-4 h-4 text-red-500" />
+                      ? <AlertTriangle className="w-4 h-4 text-amber-700" />
+                      : <XCircle className="w-4 h-4 text-red-700" />
                   }
                 </div>
                 <div className="flex-1 min-w-0">
@@ -254,12 +254,12 @@ export default function AlertsPage() {
                     {partsLabel && <span className="font-mono text-xs text-muted-foreground">{partsLabel}</span>}
                   </div>
                   {isStudent && !hasMet && !isResolved && (
-                    <p className="font-mono text-xs text-yellow-500 mt-2 flex items-center gap-1">
+                    <p className="font-mono text-xs text-amber-700 mt-2 flex items-center gap-1">
                       <AlertTriangle className="w-3 h-3" /> Please meet the HOD regarding your attendance.
                     </p>
                   )}
                   {hasMet && (
-                    <p className="font-mono text-xs text-green-500 mt-1">
+                    <p className="font-mono text-xs text-green-700 mt-1">
                       ✓ Met HOD {alert.met_hod_at ? `on ${alert.met_hod_at.slice(0,10)}` : ''}
                     </p>
                   )}
@@ -273,7 +273,7 @@ export default function AlertsPage() {
                   {/* Student: Mark Met HOD */}
                   {isStudent && !hasMet && !isResolved && (
                     <button onClick={() => markMetHOD(alert.id)}
-                      className="text-[12.5px] font-medium px-3.5 py-1.5 rounded-full border border-green-500/30 text-green-500 hover:bg-green-500/10 whitespace-nowrap">
+                      className="text-[12.5px] font-medium px-3.5 py-1.5 rounded-full border border-green-200 text-green-700 hover:bg-green-50 whitespace-nowrap">
                       Met HOD
                     </button>
                   )}

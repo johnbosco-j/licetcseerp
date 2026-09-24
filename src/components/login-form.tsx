@@ -146,8 +146,8 @@ export function LoginForm() {
         style={{ transitionDelay: "500ms" }}
       >
         <div className="flex items-center gap-2 font-mono text-xs text-muted-foreground">
-          <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-          <span>Connection: <span className="text-green-500">ENCRYPTED</span></span>
+          <span className="w-2 h-2 rounded-full bg-green-600 animate-pulse" />
+          <span>Connection: <span className="text-green-700">ENCRYPTED</span></span>
           <span className="mx-2">|</span>
           <span>Protocol: <span className="text-primary">TLS_1.3</span></span>
         </div>

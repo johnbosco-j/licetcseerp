@@ -26,11 +26,11 @@ interface Event {
 }
 
 const EVENT_TYPES = {
-  ASSOCIATION:      { label: 'Association Event', icon: Users,    color: 'text-purple-500 bg-purple-500/10 border-purple-500/20' },
-  GUEST_LECTURE:    { label: 'Guest Lecture',      icon: BookOpen, color: 'text-blue-500 bg-blue-500/10 border-blue-500/20' },
-  INDUSTRIAL_VISIT: { label: 'Industrial Visit',   icon: Building, color: 'text-orange-500 bg-orange-500/10 border-orange-500/20' },
-  WORKSHOP:         { label: 'Workshop',            icon: Briefcase,color: 'text-green-500 bg-green-500/10 border-green-500/20' },
-  SYMPOSIUM:        { label: 'Symposium',           icon: Users,    color: 'text-red-500 bg-red-500/10 border-red-500/20' },
+  ASSOCIATION:      { label: 'Association Event', icon: Users,    color: 'text-purple-700 bg-purple-50 border-purple-200' },
+  GUEST_LECTURE:    { label: 'Guest Lecture',      icon: BookOpen, color: 'text-blue-700 bg-blue-50 border-blue-200' },
+  INDUSTRIAL_VISIT: { label: 'Industrial Visit',   icon: Building, color: 'text-orange-700 bg-orange-50 border-orange-200' },
+  WORKSHOP:         { label: 'Workshop',            icon: Briefcase,color: 'text-green-700 bg-green-50 border-green-200' },
+  SYMPOSIUM:        { label: 'Symposium',           icon: Users,    color: 'text-red-700 bg-red-50 border-red-200' },
   OTHER:            { label: 'Other',               icon: Calendar, color: 'text-muted-foreground bg-accent border-border' },
 }
 

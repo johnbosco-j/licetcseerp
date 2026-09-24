@@ -14,9 +14,9 @@ type Leave = Database['public']['Tables']['leaves']['Row']
 type Profile = Database['public']['Tables']['profiles']['Row']
 
 const STATUS_COLORS = {
-  PENDING:  'text-yellow-500 bg-yellow-500/10 border-yellow-500/20',
-  APPROVED: 'text-green-500 bg-green-500/10 border-green-500/20',
-  REJECTED: 'text-red-500 bg-red-500/10 border-red-500/20',
+  PENDING:  'text-amber-700 bg-amber-50 border-amber-200',
+  APPROVED: 'text-green-700 bg-green-50 border-green-200',
+  REJECTED: 'text-red-700 bg-red-50 border-red-200',
 }
 
 const LEAVE_TYPES = ['Medical','Personal','Family Emergency','Academic Event','Sports','Other']
@@ -149,9 +149,9 @@ export default function LeavesPage() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
           { label: 'Total',    value: stats.total,    color: 'text-foreground' },
-          { label: 'Pending',  value: stats.pending,  color: 'text-yellow-500' },
-          { label: 'Approved', value: stats.approved, color: 'text-green-500' },
-          { label: 'Rejected', value: stats.rejected, color: 'text-red-500' },
+          { label: 'Pending',  value: stats.pending,  color: 'text-amber-700' },
+          { label: 'Approved', value: stats.approved, color: 'text-green-700' },
+          { label: 'Rejected', value: stats.rejected, color: 'text-red-700' },
         ].map(({ label, value, color }) => (
           <div key={label} className="bg-card border border-border rounded-lg p-4">
             <p className="text-[10.5px] font-bold tracking-[1.5px] uppercase text-muted-foreground mb-1">{label}</p>
@@ -268,7 +268,7 @@ export default function LeavesPage() {
                 {isHOD && leave.status === 'PENDING' && (
                   <div className="flex gap-2 flex-shrink-0">
                     <button onClick={() => reviewLeave(leave.id, 'APPROVED')}
-                      className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white font-mono text-xs rounded hover:bg-green-700 transition-colors">
+                      className="flex items-center gap-1 px-3 py-1.5 bg-green-700 text-white text-[13px] font-semibold rounded-md hover:bg-green-800 transition-colors">
                       <Check className="w-3 h-3" /> Approve
                     </button>
                     <button onClick={() => reviewLeave(leave.id, 'REJECTED')}

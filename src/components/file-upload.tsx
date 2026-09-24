@@ -97,7 +97,7 @@ export function FileUpload({
           </div>
         )}
       </div>
-      {error && <p className="font-mono text-xs text-red-500">{error}</p>}
+      {error && <p className="font-mono text-xs text-red-700">{error}</p>}
       <input ref={inputRef} type="file" accept={accept} multiple={multiple} className="hidden"
         onChange={e => { if (e.target.files?.length) upload(e.target.files) }} />
     </div>
@@ -167,7 +167,7 @@ export function FileList({ files, onDelete, canDelete = false }: FileViewerProps
                   </button>
                   {canDelete && onDelete && (
                     <button onClick={() => onDelete(file)}
-                      className="p-1.5 text-muted-foreground hover:text-red-500 transition-colors">
+                      className="p-1.5 text-muted-foreground hover:text-red-700 transition-colors">
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   )}

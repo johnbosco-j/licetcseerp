@@ -6,7 +6,8 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { attendanceStatus } from "@/lib/regulations"
-import { loadStudentStats } from "@/lib/cgpa"
+import { loadDepartmentTotals, loadStudentStats } from "@/lib/cgpa"
+import { academicYear } from "@/lib/utils"
 import type { AuthUser } from "@/lib/auth"
 import type { Database } from "@/lib/supabase"
 import { BarChart3, Download, Loader2, Users, BookOpen, Award, TrendingUp } from "lucide-react"
@@ -48,7 +49,7 @@ export default function ReportsPage() {
       const stats = await loadStudentStats(students.map(s => s.id))
       const results = students.map(s => ({
         name: s.full_name, email: s.email, section: s.section,
-        attendance: stats[s.id].attendancePct, cgpa: stats[s.id].cgpa.cgpa.toFixed(2),
+        attendance: stats[s.id].attendancePct, cgpa: stats[s.id].cgpa.totalCredits ? stats[s.id].cgpa.cgpa.toFixed(2) : '—',
         credits: stats[s.id].cgpa.totalCredits,
       }))
       setStats({ type: 'student_performance', section, data: results })
@@ -86,19 +87,9 @@ export default function ReportsPage() {
       const { data: allStudents } = await supabase.from('profiles').select('*').eq('role', 'STUDENT')
       const { data: allFaculty }  = await supabase.from('profiles').select('*').eq('role', 'PROFESSOR')
       const { data: allSubjects } = await supabase.from('subjects').select('*')
-      const { data: allAtt }      = await supabase.from('attendance').select('status')
-      const { data: allMarks }    = await supabase.from('marks').select('marks_obtained, max_marks')
+      const totals                = await loadDepartmentTotals()
       const { data: events }      = await supabase.from('announcements').select('*').like('audience', 'EVENT:%')
       const { data: placements }  = await supabase.from('placements').select('*')
-
-      const attPct = allAtt && allAtt.length > 0
-        ? Math.round(allAtt.filter(a => a.status === 'PRESENT').length / allAtt.length * 100)
-        : 0
-
-      const marksPct = allMarks && allMarks.length > 0
-        ? Math.round(allMarks.reduce((s, m) => s + Number(m.marks_obtained), 0) /
-            allMarks.reduce((s, m) => s + Number(m.max_marks), 0) * 100)
-        : 0
 
       setStats({
         type: 'naac_data',
@@ -106,13 +97,13 @@ export default function ReportsPage() {
           total_students:      allStudents?.length ?? 0,
           total_faculty:       allFaculty?.length ?? 0,
           total_subjects:      allSubjects?.length ?? 0,
-          avg_attendance_pct:  attPct,
-          avg_marks_pct:       marksPct,
+          avg_attendance_pct:  totals.attendancePct,
+          avg_marks_pct:       totals.marksPct,
           total_events:        events?.length ?? 0,
           total_placements:    placements?.length ?? 0,
           active_placements:   placements?.filter(p => p.is_active).length ?? 0,
           sections:            SECTIONS.length,
-          academic_year:       '2025-2026',
+          academic_year:       academicYear(),
           programme:           'B.E. Computer Science and Engineering',
           regulation:          'R2024',
           institution:         'LICET, Chennai',
@@ -132,7 +123,7 @@ export default function ReportsPage() {
     if (stats.type === 'student_performance') {
       rows = stats.data.map((s: any, i: number) => ({
         'S.No': i+1, 'Name': s.name, 'Email': s.email,
-        'Section': s.section, 'Attendance %': s.attendance,
+        'Section': s.section, 'Attendance %': s.attendance ?? 'No records',
         'CGPA': s.cgpa, 'Credits Earned': s.credits
       }))
       sheetName = 'Student Performance'
@@ -217,7 +208,7 @@ export default function ReportsPage() {
             </button>
             {generated && (
               <button onClick={exportReport}
-                className="flex items-center gap-2 h-10 px-4 bg-green-600 text-white font-mono text-xs rounded hover:bg-green-700">
+                className="flex items-center gap-2 h-10 px-4 border border-licet-indigo/25 bg-white text-licet-indigo text-[13px] font-semibold rounded-md hover:bg-licet-cream/60 shadow-sm">
                 <Download className="w-3 h-3" /> Export XLSX
               </button>
             )}
@@ -247,8 +238,8 @@ export default function ReportsPage() {
                   { label: 'Total Faculty',     value: stats.data.total_faculty,     icon: Users },
                   { label: 'Total Subjects',    value: stats.data.total_subjects,    icon: BookOpen },
                   { label: 'Placement Drives',  value: stats.data.total_placements,  icon: Award },
-                  { label: 'Avg Attendance %',  value: `${stats.data.avg_attendance_pct}%`, icon: TrendingUp },
-                  { label: 'Avg Marks %',       value: `${stats.data.avg_marks_pct}%`,      icon: TrendingUp },
+                  { label: 'Avg Attendance %',  value: stats.data.avg_attendance_pct !== null ? `${stats.data.avg_attendance_pct}%` : '—', icon: TrendingUp },
+                  { label: 'Avg Marks %',       value: stats.data.avg_marks_pct !== null ? `${stats.data.avg_marks_pct}%` : '—',      icon: TrendingUp },
                   { label: 'Events Conducted',  value: stats.data.total_events,      icon: Award },
                   { label: 'Active Drives',     value: stats.data.active_placements, icon: Award },
                 ].map(({ label, value, icon: Icon }) => (
@@ -303,7 +294,7 @@ export default function ReportsPage() {
                           <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{i+1}</td>
                           <td className="px-4 py-3 text-sm font-medium">{row.name}</td>
                           <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{row.email}</td>
-                          <td className={`px-4 py-3 font-mono text-sm font-bold ${{ good: 'text-green-700', warn: 'text-amber-700', bad: 'text-red-700' }[attendanceStatus(row.attendance).tone]}`}>{row.attendance}%</td>
+                          <td className={`px-4 py-3 font-mono text-sm font-bold ${row.attendance === null ? 'text-muted-foreground' : { good: 'text-green-700', warn: 'text-amber-700', bad: 'text-red-700' }[attendanceStatus(row.attendance).tone]}`}>{row.attendance === null ? '—' : `${row.attendance}%`}</td>
                           <td className="px-4 py-3 font-mono text-sm font-bold">{row.cgpa}</td>
                           <td className="px-4 py-3 font-mono text-xs">{row.credits}</td>
                         </>
@@ -326,7 +317,7 @@ export default function ReportsPage() {
                           <td className="px-4 py-3 font-mono text-xs">{row.package_lpa ? `₹${row.package_lpa} LPA` : '—'}</td>
                           <td className="px-4 py-3 font-mono text-xs">{row.visit_date ?? '—'}</td>
                           <td className="px-4 py-3">
-                            <span className={`font-mono text-xs px-2 py-0.5 rounded border ${row.is_active ? 'text-green-500 bg-green-500/10 border-green-500/20' : 'text-muted-foreground bg-accent border-border'}`}>
+                            <span className={`font-mono text-xs px-2 py-0.5 rounded border ${row.is_active ? 'text-green-700 bg-green-50 border-green-200' : 'text-muted-foreground bg-accent border-border'}`}>
                               {row.is_active ? 'Active' : 'Closed'}
                             </span>
                           </td>

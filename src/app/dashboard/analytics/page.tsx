@@ -21,8 +21,8 @@ interface StudentAnalytics {
   profile:       Profile
   cgpaResult:    CGPAResult
   risk:          RiskScore
-  attendancePct: number
-  avgMarksPct:   number
+  attendancePct: number | null
+  avgMarksPct:   number | null
 }
 
 interface FacultyWorkload {
@@ -32,15 +32,20 @@ interface FacultyWorkload {
 }
 
 const RISK_COLORS = {
-  SAFE:     { bg: 'bg-green-500/10',  border: 'border-green-500/20',  text: 'text-green-500',  icon: Shield },
-  WATCH:    { bg: 'bg-yellow-500/10', border: 'border-yellow-500/20', text: 'text-yellow-500', icon: Eye },
-  AT_RISK:  { bg: 'bg-orange-500/10', border: 'border-orange-500/20', text: 'text-orange-500', icon: ShieldAlert },
-  CRITICAL: { bg: 'bg-red-500/10',    border: 'border-red-500/20',    text: 'text-red-500',    icon: ShieldX },
+  SAFE:     { bg: 'bg-green-50',  border: 'border-green-200', text: 'text-green-800', icon: Shield,      label: 'Safe' },
+  WATCH:    { bg: 'bg-amber-50',  border: 'border-amber-200', text: 'text-amber-800', icon: Eye,         label: 'Watch' },
+  AT_RISK:  { bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-800', icon: ShieldAlert, label: 'At risk' },
+  CRITICAL: { bg: 'bg-red-50',    border: 'border-red-200',   text: 'text-red-800',   icon: ShieldX,     label: 'Critical' },
 }
+const NO_DATA = { bg: 'bg-muted', border: 'border-border', text: 'text-muted-foreground', icon: Eye, label: 'No data' }
+const riskStyle = (r: RiskScore) => r.hasData ? RISK_COLORS[r.riskLevel] : NO_DATA
+const ATT_TONE = { good: 'text-green-700', warn: 'text-amber-700', bad: 'text-red-700' }
+const attTone = (pct: number | null) => pct === null ? 'text-muted-foreground' : ATT_TONE[attendanceStatus(pct).tone]
+const pctText = (pct: number | null) => pct === null ? '—' : `${pct}%`
 
 const GRADE_COLORS: Record<string, string> = {
-  'O': 'text-green-500', 'A+': 'text-emerald-500', 'A': 'text-blue-500',
-  'B+': 'text-cyan-500', 'B': 'text-yellow-500', 'C': 'text-orange-500', 'U': 'text-red-500',
+  'O': 'text-green-700', 'A+': 'text-emerald-700', 'A': 'text-blue-700',
+  'B+': 'text-cyan-700', 'B': 'text-amber-700', 'C': 'text-orange-700', 'U': 'text-red-700',
 }
 
 export default function AnalyticsPage() {
@@ -151,10 +156,10 @@ export default function AnalyticsPage() {
       'Register Number': a.profile.email.split('@')[0].toUpperCase(),
       'Student Name': a.profile.full_name,
       'Section': a.profile.section,
-      'CGPA': a.cgpaResult.cgpa.toFixed(2),
+      'CGPA': a.cgpaResult.totalCredits ? a.cgpaResult.cgpa.toFixed(2) : 'No grades yet',
       'Total Credits Earned': a.cgpaResult.totalCredits,
-      'Attendance %': `${a.attendancePct}%`,
-      'Risk Classification': a.risk.riskLevel
+      'Attendance %': a.attendancePct ?? 'No records',
+      'Risk Classification': riskStyle(a.risk).label
     })))
 
     // 2. Faculty Workload Sheet (Criterion 2.4)
@@ -179,18 +184,21 @@ export default function AnalyticsPage() {
 
   const sorted = [...analytics].sort((a, b) => {
     if (sortBy === 'cgpa')       return b.cgpaResult.cgpa - a.cgpaResult.cgpa
-    if (sortBy === 'attendance') return b.attendancePct - a.attendancePct
+    if (sortBy === 'attendance') return (b.attendancePct ?? -1) - (a.attendancePct ?? -1)
     if (sortBy === 'risk')       return b.risk.riskScore - a.risk.riskScore
     return a.profile.full_name.localeCompare(b.profile.full_name)
   })
 
   const riskCounts = analytics.reduce((acc, a) => {
-    acc[a.risk.riskLevel] = (acc[a.risk.riskLevel] ?? 0) + 1
+    if (a.risk.hasData) acc[a.risk.riskLevel] = (acc[a.risk.riskLevel] ?? 0) + 1
     return acc
   }, {} as Record<string, number>)
 
-  const avgCGPA = analytics.length ? (analytics.reduce((s, a) => s + a.cgpaResult.cgpa, 0) / analytics.length).toFixed(2) : '—'
-  const avgAtt = analytics.length ? Math.round(analytics.reduce((s, a) => s + a.attendancePct, 0) / analytics.length) : 0
+  const graded = analytics.filter(a => a.cgpaResult.totalCredits > 0)
+  const avgCGPA = graded.length ? (graded.reduce((s, a) => s + a.cgpaResult.cgpa, 0) / graded.length).toFixed(2) : '—'
+  const withAtt = analytics.filter(a => a.attendancePct !== null)
+  const avgAtt = withAtt.length ? Math.round(withAtt.reduce((s, a) => s + (a.attendancePct ?? 0), 0) / withAtt.length) : null
+  const noData = analytics.filter(a => !a.risk.hasData).length
 
   return (
     <div className="p-6 space-y-6">
@@ -205,14 +213,14 @@ export default function AnalyticsPage() {
       {/* ── HOD / FACULTY TABS ── */}
       {(isHOD || isFaculty) && (
         <div className="flex flex-wrap gap-2 border-b border-border pb-4">
-          <button onClick={() => setActiveTab('STUDENTS')} className={`flex items-center gap-2 font-mono text-xs px-4 py-2 rounded transition-all ${activeTab === 'STUDENTS' ? 'bg-primary text-primary-foreground' : 'bg-accent/50 text-muted-foreground hover:bg-accent'}`}>
+          <button onClick={() => setActiveTab('STUDENTS')} className={`flex items-center gap-2 text-[13px] font-semibold px-4 py-2 rounded-full transition-all ${activeTab === 'STUDENTS' ? 'bg-primary text-primary-foreground' : 'bg-white border border-border text-licet-indigo hover:bg-licet-cream/60'}`}>
             <Users className="w-4 h-4" /> Student Performance
           </button>
-          <button onClick={() => setActiveTab('WORKLOAD')} className={`flex items-center gap-2 font-mono text-xs px-4 py-2 rounded transition-all ${activeTab === 'WORKLOAD' ? 'bg-primary text-primary-foreground' : 'bg-accent/50 text-muted-foreground hover:bg-accent'}`}>
+          <button onClick={() => setActiveTab('WORKLOAD')} className={`flex items-center gap-2 text-[13px] font-semibold px-4 py-2 rounded-full transition-all ${activeTab === 'WORKLOAD' ? 'bg-primary text-primary-foreground' : 'bg-white border border-border text-licet-indigo hover:bg-licet-cream/60'}`}>
             <Briefcase className="w-4 h-4" /> Faculty Workload
           </button>
           {isHOD && (
-            <button onClick={() => setActiveTab('NAAC')} className={`flex items-center gap-2 font-mono text-xs px-4 py-2 rounded transition-all ${activeTab === 'NAAC' ? 'bg-green-600 text-white' : 'bg-accent/50 text-muted-foreground hover:bg-accent'}`}>
+            <button onClick={() => setActiveTab('NAAC')} className={`flex items-center gap-2 text-[13px] font-semibold px-4 py-2 rounded-full transition-all ${activeTab === 'NAAC' ? 'bg-primary text-primary-foreground' : 'bg-white border border-border text-licet-indigo hover:bg-licet-cream/60'}`}>
               <Download className="w-4 h-4" /> NAAC / NBA Export
             </button>
           )}
@@ -222,7 +230,7 @@ export default function AnalyticsPage() {
       {/* ── TAB: NAAC EXPORT (HOD ONLY) ── */}
       {isHOD && activeTab === 'NAAC' && (
         <div className="bg-card border border-border rounded-lg p-8 space-y-6 text-center max-w-2xl mx-auto mt-8">
-          <Shield className="w-12 h-12 text-green-500 mx-auto" />
+          <Shield className="w-12 h-12 text-green-700 mx-auto" />
           <div>
             <h2 className="text-xl font-bold">Accreditation Readiness Report</h2>
             <p className="text-sm text-muted-foreground mt-2">Generate a pre-formatted Excel workbook containing data mapped for NAAC Criterion 2 (Teaching-Learning and Evaluation).</p>
@@ -233,10 +241,10 @@ export default function AnalyticsPage() {
             <p>✓ 2.6 - Student Performance and Learning Outcomes (CGPA/Risk)</p>
           </div>
           <button onClick={exportNAAC} disabled={analytics.length === 0}
-            className="w-full flex items-center justify-center gap-2 h-12 bg-green-600 text-white font-mono text-sm rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors">
+            className="w-full flex items-center justify-center gap-2 h-12 border border-licet-indigo/25 bg-white text-licet-indigo text-[13px] font-semibold rounded-md hover:bg-licet-cream/60 shadow-sm disabled:opacity-50 transition-colors">
             <Download className="w-4 h-4" /> Download Complete NAAC Report
           </button>
-          {analytics.length === 0 && <p className="font-mono text-xs text-red-500">Run the Student Performance analytics for a section first to populate data.</p>}
+          {analytics.length === 0 && <p className="font-mono text-xs text-red-700">Run the Student Performance analytics for a section first to populate data.</p>}
         </div>
       )}
 
@@ -250,7 +258,7 @@ export default function AnalyticsPage() {
             </div>
             <div className="bg-card border border-border rounded-lg p-5">
               <p className="text-[10.5px] font-bold tracking-[1.5px] uppercase text-muted-foreground mb-1">Overloaded (&gt; 16 cr)</p>
-              <p className="text-2xl font-bold text-orange-500">{workload.filter(w => w.totalCredits > 16).length}</p>
+              <p className="text-2xl font-bold text-orange-700">{workload.filter(w => w.totalCredits > 16).length}</p>
             </div>
             <div className="bg-card border border-border rounded-lg p-5">
               <p className="text-[10.5px] font-bold tracking-[1.5px] uppercase text-muted-foreground mb-1">Avg Credits / Faculty</p>
@@ -289,11 +297,11 @@ export default function AnalyticsPage() {
                     <td className="p-4 text-center font-mono text-sm font-bold">{w.totalCredits}</td>
                     <td className="p-4">
                       {w.totalCredits > 16 ? (
-                        <span className="font-mono text-[10px] text-orange-500 bg-orange-500/10 border border-orange-500/20 px-2 py-1 rounded">OVERLOADED</span>
+                        <span className="font-mono text-[10px] text-orange-700 bg-orange-50 border border-orange-200 px-2 py-1 rounded">OVERLOADED</span>
                       ) : w.totalCredits < 12 ? (
-                        <span className="font-mono text-[10px] text-yellow-500 bg-yellow-500/10 border border-yellow-500/20 px-2 py-1 rounded">UNDERLOADED</span>
+                        <span className="font-mono text-[10px] text-amber-700 bg-amber-50 border border-amber-200 px-2 py-1 rounded">UNDERLOADED</span>
                       ) : (
-                        <span className="font-mono text-[10px] text-green-500 bg-green-500/10 border border-green-500/20 px-2 py-1 rounded">OPTIMAL</span>
+                        <span className="font-mono text-[10px] text-green-700 bg-green-50 border border-green-200 px-2 py-1 rounded">OPTIMAL</span>
                       )}
                     </td>
                   </tr>
@@ -312,10 +320,10 @@ export default function AnalyticsPage() {
             <div className="space-y-6">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 {[
-                  { label: 'CGPA',        value: myData.cgpaResult.cgpa.toFixed(2), sub: `× 10 = ${(myData.cgpaResult.cgpa * 10).toFixed(1)}%` },
-                  { label: 'Attendance',  value: `${myData.attendancePct}%`, sub: `${attendanceStatus(myData.attendancePct).code} · ${attendanceStatus(myData.attendancePct).label}` },
-                  { label: 'Avg Marks',   value: `${myData.avgMarksPct}%`, sub: 'All subjects' },
-                  { label: 'Risk Level',  value: myData.risk.riskLevel, sub: `Score: ${myData.risk.riskScore}/100` },
+                  { label: 'CGPA',        value: myData.cgpaResult.totalCredits ? myData.cgpaResult.cgpa.toFixed(2) : '—', sub: myData.cgpaResult.totalCredits ? `${myData.cgpaResult.totalCredits} credits earned` : 'No grades published yet' },
+                  { label: 'Attendance',  value: pctText(myData.attendancePct), sub: myData.attendancePct === null ? 'No attendance recorded yet' : `${attendanceStatus(myData.attendancePct).code} · ${attendanceStatus(myData.attendancePct).label}` },
+                  { label: 'Avg Marks',   value: pctText(myData.avgMarksPct), sub: myData.avgMarksPct === null ? 'No marks entered yet' : 'All subjects' },
+                  { label: 'Risk Level',  value: riskStyle(myData.risk).label, sub: myData.risk.hasData ? `Score: ${myData.risk.riskScore}/100` : 'Nothing recorded yet' },
                 ].map(({ label, value, sub }) => (
                   <div key={label} className="bg-card border border-border rounded-lg p-4">
                     <p className="text-[10.5px] font-bold tracking-[1.5px] uppercase text-muted-foreground mb-1">{label}</p>
@@ -326,8 +334,8 @@ export default function AnalyticsPage() {
               </div>
               
               {myData.risk.flags.length > 0 && (
-                <div className={`rounded-lg border p-4 space-y-2 ${RISK_COLORS[myData.risk.riskLevel].bg} ${RISK_COLORS[myData.risk.riskLevel].border}`}>
-                  <p className={`font-mono text-xs font-bold ${RISK_COLORS[myData.risk.riskLevel].text}`}>⚠ Risk Flags</p>
+                <div className={`rounded-lg border p-4 space-y-2 ${riskStyle(myData.risk).bg} ${riskStyle(myData.risk).border}`}>
+                  <p className={`font-mono text-xs font-bold ${riskStyle(myData.risk).text}`}>⚠ Risk Flags</p>
                   {myData.risk.flags.map((f, i) => (
                     <p key={i} className="font-mono text-xs text-muted-foreground">• {f}</p>
                   ))}
@@ -410,9 +418,9 @@ export default function AnalyticsPage() {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                   {[
                     { label: 'Avg CGPA',    value: avgCGPA, color: 'text-foreground' },
-                    { label: 'Avg Attendance', value: `${avgAtt}%`, color: { good: 'text-green-700', warn: 'text-amber-700', bad: 'text-red-700' }[attendanceStatus(avgAtt).tone] },
-                    { label: 'At Risk',     value: (riskCounts['AT_RISK']??0) + (riskCounts['CRITICAL']??0), color: 'text-orange-500' },
-                    { label: 'Critical',    value: riskCounts['CRITICAL'] ?? 0, color: 'text-red-500' },
+                    { label: 'Avg Attendance', value: pctText(avgAtt), color: attTone(avgAtt) },
+                    { label: 'At Risk',     value: (riskCounts['AT_RISK']??0) + (riskCounts['CRITICAL']??0), color: 'text-orange-700' },
+                    { label: 'Critical',    value: riskCounts['CRITICAL'] ?? 0, color: 'text-red-700' },
                   ].map(({ label, value, color }) => (
                     <div key={label} className="bg-card border border-border rounded-lg p-4">
                       <p className="text-[10.5px] font-bold tracking-[1.5px] uppercase text-muted-foreground mb-1">{label}</p>
@@ -426,11 +434,16 @@ export default function AnalyticsPage() {
                 <div className="bg-card border border-border rounded-lg">
                   <div className="px-6 py-4 border-b border-border bg-licet-paper/70 rounded-t-xl">
                     <span className="eyebrow">STUDENT ANALYTICS — {section}</span>
-                    <h2 className="font-serif text-[19px] font-semibold text-licet-indigo mt-1">{analytics.length} students computed</h2>
+                    <h2 className="font-serif text-[19px] font-semibold text-licet-indigo mt-1">{analytics.length} students</h2>
+                    {noData > 0 && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {noData === analytics.length ? 'No attendance or marks have been recorded for this section yet.' : `${noData} with no attendance or marks recorded yet.`}
+                      </p>
+                    )}
                   </div>
                   <div className="divide-y divide-border max-h-[600px] overflow-y-auto">
                     {sorted.map((a, idx) => {
-                      const { bg, border, text, icon: Icon } = RISK_COLORS[a.risk.riskLevel]
+                      const { bg, border, text, icon: Icon, label } = riskStyle(a.risk)
                       const isExp = expanded === a.profile.id
                       return (
                         <div key={a.profile.id}>
@@ -448,17 +461,17 @@ export default function AnalyticsPage() {
                             <div className="flex items-center gap-4 text-right">
                               <div>
                                 <p className="font-mono text-xs text-muted-foreground">CGPA</p>
-                                <p className="font-mono text-sm font-bold">{a.cgpaResult.cgpa.toFixed(2)}</p>
+                                <p className="font-mono text-sm font-bold">{a.cgpaResult.totalCredits ? a.cgpaResult.cgpa.toFixed(2) : '—'}</p>
                               </div>
                               <div>
                                 <p className="font-mono text-xs text-muted-foreground">Att%</p>
-                                <p className={`font-mono text-sm font-bold ${{ good: 'text-green-700', warn: 'text-amber-700', bad: 'text-red-700' }[attendanceStatus(a.attendancePct).tone]}`}>
-                                  {a.attendancePct}%
+                                <p className={`font-mono text-sm font-bold ${attTone(a.attendancePct)}`}>
+                                  {pctText(a.attendancePct)}
                                 </p>
                               </div>
                               <div className={`flex items-center gap-1 px-2 py-1 rounded border font-mono text-xs ${bg} ${border} ${text}`}>
                                 <Icon className="w-3 h-3" />
-                                {a.risk.riskLevel}
+                                {label}
                               </div>
                               {isExp ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
                             </div>

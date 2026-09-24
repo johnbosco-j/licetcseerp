@@ -18,12 +18,12 @@ type AttRow  = Database['public']['Tables']['attendance']['Row']
 type Status4 = 'PRESENT' | 'ABSENT_ON_INFO' | 'ABSENT_ON_NO_INFO' | 'LATE'
 
 const STATUS_COLORS: Record<string, string> = {
-  PRESENT:           'text-green-500 bg-green-500/10 border-green-500/20',
-  ABSENT_ON_INFO:    'text-blue-500 bg-blue-500/10 border-blue-500/20',
-  ABSENT_ON_NO_INFO: 'text-red-500 bg-red-500/10 border-red-500/20',
-  LATE:              'text-yellow-500 bg-yellow-500/10 border-yellow-500/20',
-  ABSENT:  'text-red-500 bg-red-500/10 border-red-500/20',
-  EXCUSED: 'text-blue-500 bg-blue-500/10 border-blue-500/20',
+  PRESENT:           'text-green-700 bg-green-50 border-green-200',
+  ABSENT_ON_INFO:    'text-blue-700 bg-blue-50 border-blue-200',
+  ABSENT_ON_NO_INFO: 'text-red-700 bg-red-50 border-red-200',
+  LATE:              'text-amber-700 bg-amber-50 border-amber-200',
+  ABSENT:  'text-red-700 bg-red-50 border-red-200',
+  EXCUSED: 'text-blue-700 bg-blue-50 border-blue-200',
 }
 
 const STATUS_LABELS: Record<Status4, string> = {
@@ -50,9 +50,9 @@ function toDbStatus(s: Status4): string {
 }
 
 const PARTS = [
-  { id: 1, label: 'Part I',   time: '8:00 AM',  periods: [1,2],   color: 'text-blue-500 bg-blue-500/10 border-blue-500/20' },
-  { id: 2, label: 'Part II',  time: '10:10 AM', periods: [3,4,5], color: 'text-green-500 bg-green-500/10 border-green-500/20' },
-  { id: 3, label: 'Part III', time: '1:30 PM',  periods: [6,7,8], color: 'text-orange-500 bg-orange-500/10 border-orange-500/20' },
+  { id: 1, label: 'Part I',   time: '8:00 AM',  periods: [1,2],   color: 'text-blue-700 bg-blue-50 border-blue-200' },
+  { id: 2, label: 'Part II',  time: '10:10 AM', periods: [3,4,5], color: 'text-green-700 bg-green-50 border-green-200' },
+  { id: 3, label: 'Part III', time: '1:30 PM',  periods: [6,7,8], color: 'text-orange-700 bg-orange-50 border-orange-200' },
 ]
 
 const SECTIONS = ['I CSE-A','I CSE-B','II CSE-A','II CSE-B','III CSE-A','III CSE-B','IV CSE-A','IV CSE-B']
@@ -534,7 +534,7 @@ export default function AttendancePage() {
             </div>
             {subjects.map(subject => {
               const pct = calcPct(subject.id)
-              const color = pct === null ? 'text-muted-foreground' : pct >= 75 ? 'text-green-500' : pct >= 65 ? 'text-yellow-500' : 'text-red-500'
+              const color = pct === null ? 'text-muted-foreground' : pct >= 75 ? 'text-green-700' : pct >= 65 ? 'text-amber-700' : 'text-red-700'
               return (
                 <div key={subject.id}
                   className={`flex items-center gap-4 px-6 py-4 border-b border-border last:border-0 hover:bg-accent/50 cursor-pointer ${selectedSubject?.id === subject.id ? 'bg-accent' : ''}`}
@@ -632,18 +632,18 @@ export default function AttendancePage() {
                     className="h-9 px-2 bg-background border border-border rounded font-mono text-xs focus:border-primary focus:outline-none" />
                 </div>
                 <button onClick={exportXLSX} disabled={exporting}
-                  className="flex items-center gap-2 h-9 px-3 bg-green-600 text-white font-mono text-xs rounded hover:bg-green-700 disabled:opacity-50">
+                  className="flex items-center gap-2 h-9 px-3 border border-licet-indigo/25 bg-white text-licet-indigo text-[13px] font-semibold rounded-md hover:bg-licet-cream/60 shadow-sm disabled:opacity-50">
                   {exporting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
                   Export XLSX
                 </button>
                 {isHOD && (
                   <button onClick={() => isLocked ? toggleLock() : setShowLockModal(true)}
-                    className={`flex items-center gap-2 h-9 px-3 font-mono text-xs rounded transition-colors ${isLocked ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-yellow-600 hover:bg-yellow-700 text-white'}`}>
+                    className={`flex items-center gap-2 h-9 px-3 font-mono text-xs rounded transition-colors ${isLocked ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-licet-cream text-licet-indigo border border-licet-gold hover:bg-licet-gold/50'}`}>
                     {isLocked ? <><Unlock className="w-3 h-3" /> Unlock</> : <><Lock className="w-3 h-3" /> Lock</>}
                   </button>
                 )}
                 {isLocked && (
-                  <span className="flex items-center gap-2 font-mono text-xs text-red-500 bg-red-500/10 border border-red-500/20 px-3 py-1.5 rounded">
+                  <span className="flex items-center gap-2 font-mono text-xs text-red-700 bg-red-50 border border-red-200 px-3 py-1.5 rounded">
                     <Lock className="w-3 h-3" /> Locked
                   </span>
                 )}
@@ -664,18 +664,18 @@ export default function AttendancePage() {
                     className="h-9 px-2 bg-background border border-border rounded font-mono text-xs focus:border-primary focus:outline-none" />
                 </div>
                 <button onClick={exportDayXLSX} disabled={exporting}
-                  className="flex items-center gap-2 h-9 px-3 bg-green-600 text-white font-mono text-xs rounded hover:bg-green-700 disabled:opacity-50">
+                  className="flex items-center gap-2 h-9 px-3 border border-licet-indigo/25 bg-white text-licet-indigo text-[13px] font-semibold rounded-md hover:bg-licet-cream/60 shadow-sm disabled:opacity-50">
                   {exporting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
                   Export XLSX
                 </button>
                 {isHOD && (
                   <button onClick={() => dayLocked ? toggleDayLock() : setShowDayLockModal(true)}
-                    className={`flex items-center gap-2 h-9 px-3 font-mono text-xs rounded transition-colors ${dayLocked ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-yellow-600 hover:bg-yellow-700 text-white'}`}>
+                    className={`flex items-center gap-2 h-9 px-3 font-mono text-xs rounded transition-colors ${dayLocked ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-licet-cream text-licet-indigo border border-licet-gold hover:bg-licet-gold/50'}`}>
                     {dayLocked ? <><Unlock className="w-3 h-3" /> Unlock</> : <><Lock className="w-3 h-3" /> Lock</>}
                   </button>
                 )}
                 {dayLocked && (
-                  <span className="flex items-center gap-2 font-mono text-xs text-red-500 bg-red-500/10 border border-red-500/20 px-3 py-1.5 rounded">
+                  <span className="flex items-center gap-2 font-mono text-xs text-red-700 bg-red-50 border border-red-200 px-3 py-1.5 rounded">
                     <Lock className="w-3 h-3" /> Locked
                   </span>
                 )}
@@ -749,20 +749,20 @@ export default function AttendancePage() {
                         const next = { ...dayAttendance }
                         students.forEach(s => { if (!next[s.id]) next[s.id] = {}; next[s.id][activePart] = 'PRESENT' })
                         setDayAttendance(next)
-                      }} className="text-[12.5px] font-medium px-3.5 py-1.5 rounded-full border border-green-500/30 text-green-500 hover:bg-green-500/10">All Present</button>
+                      }} className="text-[12.5px] font-medium px-3.5 py-1.5 rounded-full border border-green-200 text-green-700 hover:bg-green-50">All Present</button>
                       <button onClick={() => {
                         const next = { ...dayAttendance }
                         students.forEach(s => { if (!next[s.id]) next[s.id] = {}; next[s.id][activePart] = 'ABSENT_ON_NO_INFO' })
                         setDayAttendance(next)
-                      }} className="text-[12.5px] font-medium px-3.5 py-1.5 rounded-full border border-red-500/30 text-red-500 hover:bg-red-500/10">All Absent</button>
+                      }} className="text-[12.5px] font-medium px-3.5 py-1.5 rounded-full border border-red-200 text-red-700 hover:bg-red-50">All Absent</button>
                     </div>
                   </div>
 
                   <div className="px-6 py-2 border-b border-border flex gap-4 font-mono text-xs">
-                    <span className="text-green-500">P: {students.filter(s => (dayAttendance[s.id]?.[activePart] ?? 'PRESENT') === 'PRESENT').length}</span>
-                    <span className="text-blue-500">AI: {students.filter(s => dayAttendance[s.id]?.[activePart] === 'ABSENT_ON_INFO').length}</span>
-                    <span className="text-red-500">AN: {students.filter(s => dayAttendance[s.id]?.[activePart] === 'ABSENT_ON_NO_INFO').length}</span>
-                    <span className="text-yellow-500">L: {students.filter(s => dayAttendance[s.id]?.[activePart] === 'LATE').length}</span>
+                    <span className="text-green-700">P: {students.filter(s => (dayAttendance[s.id]?.[activePart] ?? 'PRESENT') === 'PRESENT').length}</span>
+                    <span className="text-blue-700">AI: {students.filter(s => dayAttendance[s.id]?.[activePart] === 'ABSENT_ON_INFO').length}</span>
+                    <span className="text-red-700">AN: {students.filter(s => dayAttendance[s.id]?.[activePart] === 'ABSENT_ON_NO_INFO').length}</span>
+                    <span className="text-amber-700">L: {students.filter(s => dayAttendance[s.id]?.[activePart] === 'LATE').length}</span>
                     <span className="text-muted-foreground ml-auto text-xs">AN → alert to meet HOD · 3 Late/month → alert</span>
                   </div>
 
@@ -793,7 +793,7 @@ export default function AttendancePage() {
                   </div>
 
                   <div className="px-6 py-4 border-t border-border flex items-center justify-between">
-                    <span className={`font-mono text-xs ${saveMsg.startsWith('Error') ? 'text-red-500' : 'text-green-500'}`}>{saveMsg}</span>
+                    <span className={`font-mono text-xs ${saveMsg.startsWith('Error') ? 'text-red-700' : 'text-green-700'}`}>{saveMsg}</span>
                     <button onClick={saveDayAttendance} disabled={saving || !students.length || dayLocked}
                       className="flex items-center gap-2 px-4 py-2 bg-licet-indigo text-white text-[13px] font-semibold rounded-md hover:bg-licet-violet shadow-sm disabled:opacity-50">
                       {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
@@ -823,18 +823,18 @@ export default function AttendancePage() {
                   {!isLocked && (
                     <div className="flex gap-2">
                       <button onClick={() => { const n: Record<string, Status4> = {}; students.forEach(s => n[s.id]='PRESENT'); setMarkingState(n) }}
-                        className="text-[12.5px] font-medium px-3.5 py-1.5 rounded-full border border-green-500/30 text-green-500 hover:bg-green-500/10">All Present</button>
+                        className="text-[12.5px] font-medium px-3.5 py-1.5 rounded-full border border-green-200 text-green-700 hover:bg-green-50">All Present</button>
                       <button onClick={() => { const n: Record<string, Status4> = {}; students.forEach(s => n[s.id]='ABSENT_ON_NO_INFO'); setMarkingState(n) }}
-                        className="text-[12.5px] font-medium px-3.5 py-1.5 rounded-full border border-red-500/30 text-red-500 hover:bg-red-500/10">All Absent</button>
+                        className="text-[12.5px] font-medium px-3.5 py-1.5 rounded-full border border-red-200 text-red-700 hover:bg-red-50">All Absent</button>
                     </div>
                   )}
                 </div>
 
                 <div className="px-6 py-2 border-b border-border flex gap-4 font-mono text-xs">
-                  <span className="text-green-500">P: {Object.values(markingState).filter(v=>v==='PRESENT').length}</span>
-                  <span className="text-blue-500">AI: {Object.values(markingState).filter(v=>v==='ABSENT_ON_INFO').length}</span>
-                  <span className="text-red-500">AN: {Object.values(markingState).filter(v=>v==='ABSENT_ON_NO_INFO').length}</span>
-                  <span className="text-yellow-500">L: {Object.values(markingState).filter(v=>v==='LATE').length}</span>
+                  <span className="text-green-700">P: {Object.values(markingState).filter(v=>v==='PRESENT').length}</span>
+                  <span className="text-blue-700">AI: {Object.values(markingState).filter(v=>v==='ABSENT_ON_INFO').length}</span>
+                  <span className="text-red-700">AN: {Object.values(markingState).filter(v=>v==='ABSENT_ON_NO_INFO').length}</span>
+                  <span className="text-amber-700">L: {Object.values(markingState).filter(v=>v==='LATE').length}</span>
                   <span className="text-muted-foreground ml-auto text-xs">AN → alert to meet HOD · 3 Late/month → alert</span>
                 </div>
 
@@ -866,7 +866,7 @@ export default function AttendancePage() {
                 </div>
 
                 <div className="px-6 py-4 border-t border-border flex items-center justify-between">
-                  <span className={`font-mono text-xs ${saveMsg.startsWith('Error') ? 'text-red-500' : 'text-green-500'}`}>{saveMsg}</span>
+                  <span className={`font-mono text-xs ${saveMsg.startsWith('Error') ? 'text-red-700' : 'text-green-700'}`}>{saveMsg}</span>
                   <button onClick={saveAttendance} disabled={saving || isLocked || !students.length}
                     className="flex items-center gap-2 px-4 py-2 bg-licet-indigo text-white text-[13px] font-semibold rounded-md hover:bg-licet-violet shadow-sm disabled:opacity-50">
                     {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}

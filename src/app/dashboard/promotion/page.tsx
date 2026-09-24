@@ -183,10 +183,10 @@ export default function PromotionPage() {
       </div>
 
       {/* Warning */}
-      <div className="flex items-start gap-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg px-4 py-4">
-        <AlertTriangle className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" />
+      <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-lg px-4 py-4">
+        <AlertTriangle className="w-5 h-5 text-amber-700 flex-shrink-0 mt-0.5" />
         <div className="space-y-1">
-          <p className="font-mono text-xs font-bold text-yellow-500">IMPORTANT — Run only in July</p>
+          <p className="font-mono text-xs font-bold text-amber-700">IMPORTANT — Run only in July</p>
           <p className="font-mono text-xs text-muted-foreground">
             This will permanently move all students to their next section.
             I year → II year, II year → III year, III year → IV year, IV year → GRADUATED.
@@ -250,11 +250,11 @@ export default function PromotionPage() {
             </div>
             <div className="bg-card border border-border rounded-lg p-4">
               <p className="text-[10.5px] font-bold tracking-[1.5px] uppercase text-muted-foreground mb-1">To Promote</p>
-              <p className="text-2xl font-bold text-blue-500">{promotions.length}</p>
+              <p className="text-2xl font-bold text-blue-700">{promotions.length}</p>
             </div>
             <div className="bg-card border border-border rounded-lg p-4">
               <p className="text-[10.5px] font-bold tracking-[1.5px] uppercase text-muted-foreground mb-1">To Graduate</p>
-              <p className="text-2xl font-bold text-green-500">{graduations.length}</p>
+              <p className="text-2xl font-bold text-green-700">{graduations.length}</p>
             </div>
           </div>
 
@@ -277,9 +277,9 @@ export default function PromotionPage() {
                 </div>
               ))}
               {graduations.length > 0 && (
-                <div className="flex items-center justify-between px-6 py-3 bg-green-500/5">
+                <div className="flex items-center justify-between px-6 py-3 bg-green-50">
                   <span className="font-mono text-sm">IV CSE → 🎓 GRADUATED</span>
-                  <span className="font-mono text-sm font-bold text-green-500">{graduations.length} students</span>
+                  <span className="font-mono text-sm font-bold text-green-700">{graduations.length} students</span>
                 </div>
               )}
             </div>
@@ -301,9 +301,9 @@ export default function PromotionPage() {
 
       {/* Done */}
       {done && (
-        <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-6 text-center space-y-3">
-          <CheckCircle2 className="w-12 h-12 text-green-500 mx-auto" />
-          <h2 className="font-bold text-lg">Promotion Complete!</h2>
+        <div className="bg-green-50 border border-green-200 rounded-lg p-6 text-center space-y-3">
+          <CheckCircle2 className="w-12 h-12 text-green-700 mx-auto" />
+          <h2 className="font-bold text-lg">Promotion complete</h2>
           <p className="font-mono text-sm text-muted-foreground">
             {promotions.length} students promoted · {graduations.length} graduated
           </p>
@@ -330,8 +330,8 @@ export default function PromotionPage() {
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="font-mono text-xs text-blue-500">{entry.promoted_count} promoted</p>
-                  <p className="font-mono text-xs text-green-500">{entry.graduated_count} graduated</p>
+                  <p className="font-mono text-xs text-blue-700">{entry.promoted_count} promoted</p>
+                  <p className="font-mono text-xs text-green-700">{entry.graduated_count} graduated</p>
                 </div>
               </div>
             ))}

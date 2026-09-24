@@ -25,3 +25,15 @@ export function safeUrl(url: string | null | undefined): string | undefined {
     return undefined
   }
 }
+
+// LICET academic year runs June–May: Sept 2026 → "2026-2027" (short: "2026-27").
+export function academicYear(d = new Date(), short = false): string {
+  const start = d.getMonth() >= 5 ? d.getFullYear() : d.getFullYear() - 1
+  return short ? `${start}-${String(start + 1).slice(2)}` : `${start}-${start + 1}`
+}
+
+// Odd semesters run June–November, even semesters December–May.
+export function semesterTerm(d = new Date()): 'Odd Semester' | 'Even Semester' {
+  const m = d.getMonth()
+  return m >= 5 && m <= 10 ? 'Odd Semester' : 'Even Semester'
+}

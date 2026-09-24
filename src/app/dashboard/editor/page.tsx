@@ -6,6 +6,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { printHtml } from "@/lib/print"
+import { academicYear, semesterTerm } from "@/lib/utils"
 import { RichEditor } from "@/components/rich-editor"
 import type { AuthUser } from "@/lib/auth"
 import type { Database } from "@/lib/supabase"
@@ -53,7 +54,7 @@ const TEMPLATES: Record<string, { title: string; content: string }> = {
     title: 'Question Paper',
     content: `<h1 style="text-align:center">LOYOLA-ICAM COLLEGE OF ENGINEERING AND TECHNOLOGY</h1>
 <p style="text-align:center"><strong>Department of Computer Science and Engineering</strong></p>
-<p style="text-align:center">B.E. CSE – R2024 | Even Semester 2025-2026</p>
+<p style="text-align:center">B.E. CSE – R2024 | ${semesterTerm()} ${academicYear()}</p>
 <hr/>
 <table><tr><th>Course Code</th><th>Course Title</th><th>Date</th><th>Time</th><th>Max Marks</th></tr>
 <tr><td></td><td></td><td></td><td>3 Hours</td><td>100</td></tr></table>
@@ -81,7 +82,7 @@ const TEMPLATES: Record<string, { title: string; content: string }> = {
     content: `<h1>NAAC Self Study Report – Criterion 1</h1>
 <p><strong>Institution:</strong> Loyola-ICAM College of Engineering and Technology (LICET)</p>
 <p><strong>Department:</strong> Computer Science and Engineering</p>
-<p><strong>Academic Year:</strong> 2025-2026</p>
+<p><strong>Academic Year:</strong> ${academicYear()}</p>
 <hr/>
 <h2>1.1 Curriculum Design and Development</h2>
 <h3>1.1.1 Programmes offered by HEI</h3>
@@ -107,7 +108,7 @@ const TEMPLATES: Record<string, { title: string; content: string }> = {
     content: `<h1>NBA Self Assessment Report</h1>
 <p><strong>Programme:</strong> B.E. Computer Science and Engineering</p>
 <p><strong>Institution:</strong> LICET, Chennai – 600 034</p>
-<p><strong>Academic Year:</strong> 2025-2026</p>
+<p><strong>Academic Year:</strong> ${academicYear()}</p>
 <hr/>
 <h2>Criterion 1: Vision, Mission and Programme Educational Objectives</h2>
 <h3>1.1 Vision of the Department</h3>
@@ -152,7 +153,7 @@ const TEMPLATES: Record<string, { title: string; content: string }> = {
     content: `<h1>Course File</h1>
 <p><strong>Course Code:</strong> &nbsp;&nbsp;<strong>Course Title:</strong></p>
 <p><strong>Faculty:</strong> &nbsp;&nbsp;<strong>Section:</strong> &nbsp;&nbsp;<strong>Semester:</strong></p>
-<p><strong>Academic Year:</strong> 2025-2026</p>
+<p><strong>Academic Year:</strong> ${academicYear()}</p>
 <hr/>
 <h2>1. Syllabus</h2>
 <p></p>
@@ -264,7 +265,7 @@ export default function EditorPage() {
   }
 
   const printDoc = () => {
-    printHtml(title || 'Document', `body { font-family: 'Times New Roman', serif; font-size: 12pt; margin: 2.5cm; line-height: 1.6; } h1 { font-size: 16pt; text-align: center; } h2 { font-size: 13pt; } h3 { font-size: 12pt; } table { border-collapse: collapse; width: 100%; margin: 0.5cm 0; } th, td { border: 1px solid #000; padding: 4px 8px; font-size: 10pt; } th { background: #f0f0f0; font-weight: bold; } @media print { body { margin: 1.5cm; } }`, content)
+    printHtml(title || 'Document', `body { font-family: 'Times New Roman', serif; font-size: 12pt; margin: 2.5cm; line-height: 1.6; } h1 { font-size: 16pt; text-align: center; } h2 { font-size: 13pt; } h3 { font-size: 12pt; } table { border-collapse: collapse; width: 100%; margin: 0.5cm 0; } th, td { border: 1px solid #000; padding: 4px 8px; font-size: 10pt; } th { background: #F3EEE3; font-weight: bold; } @media print { body { margin: 1.5cm; } }`, content)
   }
 
   return (
@@ -334,7 +335,7 @@ export default function EditorPage() {
                   className="flex-1 h-10 px-3 bg-background border border-border rounded font-mono text-sm font-bold focus:border-primary focus:outline-none"
                   placeholder="Document title..." />
                 <div className="flex items-center gap-2">
-                  {saveMsg && <span className="font-mono text-xs text-green-500">{saveMsg}</span>}
+                  {saveMsg && <span className="font-mono text-xs text-green-700">{saveMsg}</span>}
                   <button onClick={printDoc}
                     className="flex items-center gap-1.5 px-3 py-2 border border-border bg-white text-licet-indigo text-[13px] font-semibold rounded-md hover:bg-licet-cream/60 transition-colors">
                     <Download className="w-3 h-3" /> Print / PDF

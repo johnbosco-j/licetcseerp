@@ -44,16 +44,16 @@ const WEEKDAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday']
 const SECTIONS  = ['I CSE-A','I CSE-B','II CSE-A','II CSE-B','III CSE-A','III CSE-B','IV CSE-A','IV CSE-B']
 
 const SUBJECT_COLORS = [
-  'bg-blue-500/15 border-blue-500/30 text-blue-600 dark:text-blue-400',
-  'bg-purple-500/15 border-purple-500/30 text-purple-600 dark:text-purple-400',
-  'bg-green-500/15 border-green-500/30 text-green-600 dark:text-green-400',
-  'bg-orange-500/15 border-orange-500/30 text-orange-600 dark:text-orange-400',
-  'bg-pink-500/15 border-pink-500/30 text-pink-600 dark:text-pink-400',
-  'bg-cyan-500/15 border-cyan-500/30 text-cyan-600 dark:text-cyan-400',
-  'bg-yellow-500/15 border-yellow-500/30 text-yellow-600 dark:text-yellow-400',
-  'bg-red-500/15 border-red-500/30 text-red-600 dark:text-red-400',
-  'bg-emerald-500/15 border-emerald-500/30 text-emerald-600 dark:text-emerald-400',
-  'bg-indigo-500/15 border-indigo-500/30 text-indigo-600 dark:text-indigo-400',
+  'bg-blue-50 border-blue-200 text-blue-700 dark:text-blue-700',
+  'bg-purple-50 border-purple-200 text-purple-700 dark:text-purple-700',
+  'bg-green-50 border-green-200 text-green-700 dark:text-green-700',
+  'bg-orange-50 border-orange-200 text-orange-700 dark:text-orange-700',
+  'bg-pink-50 border-pink-200 text-pink-700 dark:text-pink-700',
+  'bg-cyan-50 border-cyan-200 text-cyan-700 dark:text-cyan-700',
+  'bg-amber-50 border-amber-200 text-amber-700 dark:text-amber-700',
+  'bg-red-50 border-red-200 text-red-700 dark:text-red-700',
+  'bg-emerald-50 border-emerald-200 text-emerald-700 dark:text-emerald-700',
+  'bg-indigo-50 border-indigo-200 text-indigo-700 dark:text-indigo-700',
 ]
 
 interface TimetableSlot { subjectId: string; subjectCode: string; subjectName: string }
@@ -203,7 +203,7 @@ export default function TimetablePage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {saveMsg && <span className="font-mono text-xs text-green-500">{saveMsg}</span>}
+          {saveMsg && <span className="font-mono text-xs text-green-700">{saveMsg}</span>}
           {(isHOD || isFaculty) && !editing && (
             <button onClick={() => setEditing(true)}
               className="px-4 py-2 bg-licet-indigo text-white text-[13px] font-semibold rounded-md hover:bg-licet-violet shadow-sm">
@@ -217,7 +217,7 @@ export default function TimetablePage() {
                 <Settings className="w-3 h-3" /> Saturday
               </button>
               <button onClick={saveTimetable} disabled={saving}
-                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white font-mono text-xs rounded hover:bg-green-700 disabled:opacity-50">
+                className="flex items-center gap-2 px-4 py-2 bg-green-700 text-white text-[13px] font-semibold rounded-md hover:bg-green-800 disabled:opacity-50">
                 {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
                 {saving ? 'Saving...' : 'Save'}
               </button>
@@ -240,7 +240,7 @@ export default function TimetablePage() {
 
       {/* Saturday config */}
       {showSatConfig && editing && (
-        <div className="bg-card border border-yellow-500/30 rounded-lg p-4 space-y-3">
+        <div className="bg-card border border-amber-200 rounded-lg p-4 space-y-3">
           <span className="eyebrow">SATURDAY CONFIGURATION</span>
           <div className="flex flex-wrap items-center gap-6">
             <label className="flex items-center gap-2 cursor-pointer">
@@ -283,7 +283,7 @@ export default function TimetablePage() {
       {/* Part labels */}
       <div className="flex gap-4 font-mono text-xs">
         {PERIOD_PARTS.map(p => (
-          <div key={p.part} className={`flex items-center gap-1.5 px-3 py-1 rounded border ${p.part === 1 ? 'text-blue-500 bg-blue-500/10 border-blue-500/20' : p.part === 2 ? 'text-green-500 bg-green-500/10 border-green-500/20' : 'text-orange-500 bg-orange-500/10 border-orange-500/20'}`}>
+          <div key={p.part} className={`flex items-center gap-1.5 px-3 py-1 rounded border ${p.part === 1 ? 'text-blue-700 bg-blue-50 border-blue-200' : p.part === 2 ? 'text-green-700 bg-green-50 border-green-200' : 'text-orange-700 bg-orange-50 border-orange-200'}`}>
             <span className="font-bold">Part {p.part}</span>
             <span className="text-muted-foreground">{p.time} · {p.periods.map(x => `P${x.no}`).join(', ')}</span>
           </div>
@@ -299,7 +299,7 @@ export default function TimetablePage() {
               {PERIOD_PARTS.map(part => (
                 part.periods.map((period, idx) => (
                   <th key={period.no}
-                    className={`font-mono text-xs text-center p-2 border border-border ${part.part === 1 ? 'bg-blue-500/5' : part.part === 2 ? 'bg-green-500/5' : 'bg-orange-500/5'} ${idx === 0 && part.part > 1 ? 'border-l-2 border-l-border' : ''}`}>
+                    className={`font-mono text-xs text-center p-2 border border-border ${part.part === 1 ? 'bg-blue-50' : part.part === 2 ? 'bg-green-50' : 'bg-orange-50'} ${idx === 0 && part.part > 1 ? 'border-l-2 border-l-border' : ''}`}>
                     <div className="font-bold">P{period.no}</div>
                     <div className="text-muted-foreground" style={{fontSize:'10px'}}>{period.start}</div>
                     <div className="text-muted-foreground" style={{fontSize:'9px'}}>{period.duration}</div>
@@ -319,7 +319,7 @@ export default function TimetablePage() {
 
               return (
                 <tr key={day} className={isDisabled ? 'opacity-30' : ''}>
-                  <td className={`font-mono text-xs p-3 border border-border font-bold ${isSat ? 'bg-yellow-500/5' : 'bg-accent/30'}`}>
+                  <td className={`font-mono text-xs p-3 border border-border font-bold ${isSat ? 'bg-amber-50' : 'bg-accent/30'}`}>
                     <div>{day}</div>
                     {isSat && satConfig.enabled && (
                       <div className="font-normal text-muted-foreground" style={{fontSize:'9px'}}>
@@ -349,7 +349,7 @@ export default function TimetablePage() {
 
                     return (
                       <td key={period.no}
-                        className={`border border-border p-1 min-w-[90px] ${part?.part === 1 ? 'bg-blue-500/3' : part?.part === 2 ? 'bg-green-500/3' : 'bg-orange-500/3'}`}>
+                        className={`border border-border p-1 min-w-[90px] ${part?.part === 1 ? 'bg-blue-50' : part?.part === 2 ? 'bg-green-50' : 'bg-orange-50'}`}>
                         {editing && !isSat ? (
                           <select value={slot?.subjectId ?? ''}
                             onChange={e => setSlot(day, period.no, e.target.value)}
@@ -382,7 +382,7 @@ export default function TimetablePage() {
         <div className="grid grid-cols-3 gap-4">
           {PERIOD_PARTS.map(part => (
             <div key={part.part}>
-              <p className={`font-mono text-xs font-bold mb-2 ${part.part === 1 ? 'text-blue-500' : part.part === 2 ? 'text-green-500' : 'text-orange-500'}`}>
+              <p className={`font-mono text-xs font-bold mb-2 ${part.part === 1 ? 'text-blue-700' : part.part === 2 ? 'text-green-700' : 'text-orange-700'}`}>
                 Part {part.part} — {part.label} ({part.time})
               </p>
               {part.periods.map(p => (

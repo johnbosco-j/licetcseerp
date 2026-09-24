@@ -154,8 +154,8 @@ export default function AttendanceAnalysisPage() {
   }
 
   const partColor = (status: string) => {
-    if (status === 'PRESENT')     return 'text-green-500 bg-green-500/10 border-green-500/20'
-    if (status === 'ABSENT')      return 'text-red-500 bg-red-500/10 border-red-500/20'
+    if (status === 'PRESENT')     return 'text-green-700 bg-green-50 border-green-200'
+    if (status === 'ABSENT')      return 'text-red-700 bg-red-50 border-red-200'
     return 'text-muted-foreground bg-accent border-border'
   }
 
@@ -192,7 +192,7 @@ export default function AttendanceAnalysisPage() {
           </button>
           {students.length > 0 && (
             <button onClick={exportXLSX}
-              className="flex items-center gap-2 h-10 px-3 bg-green-600 text-white font-mono text-xs rounded hover:bg-green-700">
+              className="flex items-center gap-2 h-10 px-3 border border-licet-indigo/25 bg-white text-licet-indigo text-[13px] font-semibold rounded-md hover:bg-licet-cream/60 shadow-sm">
               <Download className="w-3 h-3" /> Export
             </button>
           )}
@@ -205,9 +205,9 @@ export default function AttendanceAnalysisPage() {
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
             {[
               { label: 'Total',        value: stats.total,       color: 'text-foreground',   bg: '' },
-              { label: 'Full Present', value: stats.fullPresent, color: 'text-green-500',    bg: 'bg-green-500/5 border-green-500/20' },
-              { label: 'Partial Abs',  value: stats.partial,     color: 'text-yellow-500',   bg: 'bg-yellow-500/5 border-yellow-500/20' },
-              { label: 'Full Absent',  value: stats.fullAbsent,  color: 'text-red-500',      bg: 'bg-red-500/5 border-red-500/20' },
+              { label: 'Full Present', value: stats.fullPresent, color: 'text-green-700',    bg: 'bg-green-50 border-green-200' },
+              { label: 'Partial Abs',  value: stats.partial,     color: 'text-amber-700',   bg: 'bg-amber-50 border-amber-200' },
+              { label: 'Full Absent',  value: stats.fullAbsent,  color: 'text-red-700',      bg: 'bg-red-50 border-red-200' },
               { label: 'Not Marked',   value: stats.notMarked,   color: 'text-muted-foreground', bg: '' },
             ].map(({ label, value, color, bg }) => (
               <div key={label} className={`border border-border rounded-lg p-4 ${bg}`}>
@@ -235,11 +235,11 @@ export default function AttendanceAnalysisPage() {
                   </div>
                   <div className="flex items-end gap-4">
                     <div>
-                      <p className="text-2xl font-bold text-green-500">{present}</p>
+                      <p className="text-2xl font-bold text-green-700">{present}</p>
                       <p className="font-mono text-xs text-muted-foreground">present</p>
                     </div>
                     <div>
-                      <p className="text-2xl font-bold text-red-500">{absent}</p>
+                      <p className="text-2xl font-bold text-red-700">{absent}</p>
                       <p className="font-mono text-xs text-muted-foreground">absent</p>
                     </div>
                     {pct !== null && (
@@ -281,7 +281,7 @@ export default function AttendanceAnalysisPage() {
               {filtered.length === 0 ? (
                 <div className="px-6 py-8 text-center font-mono text-sm text-muted-foreground">No students match this filter</div>
               ) : filtered.map((s, idx) => (
-                <div key={s.id} className={`flex items-center gap-4 px-6 py-3 hover:bg-accent/30 transition-colors ${s.fullDayAbsent ? 'bg-red-500/3' : s.partialAbsent ? 'bg-yellow-500/3' : ''}`}>
+                <div key={s.id} className={`flex items-center gap-4 px-6 py-3 hover:bg-accent/30 transition-colors ${s.fullDayAbsent ? 'bg-red-50' : s.partialAbsent ? 'bg-amber-50' : ''}`}>
                   <span className="font-mono text-xs text-muted-foreground w-6 text-right flex-shrink-0">{idx+1}</span>
                   <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center font-bold text-xs flex-shrink-0">
                     {s.name.split(' ').map(n => n[0]).slice(0,2).join('')}
@@ -289,12 +289,12 @@ export default function AttendanceAnalysisPage() {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{s.name}</p>
                     {s.fullDayAbsent && (
-                      <p className="font-mono text-xs text-red-500 flex items-center gap-1 mt-0.5">
+                      <p className="font-mono text-xs text-red-700 flex items-center gap-1 mt-0.5">
                         <AlertTriangle className="w-3 h-3" /> Full day absent
                       </p>
                     )}
                     {s.partialAbsent && !s.fullDayAbsent && (
-                      <p className="font-mono text-xs text-yellow-500 mt-0.5">
+                      <p className="font-mono text-xs text-amber-700 mt-0.5">
                         Partial absent — {[s.part1 === 'ABSENT' && 'Part I', s.part2 === 'ABSENT' && 'Part II', s.part3 === 'ABSENT' && 'Part III'].filter(Boolean).join(', ')}
                       </p>
                     )}
@@ -326,7 +326,7 @@ export default function AttendanceAnalysisPage() {
                         <div className="flex items-center gap-2 mb-1">
                           <span className="font-mono text-xs text-muted-foreground">{sub.code}</span>
                           {sub.pct !== null && (
-                            <span className={`font-mono text-xs font-bold px-2 py-0.5 rounded ${{ good: 'text-green-700 bg-green-500/10', warn: 'text-amber-700 bg-amber-500/10', bad: 'text-red-700 bg-red-500/10' }[attendanceStatus(sub.pct).tone]}`}>
+                            <span className={`font-mono text-xs font-bold px-2 py-0.5 rounded ${{ good: 'text-green-700 bg-green-50', warn: 'text-amber-700 bg-amber-50', bad: 'text-red-700 bg-red-50' }[attendanceStatus(sub.pct).tone]}`}>
                               {sub.pct}%
                             </span>
                           )}
@@ -343,7 +343,7 @@ export default function AttendanceAnalysisPage() {
                       </div>
                       {sub.absent > 0 && (
                         <div className="text-right flex-shrink-0">
-                          <p className="font-mono text-xs text-red-500 font-bold mb-1">Absent students:</p>
+                          <p className="font-mono text-xs text-red-700 font-bold mb-1">Absent students:</p>
                           <div className="space-y-0.5">
                             {sub.absentNames.slice(0, 5).map((name: string, i: number) => (
                               <p key={i} className="font-mono text-xs text-muted-foreground">{name}</p>
@@ -358,7 +358,7 @@ export default function AttendanceAnalysisPage() {
                     {/* Attendance bar */}
                     {sub.marked > 0 && (
                       <div className="mt-2 h-1.5 bg-border rounded-full overflow-hidden">
-                        <div className="h-full bg-green-500 rounded-full transition-all"
+                        <div className="h-full bg-green-600 rounded-full transition-all"
                           style={{ width: `${sub.pct ?? 0}%` }} />
                       </div>
                     )}

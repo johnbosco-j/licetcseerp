@@ -148,7 +148,7 @@ export default function StudentsPage() {
         </div>
       )}
       {error && !showForm && (
-        <div className="text-xs text-red-600 bg-red-500/10 border border-red-500/20 px-4 py-3 rounded flex items-start gap-2">
+        <div className="text-xs text-red-700 bg-red-50 border border-red-200 px-4 py-3 rounded flex items-start gap-2">
           <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" /> <span className="flex-1">{error}</span>
           <button onClick={() => setError("")} aria-label="Dismiss"><X className="w-4 h-4" /></button>
         </div>
@@ -224,7 +224,7 @@ export default function StudentsPage() {
               </div>
               
               {error && (
-                <div className="font-mono text-xs text-red-500 bg-red-500/10 border border-red-500/20 px-3 py-2 rounded flex items-start gap-2">
+                <div className="font-mono text-xs text-red-700 bg-red-50 border border-red-200 px-3 py-2 rounded flex items-start gap-2">
                   <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" /> {error}
                 </div>
               )}
@@ -297,7 +297,7 @@ export default function StudentsPage() {
                       <button onClick={() => handleResetPassword(s)} className="p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded transition-colors" title="Reset password">
                         <KeyRound className="w-4 h-4" />
                       </button>
-                      <button onClick={() => handleDelete(s.id, s.full_name)} className="p-1.5 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 rounded transition-colors" title="Delete">
+                      <button onClick={() => handleDelete(s.id, s.full_name)} className="p-1.5 text-muted-foreground hover:text-red-700 hover:bg-red-50 rounded transition-colors" title="Delete">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>

@@ -178,7 +178,7 @@ export default function AppraisalPage() {
       {[1,2,3,4,5].map(star => (
         <button key={star} type="button" onClick={() => onChange?.(star)}
           disabled={!onChange}
-          className={`transition-all ${size === 'sm' ? 'text-base' : 'text-2xl'} ${star <= value ? 'text-yellow-500' : 'text-muted-foreground/20 hover:text-yellow-500/50'} ${!onChange ? 'cursor-default' : 'cursor-pointer'}`}>
+          className={`transition-all ${size === 'sm' ? 'text-base' : 'text-2xl'} ${star <= value ? 'text-amber-600' : 'text-muted-foreground/20 hover:text-amber-600/50'} ${!onChange ? 'cursor-default' : 'cursor-pointer'}`}>
           ★
         </button>
       ))}
@@ -213,9 +213,9 @@ export default function AppraisalPage() {
       {tab === 'appraisal' && (isStudent || isHOD) && (
         <div className="space-y-4">
           {saved && (
-            <div className="flex items-center gap-2 bg-green-500/10 border border-green-500/20 rounded-lg px-4 py-3">
-              <CheckCircle2 className="w-4 h-4 text-green-500" />
-              <p className="font-mono text-sm text-green-500">Appraisal submitted successfully!</p>
+            <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-4 py-3">
+              <CheckCircle2 className="w-4 h-4 text-green-700" />
+              <p className="font-mono text-sm text-green-700">Appraisal submitted.</p>
             </div>
           )}
           <div className="bg-card border border-border rounded-lg p-6 space-y-6">
@@ -270,9 +270,9 @@ export default function AppraisalPage() {
       {tab === 'survey' && isStudent && (
         <div className="space-y-4">
           {saved && (
-            <div className="flex items-center gap-2 bg-green-500/10 border border-green-500/20 rounded-lg px-4 py-3">
-              <CheckCircle2 className="w-4 h-4 text-green-500" />
-              <p className="font-mono text-sm text-green-500">Monthly survey submitted for {surveyMonth}!</p>
+            <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-4 py-3">
+              <CheckCircle2 className="w-4 h-4 text-green-700" />
+              <p className="font-mono text-sm text-green-700">Monthly survey submitted for {surveyMonth}!</p>
             </div>
           )}
           <div className="bg-card border border-border rounded-lg p-6 space-y-6">
@@ -334,7 +334,7 @@ export default function AppraisalPage() {
                             <p className="font-mono text-xs text-muted-foreground">{f.reviews} review(s)</p>
                           </div>
                           <div className="text-right">
-                            <p className="text-2xl font-bold text-yellow-500">{f.avg > 0 ? f.avg.toFixed(1) : '—'}</p>
+                            <p className="text-2xl font-bold text-amber-700">{f.avg > 0 ? f.avg.toFixed(1) : '—'}</p>
                             <p className="font-mono text-xs text-muted-foreground">/ 5.0</p>
                           </div>
                         </div>
@@ -367,7 +367,7 @@ export default function AppraisalPage() {
                     return (
                       <>
                         <div className="flex items-center gap-4">
-                          <p className="text-4xl font-bold text-yellow-500">{mine.avg.toFixed(1)}</p>
+                          <p className="text-4xl font-bold text-amber-700">{mine.avg.toFixed(1)}</p>
                           <div>
                             <StarRating value={Math.round(mine.avg)} />
                             <p className="text-[13.5px] text-muted-foreground mt-1.5 max-w-3xl">{mine.reviews} student review(s)</p>
@@ -378,7 +378,7 @@ export default function AppraisalPage() {
                             <div key={q.id} className="flex items-center gap-3">
                               <p className="font-mono text-xs w-40 text-muted-foreground">{q.label}</p>
                               <div className="flex-1 h-2 bg-border rounded-full overflow-hidden">
-                                <div className="h-full bg-yellow-500 rounded-full"
+                                <div className="h-full bg-amber-600 rounded-full"
                                   style={{ width: `${(mine.avgByQuestion[q.id] / 5) * 100}%` }} />
                               </div>
                               <p className="font-mono text-xs w-8 text-right">{mine.avgByQuestion[q.id]?.toFixed(1)}</p>

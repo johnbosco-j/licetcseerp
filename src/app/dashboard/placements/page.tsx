@@ -153,12 +153,12 @@ export default function PlacementsPage() {
             <p className="font-mono text-sm text-muted-foreground">No active placement drives</p>
           </div>
         ) : active.map(p => (
-          <div key={p.id} className="bg-card border border-green-500/20 rounded-lg p-5 hover:border-green-500/40 transition-all">
+          <div key={p.id} className="bg-card border border-green-200 rounded-lg p-5 hover:border-green-200 transition-all">
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap mb-1">
                   <h3 className="font-bold text-sm">{p.company_name}</h3>
-                  <span className="font-mono text-xs px-2 py-0.5 bg-green-500/10 text-green-500 border border-green-500/20 rounded">ACTIVE</span>
+                  <span className="font-mono text-xs px-2 py-0.5 bg-green-50 text-green-700 border border-green-200 rounded">ACTIVE</span>
                   {p.package_lpa && <span className="font-mono text-xs text-primary">₹{p.package_lpa} LPA</span>}
                 </div>
                 <p className="text-sm text-muted-foreground">{p.role_title}</p>

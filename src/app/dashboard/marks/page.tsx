@@ -9,7 +9,7 @@ import type { AuthUser } from "@/lib/auth"
 import type { Database } from "@/lib/supabase"
 import { Save, Loader2, BarChart3, Download, Lock, Unlock } from "lucide-react"
 import * as XLSX from "xlsx"
-import { courseResult, courseType as regulationCourseType, markSplit, type MarkMap } from "@/lib/regulations"
+import { courseResult, courseType as regulationCourseType, labIntegratedWeights, markSplit, type MarkMap } from "@/lib/regulations"
 
 type Profile = Database['public']['Tables']['profiles']['Row']
 type Subject = Database['public']['Tables']['subjects']['Row']
@@ -52,6 +52,13 @@ interface MarksEntry {
   gradePoint?: number
 }
 
+const TYPE_LABEL: Record<CourseType, string> = {
+  THEORY: 'Theory · 40 / 60',
+  LAB_INTEGRATED: 'Lab-integrated · 50 / 50',
+  LAB: 'Laboratory · 60 / 40',
+  FORMATION: 'Formation · 100 internal',
+}
+
 function entryToMarks(e: MarksEntry, includeSee: boolean): MarkMap {
   const m: MarkMap = {
     CIA1_CT: e.cia1.ct, CIA1_CAT: e.cia1.cat, CIA1_ACTIVITY: e.cia1.activity,
@@ -64,13 +71,13 @@ function entryToMarks(e: MarksEntry, includeSee: boolean): MarkMap {
 }
 
 const GRADE_COLORS: Record<string, string> = {
-  'O':  'text-green-500 bg-green-500/10',
-  'A+': 'text-emerald-500 bg-emerald-500/10',
-  'A':  'text-blue-500 bg-blue-500/10',
-  'B+': 'text-cyan-500 bg-cyan-500/10',
-  'B':  'text-yellow-500 bg-yellow-500/10',
-  'C':  'text-orange-500 bg-orange-500/10',
-  'U':  'text-red-500 bg-red-500/10',
+  'O':  'text-green-700 bg-green-50',
+  'A+': 'text-emerald-700 bg-emerald-50',
+  'A':  'text-blue-700 bg-blue-50',
+  'B+': 'text-cyan-700 bg-cyan-50',
+  'B':  'text-amber-700 bg-amber-50',
+  'C':  'text-orange-700 bg-orange-50',
+  'U':  'text-red-700 bg-red-50',
 }
 
 const FIELD_EXAM_TYPE: Record<string, string> = {
@@ -536,7 +543,7 @@ export default function MarksPage() {
                   <div className="flex-1 min-w-0">
                     <p className="font-mono text-xs text-muted-foreground">{subject.code}</p>
                     <p className="text-sm font-medium truncate">{subject.name}</p>
-                    <p className="font-mono text-xs text-muted-foreground">{ct} · {subject.credits}cr</p>
+                    <p className="font-mono text-xs text-muted-foreground">{TYPE_LABEL[ct]} · {subject.credits} credits</p>
                   </div>
                   {hasData ? (
                     <div className="flex items-center gap-4 text-right">
@@ -587,7 +594,7 @@ export default function MarksPage() {
                   setSelectedSubject(s); setMarksData({})
                 }} className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none">
                   <option value="">Select subject...</option>
-                  {subjects.map(s => <option key={s.id} value={s.id}>[{s.section}] {s.code} – {s.name}</option>)}
+                  {[...subjects].sort((a, b) => a.semester - b.semester || a.code.localeCompare(b.code)).map(s => <option key={s.id} value={s.id}>Sem {s.semester} · {s.code} – {s.name}{selectedSection ? '' : ` (${s.section})`}</option>)}
                 </select>
               </div>
             </div>
@@ -604,7 +611,7 @@ export default function MarksPage() {
                   </select>
                 </div>
                 <button onClick={exportStudentXLSX} disabled={exportingStudent || !exportStudentId}
-                  className="flex items-center gap-2 h-10 px-3 bg-green-600 text-white font-mono text-xs rounded hover:bg-green-700 disabled:opacity-50 transition-colors">
+                  className="flex items-center gap-2 h-10 px-3 border border-licet-indigo/25 bg-white text-licet-indigo text-[13px] font-semibold rounded-md hover:bg-licet-cream/60 shadow-sm disabled:opacity-50 transition-colors">
                   {exportingStudent ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
                   Export Student Report
                 </button>
@@ -615,18 +622,18 @@ export default function MarksPage() {
             {selectedSubject && (
               <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-border">
                 <button onClick={exportXLSX} disabled={exporting || !students.length}
-                  className="flex items-center gap-2 h-9 px-3 bg-green-600 text-white font-mono text-xs rounded hover:bg-green-700 disabled:opacity-50 transition-colors">
+                  className="flex items-center gap-2 h-9 px-3 border border-licet-indigo/25 bg-white text-licet-indigo text-[13px] font-semibold rounded-md hover:bg-licet-cream/60 shadow-sm disabled:opacity-50 transition-colors">
                   {exporting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
                   Export XLSX
                 </button>
                 {isHOD && (
                   <button onClick={() => isLocked ? toggleLock() : setShowLockModal(true)}
-                    className={`flex items-center gap-2 h-9 px-3 font-mono text-xs rounded transition-colors ${isLocked ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-yellow-600 hover:bg-yellow-700 text-white'}`}>
+                    className={`flex items-center gap-2 h-9 px-3 font-mono text-xs rounded transition-colors ${isLocked ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-licet-cream text-licet-indigo border border-licet-gold hover:bg-licet-gold/50'}`}>
                     {isLocked ? <><Unlock className="w-3 h-3" /> Unlock Marks</> : <><Lock className="w-3 h-3" /> Lock Marks</>}
                   </button>
                 )}
                 {isLocked && (
-                  <div className="flex items-center gap-2 font-mono text-xs text-red-500 bg-red-500/10 border border-red-500/20 px-3 py-1.5 rounded">
+                  <div className="flex items-center gap-2 font-mono text-xs text-red-700 bg-red-50 border border-red-200 px-3 py-1.5 rounded">
                     <Lock className="w-3 h-3" /> Marks locked — editing disabled
                   </div>
                 )}
@@ -672,11 +679,11 @@ export default function MarksPage() {
                     <span className="eyebrow">MARKS ENTRY</span>
                     <h2 className="font-serif text-[19px] font-semibold text-licet-indigo mt-1">{selectedSubject.code} — {selectedSubject.name}</h2>
                     <p className="font-mono text-xs text-muted-foreground">
-                      {selectedSubject.section} · {courseType} · {students.length} students
+                      {selectedSubject.section} · Semester {selectedSubject.semester} · {students.length} students
                     </p>
                   </div>
                   <div className="font-mono text-xs px-2 py-1 bg-primary/10 text-primary border border-primary/20 rounded">
-                    {courseType}
+                    {TYPE_LABEL[courseType]}{courseType === 'LAB_INTEGRATED' ? ` · ${labIntegratedWeights(selectedSubject.code).theory} + ${labIntegratedWeights(selectedSubject.code).lab}` : ''}
                   </div>
                 </div>
 
@@ -684,7 +691,7 @@ export default function MarksPage() {
                 <div className="flex gap-1 mt-4">
                   {(['cia1','cia2','sem','summary'] as const).map(tab => (
                     <button key={tab} onClick={() => setActiveTab(tab)}
-                      className={`font-mono text-xs px-3 py-1.5 rounded transition-all ${activeTab === tab ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-accent'}`}>
+                      className={`text-[12.5px] font-semibold px-3.5 py-1.5 rounded-full transition-all ${activeTab === tab ? 'bg-primary text-primary-foreground' : 'text-licet-indigo/70 hover:text-licet-indigo hover:bg-licet-cream/60'}`}>
                       {tab === 'cia1' ? 'CIA 1' : tab === 'cia2' ? 'CIA 2' : tab === 'sem' ? 'SEE' : 'Summary'}
                     </button>
                   ))}
@@ -759,7 +766,7 @@ export default function MarksPage() {
                         ? clearMark(student.id, field)
                         : updateMark(student.id, field, Math.min(max, Math.max(0, Number(e.target.value))))}
                       className="w-full h-7 px-1 bg-background border border-border rounded font-mono text-xs text-center focus:border-primary focus:outline-none"
-                      placeholder="0"
+                      placeholder="–"
                     />
                   )
 
@@ -816,7 +823,7 @@ export default function MarksPage() {
               {/* Save bar */}
               <div className="px-6 py-4 border-t border-border flex items-center justify-between">
                 <div className="space-y-0.5">
-                  {saveMsg && <span className={`font-mono text-xs ${saveMsg.startsWith('Error') ? 'text-red-500' : 'text-green-500'}`}>{saveMsg}</span>}
+                  {saveMsg && <span className={`font-mono text-xs ${saveMsg.startsWith('Error') ? 'text-red-700' : 'text-green-700'}`}>{saveMsg}</span>}
                   {activeTab === 'summary' && students.length > 0 && (
                     <div className="font-mono text-xs text-muted-foreground">
                       Class avg: {Math.round(

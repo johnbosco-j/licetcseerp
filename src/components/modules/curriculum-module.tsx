@@ -8,7 +8,7 @@ import { supabase } from "@/lib/supabase"
 import type { AuthUser } from "@/lib/auth"
 import {
   BookOpen, Plus, Pencil, Trash2, Save, X,
-  ChevronDown, ChevronUp, Users, Loader2, AlertTriangle, Check
+  ChevronDown, ChevronUp, Users, Loader2, AlertTriangle, Check, Info
 } from "lucide-react"
 
 // ── Types ────────────────────────────────────────────────
@@ -66,6 +66,10 @@ const SEM_MAP: Record<string, [number, number]> = {
   "IV CSE-A":  [7, 8],
   "IV CSE-B":  [7, 8],
 }
+
+// Current final years (2023 admission) are not on the autonomous R2024 syllabus;
+// their subjects will be added separately later.
+const isFinalYear = (section: string) => section.startsWith("IV ")
 
 const SEM_LABEL: Record<number, string> = {
   1:"I", 2:"II", 3:"III", 4:"IV", 5:"V", 6:"VI", 7:"VII", 8:"VIII"
@@ -172,6 +176,7 @@ export default function CurriculumModule() {
 
   // ── Helpers ────────────────────────────────────────────
   const openAdd = () => {
+    if (isFinalYear(section)) return
     setEditingId(null)
     setForm(EMPTY_FORM)
     setFormError("")
@@ -294,17 +299,17 @@ export default function CurriculumModule() {
 
   // ── Render ─────────────────────────────────────────────
   return (
-    <div style={{ padding: "32px 36px", maxWidth: "960px" }}>
+    <div style={{ padding: "8px 32px 40px", maxWidth: "1100px" }}>
 
       {/* Toast */}
       {toast && (
         <div style={{
           position: "fixed", top: "72px", right: "24px", zIndex: 100,
-          background: "#ffffff", border: "1px solid #e5e7eb",
+          background: "#ffffff", border: "1px solid #E6DCC3",
           borderRadius: "8px", padding: "12px 18px",
           boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
           display: "flex", alignItems: "center", gap: "8px",
-          fontSize: "13px", color: "#111827",
+          fontSize: "13px", color: "#1A0C4E",
         }}>
           <Check size={15} style={{ color: "#16a34a" }} />
           {toast}
@@ -315,17 +320,17 @@ export default function CurriculumModule() {
       <div style={{ marginBottom: "28px" }}>
         <p style={{
           fontSize: "10px", fontWeight: 600, letterSpacing: "0.16em",
-          color: "#1d3557", textTransform: "uppercase", margin: "0 0 8px",
+          color: "#1A0C4E", textTransform: "uppercase", margin: "0 0 8px",
         }}>
           HOD · Curriculum Management
         </p>
         <h2 style={{
-          fontSize: "24px", fontWeight: 600, color: "#111827",
+          fontSize: "24px", fontWeight: 600, color: "#1A0C4E",
           margin: "0 0 4px", letterSpacing: "-0.01em",
         }}>
           Subject Allotment
         </h2>
-        <p style={{ fontSize: "13px", color: "#6b7280", margin: 0 }}>
+        <p style={{ fontSize: "13px", color: "#6B6480", margin: 0 }}>
           Add, edit, remove subjects and assign faculty per section and semester.
         </p>
       </div>
@@ -337,16 +342,16 @@ export default function CurriculumModule() {
       }}>
         {/* Section picker */}
         <div>
-          <p style={{ fontSize: "10px", fontWeight: 600, color: "#6b7280", letterSpacing: "0.1em", textTransform: "uppercase", margin: "0 0 6px" }}>
+          <p style={{ fontSize: "10px", fontWeight: 600, color: "#6B6480", letterSpacing: "0.1em", textTransform: "uppercase", margin: "0 0 6px" }}>
             Section
           </p>
           <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
             {SECTIONS.map(s => (
               <button key={s} onClick={() => setSection(s)} style={{
                 padding: "6px 12px", borderRadius: "6px",
-                border: section === s ? "1.5px solid #1d3557" : "1px solid #e5e7eb",
-                background: section === s ? "#1d3557" : "#ffffff",
-                color: section === s ? "#ffffff" : "#374151",
+                border: section === s ? "1.5px solid #1A0C4E" : "1px solid #E6DCC3",
+                background: section === s ? "#1A0C4E" : "#ffffff",
+                color: section === s ? "#ffffff" : "#3C3852",
                 fontSize: "12px", fontWeight: section === s ? 600 : 400,
                 cursor: "pointer", transition: "all 0.12s",
               }}>
@@ -358,18 +363,18 @@ export default function CurriculumModule() {
 
         {/* Semester parity toggle */}
         <div style={{ marginLeft: "auto" }}>
-          <p style={{ fontSize: "10px", fontWeight: 600, color: "#6b7280", letterSpacing: "0.1em", textTransform: "uppercase", margin: "0 0 6px" }}>
+          <p style={{ fontSize: "10px", fontWeight: 600, color: "#6B6480", letterSpacing: "0.1em", textTransform: "uppercase", margin: "0 0 6px" }}>
             Semester
           </p>
-          <div style={{ display: "flex", border: "1px solid #e5e7eb", borderRadius: "7px", overflow: "hidden" }}>
+          <div style={{ display: "flex", border: "1px solid #E6DCC3", borderRadius: "7px", overflow: "hidden" }}>
             {[
               { label: `Sem ${SEM_LABEL[SEM_MAP[section]?.[0]]} (Jul–Nov)`, val: 0 },
               { label: `Sem ${SEM_LABEL[SEM_MAP[section]?.[1]]} (Jan–May)`, val: 1 },
             ].map(({ label, val }) => (
               <button key={val} onClick={() => setSemParity(val as 0 | 1)} style={{
                 padding: "7px 16px", border: "none",
-                background: semParity === val ? "#1d3557" : "#ffffff",
-                color: semParity === val ? "#ffffff" : "#374151",
+                background: semParity === val ? "#1A0C4E" : "#ffffff",
+                color: semParity === val ? "#ffffff" : "#3C3852",
                 fontSize: "12px", fontWeight: semParity === val ? 600 : 400,
                 cursor: "pointer", transition: "all 0.12s",
               }}>
@@ -382,57 +387,64 @@ export default function CurriculumModule() {
 
       {/* Summary bar */}
       <div style={{
-        background: "#ffffff", border: "1px solid #e5e7eb",
+        background: "#ffffff", border: "1px solid #E6DCC3",
         borderRadius: "8px", padding: "14px 20px",
         display: "flex", alignItems: "center", justifyContent: "space-between",
         marginBottom: "16px",
       }}>
         <div style={{ display: "flex", gap: "28px" }}>
           <div>
-            <p style={{ fontSize: "10px", color: "#9ca3af", margin: "0 0 2px", textTransform: "uppercase", letterSpacing: "0.08em" }}>Section</p>
-            <p style={{ fontSize: "14px", fontWeight: 600, color: "#111827", margin: 0 }}>{section}</p>
+            <p style={{ fontSize: "10px", color: "#8A8298", margin: "0 0 2px", textTransform: "uppercase", letterSpacing: "0.08em" }}>Section</p>
+            <p style={{ fontSize: "14px", fontWeight: 600, color: "#1A0C4E", margin: 0 }}>{section}</p>
           </div>
           <div>
-            <p style={{ fontSize: "10px", color: "#9ca3af", margin: "0 0 2px", textTransform: "uppercase", letterSpacing: "0.08em" }}>Semester</p>
-            <p style={{ fontSize: "14px", fontWeight: 600, color: "#111827", margin: 0 }}>
+            <p style={{ fontSize: "10px", color: "#8A8298", margin: "0 0 2px", textTransform: "uppercase", letterSpacing: "0.08em" }}>Semester</p>
+            <p style={{ fontSize: "14px", fontWeight: 600, color: "#1A0C4E", margin: 0 }}>
               Semester {SEM_LABEL[currentSem]}
             </p>
           </div>
           <div>
-            <p style={{ fontSize: "10px", color: "#9ca3af", margin: "0 0 2px", textTransform: "uppercase", letterSpacing: "0.08em" }}>Subjects</p>
-            <p style={{ fontSize: "14px", fontWeight: 600, color: "#111827", margin: 0 }}>{subjects.length}</p>
+            <p style={{ fontSize: "10px", color: "#8A8298", margin: "0 0 2px", textTransform: "uppercase", letterSpacing: "0.08em" }}>Subjects</p>
+            <p style={{ fontSize: "14px", fontWeight: 600, color: "#1A0C4E", margin: 0 }}>{subjects.length}</p>
           </div>
           <div>
-            <p style={{ fontSize: "10px", color: "#9ca3af", margin: "0 0 2px", textTransform: "uppercase", letterSpacing: "0.08em" }}>Total Credits</p>
-            <p style={{ fontSize: "14px", fontWeight: 600, color: "#111827", margin: 0 }}>{totalCredits}</p>
+            <p style={{ fontSize: "10px", color: "#8A8298", margin: "0 0 2px", textTransform: "uppercase", letterSpacing: "0.08em" }}>Total Credits</p>
+            <p style={{ fontSize: "14px", fontWeight: 600, color: "#1A0C4E", margin: 0 }}>{totalCredits}</p>
           </div>
         </div>
 
         {/* Add button */}
-        <button onClick={openAdd} style={{
+        {!isFinalYear(section) && <button onClick={openAdd} style={{
           display: "flex", alignItems: "center", gap: "7px",
           padding: "9px 18px", borderRadius: "7px",
-          background: "#1d3557", color: "#ffffff",
+          background: "#1A0C4E", color: "#ffffff",
           border: "none", fontSize: "13px", fontWeight: 600,
           cursor: "pointer", transition: "background 0.15s",
         }}
-          onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = "#16304d"}
-          onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = "#1d3557"}>
+          onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = "#41317E"}
+          onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = "#1A0C4E"}>
           <Plus size={15} /> Add Subject
-        </button>
+        </button>}
       </div>
+
+      {isFinalYear(section) && (
+        <div className="mb-4 flex items-start gap-3 rounded-xl border border-licet-gold bg-licet-cream/70 px-4 py-3 text-[13px] text-licet-indigo">
+          <Info size={16} className="mt-0.5 shrink-0 text-licet-violet" />
+          <p><strong>Final year ({section})</strong> — this batch was admitted before autonomy and does not follow the R2024 syllabus. Subjects for final years will be added later.</p>
+        </div>
+      )}
 
       {/* ── Add/Edit Form ───────────────────────────────── */}
       {showForm && (
         <div style={{
-          background: "#ffffff", border: "1.5px solid #1d3557",
+          background: "#ffffff", border: "1.5px solid #1A0C4E",
           borderRadius: "10px", padding: "24px", marginBottom: "16px",
         }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
-            <h3 style={{ fontSize: "15px", fontWeight: 600, color: "#111827", margin: 0 }}>
+            <h3 style={{ fontSize: "15px", fontWeight: 600, color: "#1A0C4E", margin: 0 }}>
               {editingId ? "Edit Subject" : "Add New Subject"}
             </h3>
-            <button onClick={closeForm} style={{ background: "none", border: "none", cursor: "pointer", color: "#6b7280", display: "flex" }}>
+            <button onClick={closeForm} style={{ background: "none", border: "none", cursor: "pointer", color: "#6B6480", display: "flex" }}>
               <X size={18} />
             </button>
           </div>
@@ -440,7 +452,7 @@ export default function CurriculumModule() {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr 80px", gap: "14px", marginBottom: "14px" }}>
             {/* Code */}
             <div>
-              <label style={{ display: "block", fontSize: "11px", fontWeight: 600, color: "#374151", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "5px" }}>
+              <label style={{ display: "block", fontSize: "11px", fontWeight: 600, color: "#3C3852", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "5px" }}>
                 Subject Code *
               </label>
               <input
@@ -449,19 +461,19 @@ export default function CurriculumModule() {
                 placeholder="e.g. CS24501"
                 style={{
                   width: "100%", height: "38px", padding: "0 10px",
-                  border: "1.5px solid #e5e7eb", borderRadius: "6px",
-                  fontSize: "13px", color: "#111827", outline: "none",
+                  border: "1.5px solid #E6DCC3", borderRadius: "6px",
+                  fontSize: "13px", color: "#1A0C4E", outline: "none",
                   boxSizing: "border-box", fontFamily:'inherit',
                   textTransform: "uppercase",
                 }}
-                onFocus={e => e.target.style.borderColor = "#1d3557"}
-                onBlur={e => e.target.style.borderColor = "#e5e7eb"}
+                onFocus={e => e.target.style.borderColor = "#1A0C4E"}
+                onBlur={e => e.target.style.borderColor = "#E6DCC3"}
               />
             </div>
 
             {/* Name */}
             <div>
-              <label style={{ display: "block", fontSize: "11px", fontWeight: 600, color: "#374151", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "5px" }}>
+              <label style={{ display: "block", fontSize: "11px", fontWeight: 600, color: "#3C3852", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "5px" }}>
                 Subject Name *
               </label>
               <input
@@ -470,18 +482,18 @@ export default function CurriculumModule() {
                 placeholder="e.g. Data Structures and Algorithms"
                 style={{
                   width: "100%", height: "38px", padding: "0 10px",
-                  border: "1.5px solid #e5e7eb", borderRadius: "6px",
-                  fontSize: "13px", color: "#111827", outline: "none",
+                  border: "1.5px solid #E6DCC3", borderRadius: "6px",
+                  fontSize: "13px", color: "#1A0C4E", outline: "none",
                   boxSizing: "border-box", fontFamily: "inherit",
                 }}
-                onFocus={e => e.target.style.borderColor = "#1d3557"}
-                onBlur={e => e.target.style.borderColor = "#e5e7eb"}
+                onFocus={e => e.target.style.borderColor = "#1A0C4E"}
+                onBlur={e => e.target.style.borderColor = "#E6DCC3"}
               />
             </div>
 
             {/* Credits */}
             <div>
-              <label style={{ display: "block", fontSize: "11px", fontWeight: 600, color: "#374151", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "5px" }}>
+              <label style={{ display: "block", fontSize: "11px", fontWeight: 600, color: "#3C3852", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "5px" }}>
                 Credits *
               </label>
               <select
@@ -489,12 +501,12 @@ export default function CurriculumModule() {
                 onChange={e => setForm({ ...form, credits: e.target.value })}
                 style={{
                   width: "100%", height: "38px", padding: "0 8px",
-                  border: "1.5px solid #e5e7eb", borderRadius: "6px",
-                  fontSize: "13px", color: "#111827", outline: "none",
+                  border: "1.5px solid #E6DCC3", borderRadius: "6px",
+                  fontSize: "13px", color: "#1A0C4E", outline: "none",
                   background: "#ffffff", fontFamily: "inherit",
                 }}
-                onFocus={e => e.target.style.borderColor = "#1d3557"}
-                onBlur={e => e.target.style.borderColor = "#e5e7eb"}
+                onFocus={e => e.target.style.borderColor = "#1A0C4E"}
+                onBlur={e => e.target.style.borderColor = "#E6DCC3"}
               >
                 {CREDIT_OPTIONS.map(c => (
                   <option key={c} value={c}>{c}</option>
@@ -505,7 +517,7 @@ export default function CurriculumModule() {
 
           {/* Faculty assignment in form */}
           <div style={{ marginBottom: "16px" }}>
-            <label style={{ display: "block", fontSize: "11px", fontWeight: 600, color: "#374151", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "5px" }}>
+            <label style={{ display: "block", fontSize: "11px", fontWeight: 600, color: "#3C3852", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "5px" }}>
               Assign Faculty (optional)
             </label>
             <select
@@ -513,12 +525,12 @@ export default function CurriculumModule() {
               onChange={e => setForm({ ...form, faculty_id: e.target.value })}
               style={{
                 width: "100%", maxWidth: "420px", height: "38px", padding: "0 8px",
-                border: "1.5px solid #e5e7eb", borderRadius: "6px",
-                fontSize: "13px", color: "#111827", outline: "none",
+                border: "1.5px solid #E6DCC3", borderRadius: "6px",
+                fontSize: "13px", color: "#1A0C4E", outline: "none",
                 background: "#ffffff", fontFamily: "inherit",
               }}
-              onFocus={e => e.target.style.borderColor = "#1d3557"}
-              onBlur={e => e.target.style.borderColor = "#e5e7eb"}
+              onFocus={e => e.target.style.borderColor = "#1A0C4E"}
+              onBlur={e => e.target.style.borderColor = "#E6DCC3"}
             >
               <option value="">— Unassigned —</option>
               {faculty.map(f => (
@@ -529,14 +541,14 @@ export default function CurriculumModule() {
 
           {/* ── Course Outcomes (CO1 – CO6) ───────────────── */}
           <div style={{
-            background: "#f8fafc", border: "1px solid #e2e8f0",
+            background: "#F9F7F5", border: "1px solid #E6DCC3",
             borderRadius: "8px", padding: "16px 18px", marginBottom: "16px",
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "14px" }}>
-              <p style={{ fontSize: "11px", fontWeight: 700, color: "#1d3557", letterSpacing: "0.12em", textTransform: "uppercase", margin: 0 }}>
+              <p style={{ fontSize: "11px", fontWeight: 700, color: "#1A0C4E", letterSpacing: "0.12em", textTransform: "uppercase", margin: 0 }}>
                 Course Outcomes (CO1 – CO6)
               </p>
-              <span style={{ fontSize: "10px", color: "#9ca3af", fontStyle: "italic" }}>
+              <span style={{ fontSize: "10px", color: "#8A8298", fontStyle: "italic" }}>
                 — Students will be able to…
               </span>
             </div>
@@ -545,7 +557,7 @@ export default function CurriculumModule() {
                 const key = `co${n}` as keyof FormState
                 return (
                   <div key={n}>
-                    <label style={{ display: "block", fontSize: "10px", fontWeight: 700, color: "#475569", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "4px" }}>
+                    <label style={{ display: "block", fontSize: "10px", fontWeight: 700, color: "#6B6480", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "4px" }}>
                       CO{n}
                     </label>
                     <textarea
@@ -555,13 +567,13 @@ export default function CurriculumModule() {
                       rows={2}
                       style={{
                         width: "100%", padding: "8px 10px",
-                        border: "1.5px solid #e5e7eb", borderRadius: "6px",
-                        fontSize: "12px", color: "#111827", outline: "none",
+                        border: "1.5px solid #E6DCC3", borderRadius: "6px",
+                        fontSize: "12px", color: "#1A0C4E", outline: "none",
                         boxSizing: "border-box", resize: "vertical",
                         fontFamily: "inherit", lineHeight: 1.5,
                       }}
-                      onFocus={e => e.target.style.borderColor = "#1d3557"}
-                      onBlur={e => e.target.style.borderColor = "#e5e7eb"}
+                      onFocus={e => e.target.style.borderColor = "#1A0C4E"}
+                      onBlur={e => e.target.style.borderColor = "#E6DCC3"}
                     />
                   </div>
                 )
@@ -572,8 +584,8 @@ export default function CurriculumModule() {
           {/* Context info */}
           <div style={{
             padding: "8px 12px", borderRadius: "6px",
-            background: "#f0f7ff", border: "1px solid #bfdbfe",
-            fontSize: "12px", color: "#1d4ed8", marginBottom: "16px",
+            background: "#F3E5C4", border: "1px solid #DCCAA0",
+            fontSize: "12px", color: "#41317E", marginBottom: "16px",
           }}>
             Adding to: <strong>{section}</strong> · Semester <strong>{SEM_LABEL[currentSem]}</strong>
           </div>
@@ -595,7 +607,7 @@ export default function CurriculumModule() {
             <button onClick={saveSubject} disabled={formSaving} style={{
               display: "flex", alignItems: "center", gap: "7px",
               padding: "9px 20px", borderRadius: "7px",
-              background: formSaving ? "#6b7280" : "#1d3557",
+              background: formSaving ? "#6B6480" : "#1A0C4E",
               color: "#ffffff", border: "none",
               fontSize: "13px", fontWeight: 600,
               cursor: formSaving ? "not-allowed" : "pointer",
@@ -608,8 +620,8 @@ export default function CurriculumModule() {
             </button>
             <button onClick={closeForm} style={{
               padding: "9px 16px", borderRadius: "7px",
-              background: "transparent", color: "#6b7280",
-              border: "1px solid #e5e7eb", fontSize: "13px",
+              background: "transparent", color: "#6B6480",
+              border: "1px solid #E6DCC3", fontSize: "13px",
               cursor: "pointer", fontFamily: "inherit",
             }}>
               Cancel
@@ -637,10 +649,10 @@ export default function CurriculumModule() {
             }}>
               <Trash2 size={20} style={{ color: "#dc2626" }} />
             </div>
-            <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#111827", margin: "0 0 8px" }}>
+            <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#1A0C4E", margin: "0 0 8px" }}>
               Remove Subject?
             </h3>
-            <p style={{ fontSize: "13px", color: "#6b7280", margin: "0 0 24px", lineHeight: 1.5 }}>
+            <p style={{ fontSize: "13px", color: "#6B6480", margin: "0 0 24px", lineHeight: 1.5 }}>
               This will permanently remove the subject from <strong>{section}</strong> Semester {SEM_LABEL[currentSem]}.
               Existing attendance and marks data will not be deleted.
             </p>
@@ -655,8 +667,8 @@ export default function CurriculumModule() {
               </button>
               <button onClick={() => setDeleteId(null)} style={{
                 padding: "9px 16px", borderRadius: "7px",
-                background: "transparent", color: "#374151",
-                border: "1px solid #e5e7eb", fontSize: "13px",
+                background: "transparent", color: "#3C3852",
+                border: "1px solid #E6DCC3", fontSize: "13px",
                 cursor: "pointer", fontFamily: "inherit",
               }}>
                 Cancel
@@ -669,35 +681,35 @@ export default function CurriculumModule() {
       {/* ── Subject List ────────────────────────────────── */}
       {loading ? (
         <div style={{
-          background: "#ffffff", border: "1px solid #e5e7eb",
+          background: "#ffffff", border: "1px solid #E6DCC3",
           borderRadius: "8px", padding: "48px",
           display: "flex", alignItems: "center", justifyContent: "center",
-          gap: "10px", color: "#9ca3af", fontSize: "13px",
+          gap: "10px", color: "#8A8298", fontSize: "13px",
         }}>
           <Loader2 size={18} style={{ animation: "spin 1s linear infinite" }} />
           Loading subjects…
         </div>
       ) : subjects.length === 0 ? (
         <div style={{
-          background: "#ffffff", border: "1px solid #e5e7eb",
+          background: "#ffffff", border: "1px solid #E6DCC3",
           borderRadius: "8px", padding: "64px 48px",
           textAlign: "center",
         }}>
-          <BookOpen size={36} style={{ color: "#d1d5db", margin: "0 auto 16px", display: "block" }} />
-          <p style={{ fontSize: "15px", fontWeight: 600, color: "#374151", margin: "0 0 6px" }}>
+          <BookOpen size={36} style={{ color: "#DCD0B4", margin: "0 auto 16px", display: "block" }} />
+          <p style={{ fontSize: "15px", fontWeight: 600, color: "#3C3852", margin: "0 0 6px" }}>
             No subjects yet
           </p>
-          <p style={{ fontSize: "13px", color: "#9ca3af", margin: "0 0 20px" }}>
+          <p style={{ fontSize: "13px", color: "#8A8298", margin: "0 0 20px" }}>
             No subjects found for {section} · Semester {SEM_LABEL[currentSem]}
           </p>
-          <button onClick={openAdd} style={{
+          {!isFinalYear(section) && <button onClick={openAdd} style={{
             display: "inline-flex", alignItems: "center", gap: "7px",
             padding: "9px 18px", borderRadius: "7px",
-            background: "#1d3557", color: "#ffffff",
+            background: "#1A0C4E", color: "#ffffff",
             border: "none", fontSize: "13px", fontWeight: 600, cursor: "pointer",
           }}>
             <Plus size={14} /> Add First Subject
-          </button>
+          </button>}
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
@@ -711,7 +723,7 @@ export default function CurriculumModule() {
             return (
               <div key={sub.id} style={{
                 background: "#ffffff",
-                border: isOpen ? "1.5px solid #1d3557" : "1px solid #e5e7eb",
+                border: isOpen ? "1.5px solid #1A0C4E" : "1px solid #E6DCC3",
                 borderRadius: "8px",
                 overflow: "hidden",
                 transition: "border-color 0.15s",
@@ -724,7 +736,7 @@ export default function CurriculumModule() {
                   {/* Index */}
                   <span style={{
                     width: "24px", height: "24px", borderRadius: "50%",
-                    background: "#f1f5f9", color: "#475569",
+                    background: "#F9F7F5", color: "#6B6480",
                     display: "flex", alignItems: "center", justifyContent: "center",
                     fontSize: "11px", fontWeight: 600, flexShrink: 0,
                   }}>{idx + 1}</span>
@@ -733,12 +745,12 @@ export default function CurriculumModule() {
                   <span style={{
                     fontFamily:'inherit', fontSize: "11px", fontWeight: 700,
                     padding: "3px 8px", borderRadius: "5px",
-                    background: "#eff6ff", color: "#1d4ed8",
-                    border: "1px solid #bfdbfe", flexShrink: 0,
+                    background: "#F3E5C4", color: "#41317E",
+                    border: "1px solid #DCCAA0", flexShrink: 0,
                   }}>{sub.code}</span>
 
                   {/* Name */}
-                  <span style={{ fontSize: "13px", fontWeight: 500, color: "#111827", flex: 1 }}>
+                  <span style={{ fontSize: "13px", fontWeight: 500, color: "#1A0C4E", flex: 1 }}>
                     {sub.name}
                   </span>
 
@@ -753,9 +765,9 @@ export default function CurriculumModule() {
 
                   {/* Credits */}
                   <span style={{
-                    fontSize: "11px", color: "#6b7280",
+                    fontSize: "11px", color: "#6B6480",
                     padding: "2px 8px", borderRadius: "4px",
-                    background: "#f9fafb", border: "1px solid #e5e7eb",
+                    background: "#F9F7F5", border: "1px solid #E6DCC3",
                     flexShrink: 0,
                   }}>
                     {sub.credits} cr
@@ -765,9 +777,9 @@ export default function CurriculumModule() {
                   <span style={{
                     fontSize: "11px", flexShrink: 0,
                     padding: "3px 10px", borderRadius: "5px",
-                    background: assignedFaculty ? "#f0fdf4" : "#f9fafb",
-                    color: assignedFaculty ? "#15803d" : "#9ca3af",
-                    border: `1px solid ${assignedFaculty ? "#bbf7d0" : "#e5e7eb"}`,
+                    background: assignedFaculty ? "#f0fdf4" : "#F9F7F5",
+                    color: assignedFaculty ? "#15803d" : "#8A8298",
+                    border: `1px solid ${assignedFaculty ? "#bbf7d0" : "#E6DCC3"}`,
                     maxWidth: "160px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                   }}>
                     {assignedFaculty ? assignedFaculty.full_name : "Unassigned"}
@@ -776,27 +788,27 @@ export default function CurriculumModule() {
                   {/* Actions */}
                   <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
                     <button onClick={() => openEdit(sub)} title="Edit" style={{
-                      padding: "5px", borderRadius: "5px", border: "1px solid #e5e7eb",
-                      background: "transparent", cursor: "pointer", color: "#6b7280",
+                      padding: "5px", borderRadius: "5px", border: "1px solid #E6DCC3",
+                      background: "transparent", cursor: "pointer", color: "#6B6480",
                       display: "flex", transition: "all 0.12s",
                     }}
-                      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "#eff6ff"; (e.currentTarget as HTMLButtonElement).style.color = "#1d4ed8" }}
-                      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; (e.currentTarget as HTMLButtonElement).style.color = "#6b7280" }}>
+                      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "#F3E5C4"; (e.currentTarget as HTMLButtonElement).style.color = "#41317E" }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; (e.currentTarget as HTMLButtonElement).style.color = "#6B6480" }}>
                       <Pencil size={13} />
                     </button>
                     <button onClick={() => setDeleteId(sub.id)} title="Remove" style={{
-                      padding: "5px", borderRadius: "5px", border: "1px solid #e5e7eb",
-                      background: "transparent", cursor: "pointer", color: "#6b7280",
+                      padding: "5px", borderRadius: "5px", border: "1px solid #E6DCC3",
+                      background: "transparent", cursor: "pointer", color: "#6B6480",
                       display: "flex", transition: "all 0.12s",
                     }}
                       onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "#fef2f2"; (e.currentTarget as HTMLButtonElement).style.color = "#dc2626" }}
-                      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; (e.currentTarget as HTMLButtonElement).style.color = "#6b7280" }}>
+                      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; (e.currentTarget as HTMLButtonElement).style.color = "#6B6480" }}>
                       <Trash2 size={13} />
                     </button>
                     <button onClick={() => setExpanded(isOpen ? null : sub.id)} title="Details" style={{
-                      padding: "5px", borderRadius: "5px", border: "1px solid #e5e7eb",
-                      background: isOpen ? "#1d3557" : "transparent",
-                      cursor: "pointer", color: isOpen ? "#ffffff" : "#6b7280",
+                      padding: "5px", borderRadius: "5px", border: "1px solid #E6DCC3",
+                      background: isOpen ? "#1A0C4E" : "transparent",
+                      cursor: "pointer", color: isOpen ? "#ffffff" : "#6B6480",
                       display: "flex", transition: "all 0.12s",
                     }}>
                       {isOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
@@ -807,9 +819,9 @@ export default function CurriculumModule() {
                 {/* Expanded panel */}
                 {isOpen && (
                   <div style={{
-                    borderTop: "1px solid #e5e7eb",
+                    borderTop: "1px solid #E6DCC3",
                     padding: "16px 18px",
-                    background: "#f9fafb",
+                    background: "#F9F7F5",
                   }}>
                     <div style={{ display: "flex", gap: "32px", alignItems: "flex-start", flexWrap: "wrap" }}>
 
@@ -824,15 +836,15 @@ export default function CurriculumModule() {
                           ["Subject ID", sub.id.slice(0, 8) + "…"],
                         ].map(([label, val]) => (
                           <div key={label}>
-                            <p style={{ fontSize: "10px", color: "#9ca3af", margin: "0 0 1px", textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</p>
-                            <p style={{ fontSize: "12px", fontWeight: 500, color: "#374151", margin: 0, fontFamily: label === "Code" || label === "Subject ID" ? "monospace" : "inherit" }}>{val}</p>
+                            <p style={{ fontSize: "10px", color: "#8A8298", margin: "0 0 1px", textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</p>
+                            <p style={{ fontSize: "12px", fontWeight: 500, color: "#3C3852", margin: 0, fontFamily: label === "Code" || label === "Subject ID" ? "monospace" : "inherit" }}>{val}</p>
                           </div>
                         ))}
                       </div>
 
                       {/* Faculty assignment inline */}
                       <div style={{ flex: 1, minWidth: "220px" }}>
-                        <p style={{ fontSize: "10px", color: "#9ca3af", margin: "0 0 8px", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                        <p style={{ fontSize: "10px", color: "#8A8298", margin: "0 0 8px", textTransform: "uppercase", letterSpacing: "0.08em" }}>
                           Faculty Assignment
                         </p>
                         {isAssigning ? (
@@ -843,8 +855,8 @@ export default function CurriculumModule() {
                               disabled={assignSaving}
                               style={{
                                 flex: 1, height: "34px", padding: "0 8px",
-                                border: "1.5px solid #1d3557", borderRadius: "6px",
-                                fontSize: "12px", color: "#111827", outline: "none",
+                                border: "1.5px solid #1A0C4E", borderRadius: "6px",
+                                fontSize: "12px", color: "#1A0C4E", outline: "none",
                                 background: "#ffffff", fontFamily: "inherit",
                               }}>
                               <option value="">— Unassigned —</option>
@@ -854,8 +866,8 @@ export default function CurriculumModule() {
                             </select>
                             <button onClick={() => setAssigningId(null)} style={{
                               padding: "6px", borderRadius: "6px",
-                              border: "1px solid #e5e7eb", background: "transparent",
-                              cursor: "pointer", color: "#6b7280", display: "flex",
+                              border: "1px solid #E6DCC3", background: "transparent",
+                              cursor: "pointer", color: "#6B6480", display: "flex",
                             }}>
                               <X size={14} />
                             </button>
@@ -864,7 +876,7 @@ export default function CurriculumModule() {
                           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                             <span style={{
                               fontSize: "13px", fontWeight: 500,
-                              color: assignedFaculty ? "#111827" : "#9ca3af",
+                              color: assignedFaculty ? "#1A0C4E" : "#8A8298",
                             }}>
                               {assignedFaculty
                                 ? `${assignedFaculty.full_name} · ${assignedFaculty.email}`
@@ -873,8 +885,8 @@ export default function CurriculumModule() {
                             <button onClick={() => setAssigningId(sub.id)} style={{
                               display: "flex", alignItems: "center", gap: "5px",
                               padding: "5px 10px", borderRadius: "5px",
-                              border: "1px solid #e5e7eb", background: "#ffffff",
-                              fontSize: "11px", color: "#374151", cursor: "pointer",
+                              border: "1px solid #E6DCC3", background: "#ffffff",
+                              fontSize: "11px", color: "#3C3852", cursor: "pointer",
                             }}>
                               <Users size={12} /> Change
                             </button>
@@ -885,16 +897,16 @@ export default function CurriculumModule() {
 
                     {/* Course Outcomes display */}
                     {hasCOs && (
-                      <div style={{ marginTop: "16px", paddingTop: "16px", borderTop: "1px solid #e5e7eb" }}>
-                        <p style={{ fontSize: "10px", color: "#9ca3af", margin: "0 0 10px", textTransform: "uppercase", letterSpacing: "0.08em" }}>Course Outcomes</p>
+                      <div style={{ marginTop: "16px", paddingTop: "16px", borderTop: "1px solid #E6DCC3" }}>
+                        <p style={{ fontSize: "10px", color: "#8A8298", margin: "0 0 10px", textTransform: "uppercase", letterSpacing: "0.08em" }}>Course Outcomes</p>
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
                           {([1,2,3,4,5,6] as const).map(n => {
                             const val = subAny[`co${n}`]
                             if (!val) return null
                             return (
                               <div key={n} style={{ display: "flex", gap: "8px", alignItems: "flex-start" }}>
-                                <span style={{ fontSize: "10px", fontWeight: 700, color: "#1d3557", background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: "4px", padding: "2px 6px", flexShrink: 0, marginTop: "1px" }}>CO{n}</span>
-                                <p style={{ fontSize: "12px", color: "#374151", margin: 0, lineHeight: 1.5 }}>{val}</p>
+                                <span style={{ fontSize: "10px", fontWeight: 700, color: "#1A0C4E", background: "#F3E5C4", border: "1px solid #DCCAA0", borderRadius: "4px", padding: "2px 6px", flexShrink: 0, marginTop: "1px" }}>CO{n}</span>
+                                <p style={{ fontSize: "12px", color: "#3C3852", margin: 0, lineHeight: 1.5 }}>{val}</p>
                               </div>
                             )
                           })}

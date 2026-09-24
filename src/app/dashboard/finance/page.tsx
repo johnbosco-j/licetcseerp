@@ -109,7 +109,7 @@ export default function FinancePage() {
         </div>
         <div className="flex gap-2">
           <button onClick={exportXLSX}
-            className="flex items-center gap-2 px-3 py-2 bg-green-600 text-white font-mono text-xs rounded hover:bg-green-700">
+            className="flex items-center gap-2 px-3 py-2 border border-licet-indigo/25 bg-white text-licet-indigo text-[13px] font-semibold rounded-md hover:bg-licet-cream/60 shadow-sm">
             <Download className="w-3 h-3" /> Export
           </button>
           <button onClick={() => setShowForm(!showForm)}
@@ -122,9 +122,9 @@ export default function FinancePage() {
       {/* Summary */}
       <div className="grid grid-cols-3 gap-4">
         {[
-          { label: 'Total Credits', value: `₹${totalCredit.toLocaleString()}`, color: 'text-green-500', icon: TrendingUp },
-          { label: 'Total Debits',  value: `₹${totalDebit.toLocaleString()}`,  color: 'text-red-500',   icon: TrendingDown },
-          { label: 'Balance',       value: `₹${balance.toLocaleString()}`,      color: balance >= 0 ? 'text-green-500' : 'text-red-500', icon: Wallet },
+          { label: 'Total Credits', value: `₹${totalCredit.toLocaleString()}`, color: 'text-green-700', icon: TrendingUp },
+          { label: 'Total Debits',  value: `₹${totalDebit.toLocaleString()}`,  color: 'text-red-700',   icon: TrendingDown },
+          { label: 'Balance',       value: `₹${balance.toLocaleString()}`,      color: balance >= 0 ? 'text-green-700' : 'text-red-700', icon: Wallet },
         ].map(({ label, value, color, icon: Icon }) => (
           <div key={label} className="bg-card border border-border rounded-lg p-5">
             <div className="flex items-center gap-2 mb-2">
@@ -211,13 +211,13 @@ export default function FinancePage() {
                   <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{l.sequence_no}</td>
                   <td className="px-4 py-3 font-mono text-xs">{new Date(l.created_at).toLocaleDateString()}</td>
                   <td className="px-4 py-3">
-                    <span className={`font-mono text-xs px-2 py-0.5 rounded border ${l.txn_type === 'CREDIT' ? 'text-green-500 bg-green-500/10 border-green-500/20' : 'text-red-500 bg-red-500/10 border-red-500/20'}`}>
+                    <span className={`font-mono text-xs px-2 py-0.5 rounded border ${l.txn_type === 'CREDIT' ? 'text-green-700 bg-green-50 border-green-200' : 'text-red-700 bg-red-50 border-red-200'}`}>
                       {l.txn_type}
                     </span>
                   </td>
                   <td className="px-4 py-3 font-mono text-xs">{l.category}</td>
                   <td className="px-4 py-3 text-sm max-w-xs truncate">{l.description}</td>
-                  <td className={`px-4 py-3 font-mono text-sm font-bold ${l.txn_type === 'CREDIT' ? 'text-green-500' : 'text-red-500'}`}>
+                  <td className={`px-4 py-3 font-mono text-sm font-bold ${l.txn_type === 'CREDIT' ? 'text-green-700' : 'text-red-700'}`}>
                     {l.txn_type === 'CREDIT' ? '+' : '-'}₹{Number(l.amount).toLocaleString()}
                   </td>
                   <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{l.reference_no ?? '—'}</td>

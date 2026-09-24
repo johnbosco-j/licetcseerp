@@ -6,6 +6,8 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { printHtml } from "@/lib/print"
+import { academicYear } from "@/lib/utils"
+import { loadDepartmentTotals } from "@/lib/cgpa"
 import { RichEditor } from "@/components/rich-editor"
 import type { AuthUser } from "@/lib/auth"
 import { FileText, Save, Loader2, Download, BookOpen, Award } from "lucide-react"
@@ -35,7 +37,7 @@ const NAAC_TEMPLATE = `<h1 style="text-align:center">NATIONAL ASSESSMENT AND ACC
 <h3>2.1 Student Enrollment and Profile</h3>
 <table>
 <tr><th>Year</th><th>Intake</th><th>Enrolled</th><th>Male</th><th>Female</th></tr>
-<tr><td>2025-26</td><td>120</td><td></td><td></td><td></td></tr>
+<tr><td>${academicYear(new Date(), true)}</td><td>120</td><td></td><td></td><td></td></tr>
 </table>
 <h3>2.2 Catering to Student Diversity</h3>
 <p></p>
@@ -214,7 +216,7 @@ export default function NAACPage() {
 
   const printDoc = () => {
     const title = DOCS.find(d => d.key === activeDoc)?.label ?? 'Document'
-    printHtml(title, `body{font-family:'Times New Roman',serif;font-size:11pt;margin:2.5cm;line-height:1.7} h1{font-size:14pt;font-weight:bold}h2{font-size:13pt}h3{font-size:12pt}h4{font-size:11pt} table{border-collapse:collapse;width:100%;margin:.4cm 0;font-size:10pt} th,td{border:1px solid #000;padding:4px 8px}th{background:#f0f0f0;font-weight:bold} @media print{body{margin:2cm}}`, content)
+    printHtml(title, `body{font-family:'Times New Roman',serif;font-size:11pt;margin:2.5cm;line-height:1.7} h1{font-size:14pt;font-weight:bold}h2{font-size:13pt}h3{font-size:12pt}h4{font-size:11pt} table{border-collapse:collapse;width:100%;margin:.4cm 0;font-size:10pt} th,td{border:1px solid #000;padding:4px 8px}th{background:#F3EEE3;font-weight:bold} @media print{body{margin:2cm}}`, content)
   }
 
   if (!isHOD) return (
@@ -248,7 +250,7 @@ export default function NAACPage() {
                       <p className="text-2xl mb-2">{icon}</p>
                       <h2 className="font-bold text-base">{label}</h2>
                       {saved ? (
-                        <p className="font-mono text-xs text-green-500 mt-1">✓ Last saved — click to continue editing</p>
+                        <p className="font-mono text-xs text-green-700 mt-1">✓ Last saved — click to continue editing</p>
                       ) : (
                         <p className="text-[13.5px] text-muted-foreground mt-1.5 max-w-3xl">Not started — template ready</p>
                       )}
@@ -283,7 +285,7 @@ export default function NAACPage() {
               ← Back to documents
             </button>
             <div className="flex items-center gap-2">
-              {saveMsg && <span className="font-mono text-xs text-green-500">{saveMsg}</span>}
+              {saveMsg && <span className="font-mono text-xs text-green-700">{saveMsg}</span>}
               <button onClick={printDoc}
                 className="flex items-center gap-2 px-3 py-2 border border-border bg-white text-licet-indigo text-[13px] font-semibold rounded-md hover:bg-licet-cream/60">
                 <Download className="w-3 h-3" /> Print / PDF
@@ -338,25 +340,23 @@ function NAACSummary() {
 
   useEffect(() => {
     const load = async () => {
-      const [students, faculty, subjects, att, placements, events] = await Promise.all([
-        supabase.from('profiles').select('count').eq('role', 'STUDENT'),
-        supabase.from('profiles').select('count').eq('role', 'PROFESSOR'),
-        supabase.from('subjects').select('count'),
-        supabase.from('attendance').select('status'),
-        supabase.from('placements').select('count'),
-        supabase.from('announcements').select('count').like('audience', 'EVENT:%'),
+      const head = { count: 'exact' as const, head: true }
+      const [students, faculty, subjects, totals, placements, events] = await Promise.all([
+        supabase.from('profiles').select('id', head).eq('role', 'STUDENT'),
+        supabase.from('profiles').select('id', head).eq('role', 'PROFESSOR'),
+        supabase.from('subjects').select('id', head),
+        loadDepartmentTotals(),
+        supabase.from('placements').select('id', head),
+        supabase.from('announcements').select('id', head).like('audience', 'EVENT:%'),
       ])
 
-      const attData = att.data as any[]
-      const attPct  = attData?.length ? Math.round(attData.filter((a: any) => a.status === 'PRESENT').length / attData.length * 100) : 0
-
       setData({
-        students:   (students.data as any)?.[0]?.count ?? 0,
-        faculty:    (faculty.data as any)?.[0]?.count ?? 0,
-        subjects:   (subjects.data as any)?.[0]?.count ?? 0,
-        att:        attPct,
-        placements: (placements.data as any)?.[0]?.count ?? 0,
-        events:     (events.data as any)?.[0]?.count ?? 0,
+        students:   students.count ?? 0,
+        faculty:    faculty.count ?? 0,
+        subjects:   subjects.count ?? 0,
+        att:        totals.attendancePct,
+        placements: placements.count ?? 0,
+        events:     events.count ?? 0,
       })
     }
     load()
@@ -372,7 +372,7 @@ function NAACSummary() {
           { label: 'Total Students',  value: data.students },
           { label: 'Faculty',         value: data.faculty },
           { label: 'Subjects',        value: data.subjects },
-          { label: 'Avg Attendance',  value: `${data.att}%` },
+          { label: 'Avg Attendance',  value: data.att !== null ? `${data.att}%` : '—' },
           { label: 'Placement Drives',value: data.placements },
           { label: 'Events Held',     value: data.events },
         ].map(({ label, value }) => (

@@ -7,6 +7,7 @@ export const dynamic = "force-dynamic"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
+import { courseType as regulationCourseType } from "@/lib/regulations"
 import type { AuthUser } from "@/lib/auth"
 import type { Database } from "@/lib/supabase"
 import { BookOpen, Users, ChevronDown, ChevronUp, Save, Loader2 } from "lucide-react"
@@ -502,7 +503,7 @@ export default function SubjectsPage() {
   const currentSem = (s: string) => getActiveSemester(s)
 
   useEffect(() => {
-    const stored = localStorage.getItem('excelsior_user') || localStorage.getItem('excelsior_user') || localStorage.getItem('excelsior_user') || localStorage.getItem('licet_user')
+    const stored = localStorage.getItem('licet_user')
     if (!stored) { router.push('/login'); return }
     const au = JSON.parse(stored) as AuthUser
     setAuthUser(au)
@@ -539,26 +540,20 @@ export default function SubjectsPage() {
       })
   }, [authUser, profile, selectedSection, isStudent])
 
-  // Load faculty assignments from marks table (faculty_id used as proxy)
+  // Faculty allotment is stored on the subject (it also decides who may enter marks/attendance).
   useEffect(() => {
-    if (!subjects.length) return
-    supabase.from('marks').select('subject_id, faculty_id').in('subject_id', subjects.map(s => s.id))
-      .then(({ data }) => {
-        if (!data) return
-        const map: Record<string, string> = {}
-        data.forEach((m: any) => { if (!map[m.subject_id]) map[m.subject_id] = m.faculty_id })
-        setAssignments(map)
-      })
+    setAssignments(Object.fromEntries(subjects.filter(s => s.faculty_id).map(s => [s.id, s.faculty_id as string])))
   }, [subjects])
 
   const assignFaculty = async (subjectId: string, facultyId: string) => {
     setSaving(subjectId)
-    // Store assignment in a dedicated way — use announcements as metadata for now
-    // Better approach: upsert a subject_faculty table (we'll use marks faculty_id as proxy)
-    setAssignments(prev => ({ ...prev, [subjectId]: facultyId }))
+    const { error } = await supabase.from('subjects').update({ faculty_id: facultyId || null }).eq('id', subjectId)
     setSaving(null)
-    setSaveMsg('✓ Assignment saved (will apply to new marks entries)')
-    setTimeout(() => setSaveMsg(''), 3000)
+    if (error) { setSaveMsg('Could not save the allotment: ' + error.message); return }
+    setAssignments(prev => ({ ...prev, [subjectId]: facultyId }))
+    setSubjects(prev => prev.map(s => s.id === subjectId ? { ...s, faculty_id: facultyId || null } : s))
+    setSaveMsg(facultyId ? '✓ Faculty allotted — only they (and the HOD) can enter marks and attendance for this subject' : '✓ Allotment removed')
+    setTimeout(() => setSaveMsg(''), 4000)
   }
 
   const semLabel = (sem: number) => {
@@ -567,17 +562,15 @@ export default function SubjectsPage() {
   }
 
   const creditType = (s: Subject) => {
-    if (['CS24321','CS24322','CS24421','CS24422','CY24121','PH24121','GE24121','GE24122','CS24221'].some(c => s.code.startsWith(c))) return 'LAB'
-    if (['GE24112','GE24111','CS24311','CS24312','CS24411','CS24412','CS24413','CS24511','CS24512','CS24611','CS24612','CS24613'].some(c => s.code.startsWith(c))) return 'LAB+THEORY'
-    if (['FC','BS24321','GE24503','BS24502','GE24622','CS24423','GE24621','HS24321'].some(c => s.code.startsWith(c))) return 'FORMATION'
-    return 'THEORY'
+    const t = regulationCourseType(s.code)
+    return t === 'LAB_INTEGRATED' ? 'LAB+THEORY' : t === 'PROJECT' ? 'LAB' : t
   }
 
   const typeColor: Record<string, string> = {
-    'THEORY':     'text-blue-500 bg-blue-500/10 border-blue-500/20',
-    'LAB+THEORY': 'text-purple-500 bg-purple-500/10 border-purple-500/20',
-    'LAB':        'text-green-500 bg-green-500/10 border-green-500/20',
-    'FORMATION':  'text-yellow-500 bg-yellow-500/10 border-yellow-500/20',
+    'THEORY':     'text-licet-indigo bg-licet-indigo/5 border-licet-indigo/20',
+    'LAB+THEORY': 'text-licet-violet bg-licet-cream border-licet-gold',
+    'LAB':        'text-green-800 bg-green-50 border-green-200',
+    'FORMATION':  'text-amber-800 bg-amber-50 border-amber-200',
   }
 
   const displaySection = isStudent
@@ -596,7 +589,7 @@ export default function SubjectsPage() {
       </div>
 
       {isHOD && (
-        <div style={{display:'flex',borderBottom:'1px solid #e5e7eb'}}>
+        <div style={{display:'flex',borderBottom:'1px solid #E6DCC3'}}>
           {(['view','manage'] as const).map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)} style={{
               fontFamily:'inherit',fontSize:'12px',padding:'8px 20px',
@@ -606,7 +599,7 @@ export default function SubjectsPage() {
               fontWeight: activeTab===tab ? 600 : 400,
               background:'none',cursor:'pointer',
             }}>
-              {tab === 'view' ? '// VIEW SUBJECTS' : '// MANAGE SUBJECTS'}
+              {tab === 'view' ? 'View subjects' : 'Manage & allot'}
             </button>
           ))}
         </div>
@@ -642,7 +635,7 @@ export default function SubjectsPage() {
           </div>
 
           {saveMsg && (
-            <div className="font-mono text-xs text-green-500 bg-green-500/10 border border-green-500/20 px-4 py-2 rounded">
+            <div className="font-mono text-xs text-green-700 bg-green-50 border border-green-200 px-4 py-2 rounded">
               {saveMsg}
             </div>
           )}

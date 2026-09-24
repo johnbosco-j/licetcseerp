@@ -48,12 +48,12 @@ export function RichEditor({ content = '', onChange, editable = true, placeholde
   if (!mounted) {
     return (
       <div style={{
-        border: '1px solid #e5e7eb', borderRadius: '8px',
+        border: '1px solid #E6DCC3', borderRadius: '8px',
         overflow: 'hidden', minHeight: '200px',
-        background: '#f9fafb', display: 'flex',
+        background: '#F9F7F5', display: 'flex',
         alignItems: 'center', justifyContent: 'center',
       }}>
-        <span style={{ fontSize: '12px', color: '#9ca3af' }}>Loading editor…</span>
+        <span style={{ fontSize: '12px', color: '#8A8298' }}>Loading editor…</span>
       </div>
     )
   }
@@ -67,12 +67,12 @@ export function RichEditor({ content = '', onChange, editable = true, placeholde
       type="button" onClick={onClick} title={title}
       style={{
         padding: '5px', borderRadius: '5px', border: 'none', cursor: 'pointer',
-        background: active ? '#1d3557' : 'transparent',
-        color: active ? '#ffffff' : '#6b7280',
+        background: active ? '#1A0C4E' : 'transparent',
+        color: active ? '#ffffff' : '#6B6480',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         transition: 'all 0.1s',
       }}
-      onMouseEnter={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.background = '#f3f4f6' }}
+      onMouseEnter={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.background = '#F3EEE3' }}
       onMouseLeave={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
     >
       {children}
@@ -80,16 +80,16 @@ export function RichEditor({ content = '', onChange, editable = true, placeholde
   )
 
   const Sep = () => (
-    <div style={{ width: '1px', height: '18px', background: '#e5e7eb', margin: '0 3px' }} />
+    <div style={{ width: '1px', height: '18px', background: '#E6DCC3', margin: '0 3px' }} />
   )
 
   return (
-    <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden', background: '#ffffff' }}>
+    <div style={{ border: '1px solid #E6DCC3', borderRadius: '8px', overflow: 'hidden', background: '#ffffff' }}>
       {editable && (
         <div style={{
           display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '2px',
-          padding: '8px 10px', borderBottom: '1px solid #e5e7eb',
-          background: '#f9fafb',
+          padding: '8px 10px', borderBottom: '1px solid #E6DCC3',
+          background: '#F9F7F5',
         }}>
           <ToolBtn onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive('bold')} title="Bold">
             <Bold size={14} />
@@ -150,26 +150,26 @@ export function RichEditor({ content = '', onChange, editable = true, placeholde
         editor={editor}
         style={{
           padding: '16px', minHeight: '200px',
-          fontSize: '13px', lineHeight: '1.6', color: '#111827',
+          fontSize: '13px', lineHeight: '1.6', color: '#1A0C4E',
           outline: 'none',
         }}
       />
       <style dangerouslySetInnerHTML={{ __html: `
         .tiptap { outline: none; }
         .tiptap p { margin: 0 0 8px; }
-        .tiptap h1 { font-size: 22px; font-weight: 700; margin: 0 0 12px; color: #111827; }
-        .tiptap h2 { font-size: 18px; font-weight: 600; margin: 0 0 10px; color: #1f2937; }
-        .tiptap h3 { font-size: 15px; font-weight: 600; margin: 0 0 8px; color: #374151; }
+        .tiptap h1 { font-size: 22px; font-weight: 700; margin: 0 0 12px; color: #1A0C4E; }
+        .tiptap h2 { font-size: 18px; font-weight: 600; margin: 0 0 10px; color: #1A0C4E; }
+        .tiptap h3 { font-size: 15px; font-weight: 600; margin: 0 0 8px; color: #3C3852; }
         .tiptap ul { list-style: disc; padding-left: 20px; margin: 0 0 8px; }
         .tiptap ol { list-style: decimal; padding-left: 20px; margin: 0 0 8px; }
         .tiptap li { margin-bottom: 3px; }
-        .tiptap hr { border: none; border-top: 1px solid #e5e7eb; margin: 12px 0; }
+        .tiptap hr { border: none; border-top: 1px solid #E6DCC3; margin: 12px 0; }
         .tiptap table { border-collapse: collapse; width: 100%; margin: 8px 0; }
-        .tiptap th, .tiptap td { border: 1px solid #e5e7eb; padding: 6px 10px; font-size: 12px; }
-        .tiptap th { background: #f9fafb; font-weight: 600; }
+        .tiptap th, .tiptap td { border: 1px solid #E6DCC3; padding: 6px 10px; font-size: 12px; }
+        .tiptap th { background: #F9F7F5; font-weight: 600; }
         .tiptap p.is-editor-empty:first-child::before {
           content: attr(data-placeholder);
-          float: left; color: #9ca3af; pointer-events: none; height: 0;
+          float: left; color: #8A8298; pointer-events: none; height: 0;
         }
       `}} />
     </div>
