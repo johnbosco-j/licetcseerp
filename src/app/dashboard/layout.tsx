@@ -8,12 +8,12 @@ import {
   PenTool, CalendarDays, BookOpen, MessageSquare, Wallet, AlertTriangle,
   Package, Heart, Award, ShieldCheck, Bell, Briefcase, TrendingUp,
   FileBarChart, Users, Library, Clock, LogOut, LayoutDashboard, ChevronLeft, Menu, X,
-  BarChart3, Search, UserCog, History, WifiOff, ChevronDown, GraduationCap, type LucideIcon
+  BarChart3, Search, UserCog, History, WifiOff, ChevronDown, GraduationCap, ExternalLink, type LucideIcon
 } from "lucide-react"
 import type { AuthUser } from "@/lib/auth"
 import { signOut } from "@/lib/auth"
 import { supabase } from "@/lib/supabase"
-import { getAllowedModules } from "@/lib/roles"
+import { getAllowedModules, tierOf } from "@/lib/roles"
 import { LicetLogo } from "@/components/licet-brand"
 
 type NavItem = { icon: LucideIcon; label: string; id: string }
@@ -86,6 +86,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [name, setName]           = useState("")
   const [role, setRole]           = useState("")
   const [designation, setDesignation] = useState<string | null>(null)
+  const [tier, setTier]           = useState<1 | 2 | 3>(3)
+  const [closedGroups, setClosedGroups] = useState<string[]>([])
+  const [tip, setTip]             = useState<{ label: string; top: number } | null>(null)
   const [section, setSection]     = useState<string | null>(null)
   const [mustChange, setMustChange] = useState(false)
   const [expanded, setExpanded]   = useState(true)
@@ -127,6 +130,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       setAllowed(getAllowedModules({ type, role: profile.role, advisor_section: profile.advisor_section, can_reset_passwords: profile.can_reset_passwords, access_tier: profile.access_tier }))
       setDesignation(profile.designation ?? null)
+      setTier(tierOf(profile))
       setName(profile.full_name || "")
       setRole(profile.role)
       setSection(profile.section ?? null)
@@ -190,7 +194,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [])
 
-  useEffect(() => { setMobile(false); setMenuOpen(false) }, [pathname])
+  useEffect(() => { setMobile(false); setMenuOpen(false); setTip(null) }, [pathname])
+
+  // Collapsed menu groups are a per-browser convenience; storage may be unavailable.
+  useEffect(() => {
+    try { setClosedGroups(JSON.parse(localStorage.getItem("licet_nav_closed") ?? "[]")) } catch { /* ignore */ }
+  }, [])
+  const toggleGroup = (title: string) => setClosedGroups(prev => {
+    const next = prev.includes(title) ? prev.filter(t => t !== title) : [...prev, title]
+    try { localStorage.setItem("licet_nav_closed", JSON.stringify(next)) } catch { /* ignore */ }
+    return next
+  })
 
   const visibleGroups = useMemo(() => {
     if (mustChange) return [{ title: "Security", items: [{ icon: Key, label: "Change Password", id: "change-password" }] }]
@@ -212,12 +226,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const date = now?.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" }) ?? ""
   const showText = expanded || mobileOpen
 
+  const TIER_LABEL = { 1: "Tier 1 · Leadership", 2: "Tier 2 · Faculty", 3: "Tier 3 · Student" } as const
+  const roleLine = `${designation ?? ROLE_LABEL[role] ?? role}${role === "STUDENT" && section ? ` · ${section}` : ""}`
+  const openSearch = () => { setExpanded(true); setMobile(true); setTimeout(() => searchRef.current?.focus(), 60) }
+
   if (!ready) {
     return (
-      <div className="h-screen w-full flex items-center justify-center bg-licet-indigo">
-        <div className="flex flex-col items-center gap-4 text-licet-cream">
-          <img src="/images.png" alt="" className="w-16 h-16 rounded-full bg-white p-1 animate-pulse" />
-          <p className="text-[11px] font-bold tracking-[3px] uppercase text-licet-gold">Loading your workspace…</p>
+      <div className="h-screen w-full flex items-center justify-center bg-licet-indigo bg-[radial-gradient(80%_60%_at_50%_0%,#41317E_0%,transparent_70%)]">
+        <div className="flex flex-col items-center gap-5 text-licet-cream">
+          <span className="relative">
+            <span className="absolute inset-0 rounded-full ring-2 ring-licet-gold/60 animate-ping" />
+            <img src="/images.png" alt="" className="relative w-16 h-16 rounded-full bg-white p-1 ring-2 ring-licet-gold" />
+          </span>
+          <p className="font-brand text-[22px] tracking-[6px] text-white">CSE ERP</p>
+          <p className="font-nav text-[11px] font-semibold tracking-[3px] uppercase text-licet-gold">Preparing your workspace</p>
         </div>
       </div>
     )
@@ -225,59 +247,82 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="h-screen w-full flex flex-col overflow-hidden bg-background">
-      {/* Utility strip — same as the top bar on licet.ac.in */}
-      <div className="hidden md:flex h-9 shrink-0 items-center gap-6 px-6 bg-licet-indigo border-b-[3px] border-licet-gold text-[12px]">
-        <nav className="flex items-center gap-5 text-licet-cream" aria-label="LICET links">
-          <a href="https://licet.ac.in/help-desk/" target="_blank" rel="noopener noreferrer" className="hover:text-[#F8D88D] transition-colors">Help Desk</a>
-          <a href="https://licet.ac.in/examination/" target="_blank" rel="noopener noreferrer" className="hover:text-[#F8D88D] transition-colors">Examinations</a>
-          <a href="http://moodle.licet.ac.in/" target="_blank" rel="noopener noreferrer" className="hover:text-[#F8D88D] transition-colors">Moodle</a>
-          <a href="https://licet.ac.in/" target="_blank" rel="noopener noreferrer" className="hover:text-[#F8D88D] transition-colors">licet.ac.in</a>
+      {/* Utility strip — mirrors the top bar on licet.ac.in */}
+      <div className="hidden md:flex h-8 shrink-0 items-center gap-6 px-6 bg-[#120838] text-[11.5px] font-nav border-b border-licet-gold/40">
+        <nav className="flex items-center gap-5 text-licet-cream/80" aria-label="LICET links">
+          {[
+            ["https://licet.ac.in/help-desk/", "Help Desk"],
+            ["https://licet.ac.in/examination/", "Examinations"],
+            ["http://moodle.licet.ac.in/", "Moodle"],
+            ["https://licet.ac.in/", "licet.ac.in"],
+          ].map(([href, label]) => (
+            <a key={href} href={href} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 hover:text-[#F8D88D] transition-colors">
+              {label}<ExternalLink size={10} className="opacity-50" />
+            </a>
+          ))}
         </nav>
-        <span className="mx-auto text-white/80 tabular-nums">{date}{time && <> &nbsp;·&nbsp; {time}</>}</span>
-        <span className="text-[13px] text-licet-gold">Anna University Counselling Code : 1450</span>
+        <span className="ml-auto text-licet-gold/90 tracking-wide">Anna University Counselling Code · <b className="text-[#F8D88D]">1450</b></span>
       </div>
 
       {/* Brand bar */}
-      <header className="h-16 shrink-0 flex items-center gap-4 px-4 md:px-6 z-40 relative text-white"
-        style={{ background: "linear-gradient(180deg, #1A0C4E 0%, #2A1A63 100%)" }}>
+      <header className="h-16 shrink-0 flex items-center gap-4 px-4 md:px-6 z-40 relative text-white
+        bg-[linear-gradient(100deg,#1A0C4E_0%,#2A1A63_55%,#41317E_100%)] shadow-[0_6px_20px_-10px_rgba(26,12,78,0.6)]">
+        <span aria-hidden className="absolute inset-x-0 bottom-0 h-[2px] bg-gradient-to-r from-licet-gold via-[#F8D88D] to-licet-gold opacity-90" />
+        <div aria-hidden className="pointer-events-none absolute inset-0 overflow-clip">
+          <span className="absolute -right-10 -top-24 w-72 h-72 rounded-full bg-licet-gold/[0.07] blur-2xl" />
+        </div>
+
         <button onClick={() => setMobile(!mobileOpen)} aria-label={mobileOpen ? "Close menu" : "Open menu"} aria-expanded={mobileOpen}
-          className="md:hidden p-2 -ml-1 rounded-md text-licet-cream hover:bg-white/10">
+          className="md:hidden p-2 -ml-1 rounded-lg text-licet-cream hover:bg-white/10">
           {mobileOpen ? <X size={20} /> : <Menu size={20} />}
         </button>
 
-        <Link href="/dashboard" className="flex items-center gap-4 min-w-0" aria-label="Dashboard home">
+        <Link href="/dashboard" className="relative flex items-center gap-4 min-w-0" aria-label="Dashboard home">
           <LicetLogo className="h-10 w-auto" />
-          <span className="hidden sm:block h-8 w-px bg-licet-gold/50" />
-          <span className="hidden sm:flex flex-col items-start leading-tight min-w-0">
-            <span className="font-display uppercase font-bold tracking-wide text-[17px] text-white">CSE ERP</span>
-            <span className="text-[10px] font-semibold tracking-[2px] uppercase text-licet-gold truncate">Dept. of Computer Science &amp; Engineering</span>
+          <span className="hidden sm:block h-9 w-px bg-gradient-to-b from-transparent via-licet-gold/70 to-transparent" />
+          <span className="hidden sm:flex flex-col items-start leading-none min-w-0">
+            <span className="font-brand text-[21px] tracking-[5px] text-white">CSE&nbsp;ERP</span>
+            <span className="font-nav text-[9.5px] font-semibold tracking-[2.6px] uppercase text-licet-gold mt-1.5 truncate">Computer Science &amp; Engineering</span>
           </span>
         </Link>
 
-        <div className="ml-auto relative">
+        {/* Command-style module search */}
+        <button onClick={openSearch}
+          className="relative hidden lg:flex items-center gap-2.5 mx-auto w-[340px] h-10 px-4 rounded-full bg-white/[0.07] border border-white/15 text-licet-cream/60 font-nav text-[13px] hover:bg-white/[0.11] hover:border-licet-gold/50 transition-colors">
+          <Search size={15} className="text-licet-gold" />
+          <span>Search modules…</span>
+          <kbd className="ml-auto text-[10.5px] font-semibold text-licet-cream/60 border border-white/20 rounded-md px-1.5 py-0.5">/</kbd>
+        </button>
+
+        <div className="relative ml-auto lg:ml-0 flex items-center gap-3">
+          <span className="hidden xl:flex flex-col items-end leading-tight font-nav pr-3 border-r border-white/15">
+            <span className="text-[13px] font-semibold text-white tabular-nums">{time}</span>
+            <span className="text-[10.5px] text-licet-cream/70">{date}</span>
+          </span>
           <button onClick={() => setMenuOpen(o => !o)} aria-haspopup="menu" aria-expanded={menuOpen}
-            className="flex items-center gap-3 rounded-full md:rounded-md pl-1 pr-1 md:pr-3 py-1 hover:bg-white/10 transition-colors">
-            <span className="w-9 h-9 rounded-full bg-licet-cream text-licet-indigo border-2 border-licet-gold flex items-center justify-center text-[12px] font-bold shrink-0">
-              {initials || "?"}
+            className="flex items-center gap-3 rounded-full pl-1 pr-1 md:pr-3 py-1 hover:bg-white/10 transition-colors">
+            <span className="w-9 h-9 rounded-full p-[2px] bg-gradient-to-br from-[#F8D88D] to-licet-gold shrink-0">
+              <span className="w-full h-full rounded-full bg-licet-cream text-licet-indigo flex items-center justify-center font-nav text-[12px] font-bold">{initials || "?"}</span>
             </span>
-            <span className="hidden md:block text-left leading-tight">
-              <span className="block text-[13px] font-medium text-white max-w-[220px] truncate">{name}</span>
-              <span className="block text-[10px] font-bold tracking-[2px] uppercase text-licet-gold">
-                {designation ?? ROLE_LABEL[role] ?? role}{role === "STUDENT" && section ? ` · ${section}` : ""}
-              </span>
+            <span className="hidden md:block text-left leading-tight font-nav">
+              <span className="block text-[13px] font-semibold text-white max-w-[200px] truncate">{name}</span>
+              <span className="block text-[10px] font-semibold tracking-[1.5px] uppercase text-licet-gold max-w-[200px] truncate">{roleLine}</span>
             </span>
-            <ChevronDown size={14} className="hidden md:block text-licet-cream/70" />
+            <ChevronDown size={14} className={`hidden md:block text-licet-cream/70 transition-transform ${menuOpen ? "rotate-180" : ""}`} />
           </button>
           {menuOpen && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
-              <div role="menu" className="absolute right-0 mt-2 w-56 z-50 rounded-lg bg-white text-foreground shadow-xl shadow-licet-indigo/20 border border-border overflow-hidden">
-                <div className="px-4 py-3 border-b border-border md:hidden">
-                  <p className="text-[13px] font-semibold text-licet-indigo truncate">{name}</p>
-                  <p className="text-[11px] text-muted-foreground">{ROLE_LABEL[role] ?? role}</p>
+              <div role="menu" className="absolute right-0 top-full mt-3 w-64 z-50 rounded-xl bg-white text-foreground shadow-2xl shadow-licet-indigo/25 border border-border overflow-hidden font-nav">
+                <div className="px-4 py-3.5 bg-gradient-to-br from-licet-indigo to-licet-violet text-white">
+                  <p className="text-[13.5px] font-semibold truncate">{name}</p>
+                  <p className="text-[11px] text-licet-cream/80 truncate">{roleLine}</p>
+                  <span className="inline-block mt-2 text-[10px] font-bold tracking-[1.5px] uppercase px-2 py-0.5 rounded-full bg-licet-gold text-licet-indigo">{TIER_LABEL[tier]}</span>
                 </div>
-                <Link href="/dashboard/change-password" role="menuitem"
-                  className="flex items-center gap-2.5 px-4 py-2.5 text-[13px] hover:bg-licet-cream/60">
+                <Link href="/dashboard" role="menuitem" className="flex items-center gap-2.5 px-4 py-2.5 text-[13px] hover:bg-licet-cream/60">
+                  <LayoutDashboard size={15} className="text-licet-violet" /> My dashboard
+                </Link>
+                <Link href="/dashboard/change-password" role="menuitem" className="flex items-center gap-2.5 px-4 py-2.5 text-[13px] hover:bg-licet-cream/60">
                   <Key size={15} className="text-licet-violet" /> Change password
                 </Link>
                 <button onClick={logout} role="menuitem"
@@ -303,87 +348,154 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       <div className="flex flex-1 overflow-hidden relative">
         {mobileOpen && (
-          <div onClick={() => setMobile(false)} className="md:hidden fixed inset-0 top-16 bg-licet-indigo/40 backdrop-blur-[1px] z-40" />
+          <div onClick={() => setMobile(false)} className="md:hidden fixed inset-0 top-16 bg-licet-indigo/45 backdrop-blur-[2px] z-40" />
         )}
 
         {/* Sidebar */}
         <aside
           aria-label="Main menu"
-          className={`bg-licet-indigo flex flex-col shrink-0 overflow-hidden z-50 transition-[width,transform] duration-200 ease-out
-            max-md:fixed max-md:top-16 max-md:bottom-0 max-md:left-0 max-md:w-72 max-md:shadow-2xl
+          className={`relative flex flex-col shrink-0 overflow-clip z-50 font-nav transition-[width,transform] duration-300 ease-out
+            bg-[linear-gradient(180deg,#1A0C4E_0%,#170A45_45%,#110636_100%)] border-r border-white/5
+            max-md:fixed max-md:top-16 max-md:bottom-0 max-md:left-0 max-md:w-[280px] max-md:shadow-2xl
             ${mobileOpen ? "max-md:translate-x-0" : "max-md:-translate-x-full"}
-            ${expanded ? "md:w-64" : "md:w-[68px]"}`}
+            ${expanded ? "md:w-[272px]" : "md:w-[76px]"}`}
         >
-          <div className={`flex items-center gap-2 border-b border-white/10 ${showText ? "p-3" : "p-2 justify-center"}`}>
-            {showText ? (
-              <label className="flex-1 flex items-center gap-2 h-9 px-3 rounded-md bg-white/[0.07] border border-white/10 focus-within:border-licet-gold/70 transition-colors">
-                <Search size={14} className="text-licet-cream/60 shrink-0" />
-                <input ref={searchRef} value={query} onChange={e => setQuery(e.target.value)} placeholder="Find a module…"
-                  aria-label="Find a module" className="flex-1 min-w-0 bg-transparent text-[13px] text-white placeholder:text-licet-cream/40 outline-none" />
-                <kbd className="hidden md:inline text-[10px] text-licet-cream/40 border border-white/15 rounded px-1">/</kbd>
-              </label>
-            ) : null}
-            <button onClick={() => setExpanded(!expanded)} aria-label={expanded ? "Collapse menu" : "Expand menu"}
-              className="hidden md:flex w-9 h-9 items-center justify-center rounded-md text-licet-gold/70 hover:text-licet-gold hover:bg-white/5 shrink-0">
-              <ChevronLeft size={16} className={`transition-transform ${expanded ? "" : "rotate-180"}`} />
-            </button>
+          {/* decoration, clipped in its own layer so it can never make the menu scroll sideways */}
+          <div aria-hidden className="pointer-events-none absolute inset-0 overflow-clip">
+            <span className="absolute -top-24 -left-20 w-72 h-72 rounded-full bg-[#41317E]/50 blur-3xl" />
+            <img src="/images.png" alt="" className="absolute -bottom-16 -right-16 w-56 h-56 rounded-full opacity-[0.04]" />
           </div>
 
-          <nav className="flex-1 overflow-y-auto overflow-x-hidden py-2 [scrollbar-width:thin] [scrollbar-color:#41317E_transparent]">
-            {visibleGroups.length === 0 && (
-              <p className="px-5 py-6 text-[12.5px] text-licet-cream/50">No module matches &ldquo;{query}&rdquo;.</p>
-            )}
-            {visibleGroups.map(group => (
-              <div key={group.title} className="mb-1">
-                {showText
-                  ? <p className="px-5 pt-4 pb-1.5 text-[10px] font-bold tracking-[2.5px] uppercase text-licet-gold/70">{group.title}</p>
-                  : <div className="mx-4 my-2.5 h-px bg-white/10" />}
-                <ul className={showText ? "px-2.5 space-y-0.5" : "px-2 space-y-1"}>
-                  {group.items.map(({ icon: Icon, label, id }) => {
-                    const active = activeId === id
-                    return (
-                      <li key={id}>
-                        <Link href={hrefFor(id)} prefetch title={!showText ? label : undefined}
-                          aria-current={active ? "page" : undefined}
-                          className={`relative flex items-center gap-3 rounded-md text-[13.5px] whitespace-nowrap transition-colors
-                            ${showText ? "px-3 py-2" : "justify-center py-2.5"}
-                            ${active
-                              ? "bg-white/[0.12] text-white font-semibold"
-                              : "text-licet-cream/75 hover:bg-white/[0.06] hover:text-[#F8D88D]"}`}>
-                          {active && <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-full bg-licet-gold" />}
-                          <Icon size={17} className={`shrink-0 ${active ? "text-licet-gold" : ""}`} />
-                          {showText && <span className="truncate">{label}</span>}
-                        </Link>
-                      </li>
-                    )
-                  })}
-                </ul>
-              </div>
-            ))}
-          </nav>
-
-          <div className="border-t border-white/10 px-5 py-4 shrink-0">
+          {/* Profile card */}
+          <div className={`relative shrink-0 ${showText ? "px-4 pt-4 pb-3" : "px-2 pt-4 pb-2 flex justify-center"}`}>
             {showText ? (
-              <div className="flex items-center gap-3">
-                <img src="/images.png" alt="" className="w-9 h-9 rounded-full bg-white shrink-0" />
+              <div className="flex items-center gap-3 rounded-2xl p-3 bg-white/[0.06] border border-white/10 backdrop-blur-sm">
+                <span className="w-11 h-11 rounded-full p-[2px] bg-gradient-to-br from-[#F8D88D] to-licet-gold shrink-0">
+                  <span className="w-full h-full rounded-full bg-licet-indigo text-licet-gold flex items-center justify-center text-[13px] font-bold">{initials || "?"}</span>
+                </span>
                 <div className="min-w-0">
-                  <p className="font-serif italic text-[16px] text-licet-gold leading-none">Luceat Lux Vestra</p>
-                  <p className="text-[10px] tracking-[2px] uppercase text-licet-cream/55 mt-1">Let your light shine</p>
+                  <p className="text-[13.5px] font-semibold text-white truncate">{name}</p>
+                  <p className="text-[11px] text-licet-cream/65 truncate">{roleLine}</p>
+                  <span className="inline-block mt-1 text-[9.5px] font-bold tracking-[1.4px] uppercase px-1.5 py-[1px] rounded bg-licet-gold/15 text-[#F8D88D] border border-licet-gold/30">{TIER_LABEL[tier]}</span>
                 </div>
               </div>
             ) : (
-              <img src="/images.png" alt="" className="w-8 h-8 rounded-full bg-white mx-auto" />
+              <span title={`${name} · ${roleLine}`} className="w-10 h-10 rounded-full p-[2px] bg-gradient-to-br from-[#F8D88D] to-licet-gold">
+                <span className="w-full h-full rounded-full bg-licet-indigo text-licet-gold flex items-center justify-center text-[12px] font-bold">{initials || "?"}</span>
+              </span>
+            )}
+          </div>
+
+          {/* Search + collapse */}
+          <div className={`relative flex items-center gap-2 shrink-0 ${showText ? "px-4 pb-3" : "px-2 pb-2 flex-col"}`}>
+            {showText ? (
+              <label className="flex-1 flex items-center gap-2 h-10 px-3.5 rounded-xl bg-black/20 border border-white/10 focus-within:border-licet-gold/70 focus-within:ring-2 focus-within:ring-licet-gold/20 transition">
+                <Search size={14} className="text-licet-gold/80 shrink-0" />
+                <input ref={searchRef} value={query} onChange={e => setQuery(e.target.value)} placeholder="Find a module"
+                  aria-label="Find a module" className="flex-1 min-w-0 bg-transparent text-[13px] text-white placeholder:text-licet-cream/40 outline-none" />
+                {query
+                  ? <button onClick={() => setQuery("")} aria-label="Clear search" className="text-licet-cream/50 hover:text-white"><X size={13} /></button>
+                  : <kbd className="hidden md:inline text-[10px] text-licet-cream/45 border border-white/15 rounded px-1">/</kbd>}
+              </label>
+            ) : (
+              <button onClick={openSearch} aria-label="Search modules" className="w-10 h-10 flex items-center justify-center rounded-xl text-licet-cream/70 hover:text-licet-gold hover:bg-white/[0.07]">
+                <Search size={16} />
+              </button>
+            )}
+            <button onClick={() => setExpanded(!expanded)} aria-label={expanded ? "Collapse menu" : "Expand menu"}
+              className="hidden md:flex w-10 h-10 items-center justify-center rounded-xl text-licet-gold/80 hover:text-licet-gold bg-white/[0.04] hover:bg-white/[0.09] border border-white/10 shrink-0">
+              <ChevronLeft size={16} className={`transition-transform duration-300 ${expanded ? "" : "rotate-180"}`} />
+            </button>
+          </div>
+
+          <nav className="relative flex-1 overflow-y-auto overflow-x-hidden pb-4 [scrollbar-width:thin] [scrollbar-color:#41317E_transparent]"
+            onScroll={() => setTip(null)}>
+            {visibleGroups.length === 0 && (
+              <p className="px-5 py-6 text-[12.5px] text-licet-cream/50">No module matches &ldquo;{query}&rdquo;.</p>
+            )}
+            {visibleGroups.map(group => {
+              const hasActive = group.items.some(i => i.id === activeId)
+              const open = !showText || !!query || hasActive || !closedGroups.includes(group.title)
+              return (
+                <div key={group.title} className="mt-1">
+                  {showText ? (
+                    <button onClick={() => toggleGroup(group.title)} aria-expanded={open}
+                      className="group/h w-full flex items-center gap-2.5 px-5 pt-3.5 pb-2 text-left">
+                      <span className="font-brand text-[11.5px] tracking-[3px] uppercase text-licet-gold">{group.title}</span>
+                      <span className="flex-1 h-px bg-gradient-to-r from-licet-gold/40 to-transparent" />
+                      <span className="text-[10px] font-semibold text-licet-cream/40 tabular-nums">{group.items.length}</span>
+                      <ChevronDown size={13} className={`text-licet-cream/40 group-hover/h:text-licet-gold transition-transform ${open ? "" : "-rotate-90"}`} />
+                    </button>
+                  ) : <div className="mx-5 my-3 h-px bg-gradient-to-r from-transparent via-licet-gold/35 to-transparent" />}
+                  <div className={`grid transition-[grid-template-rows] duration-300 ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
+                    <ul className={`overflow-hidden ${showText ? "px-3 space-y-1" : "px-2.5 space-y-1.5"}`}>
+                      {group.items.map(({ icon: Icon, label, id }) => {
+                        const active = activeId === id
+                        return (
+                          <li key={id}>
+                            <Link href={hrefFor(id)} prefetch aria-current={active ? "page" : undefined} aria-label={!showText ? label : undefined}
+                              onMouseEnter={e => { if (!showText) setTip({ label, top: e.currentTarget.getBoundingClientRect().top + e.currentTarget.offsetHeight / 2 }) }}
+                              onMouseLeave={() => setTip(null)}
+                              className={`group relative flex items-center gap-3 rounded-xl whitespace-nowrap transition-all duration-200
+                                ${showText ? "pl-2 pr-3 py-1.5" : "justify-center p-1.5"}
+                                ${active
+                                  ? "bg-gradient-to-r from-[#F8D88D] to-licet-gold text-licet-indigo shadow-[0_8px_20px_-10px_rgba(248,216,141,0.8)]"
+                                  : "text-licet-cream/80 hover:bg-white/[0.06] hover:text-white hover:translate-x-0.5"}`}>
+                              <span className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors
+                                ${active ? "bg-licet-indigo text-[#F8D88D] shadow-inner" : "bg-white/[0.06] text-licet-cream/75 group-hover:bg-licet-gold/15 group-hover:text-[#F8D88D]"}`}>
+                                <Icon size={16} strokeWidth={active ? 2.2 : 1.9} />
+                              </span>
+                              {showText && <span className={`truncate text-[13.5px] ${active ? "font-bold" : "font-medium"}`}>{label}</span>}
+                              {showText && active && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-licet-indigo" />}
+                            </Link>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  </div>
+                </div>
+              )
+            })}
+          </nav>
+
+          <div className={`relative border-t border-white/10 shrink-0 ${showText ? "px-4 py-3.5" : "px-2 py-3"}`}>
+            {showText ? (
+              <div className="flex items-center gap-3">
+                <img src="/images.png" alt="" className="w-9 h-9 rounded-full bg-white ring-1 ring-licet-gold/60 shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <p className="font-serif italic text-[16px] text-licet-gold leading-none">Luceat Lux Vestra</p>
+                  <p className="text-[9.5px] tracking-[2px] uppercase text-licet-cream/50 mt-1">Let your light shine</p>
+                </div>
+                <button onClick={logout} aria-label="Sign out" title="Sign out"
+                  className="w-9 h-9 flex items-center justify-center rounded-lg text-licet-cream/60 hover:text-white hover:bg-red-500/25 transition-colors">
+                  <LogOut size={16} />
+                </button>
+              </div>
+            ) : (
+              <button onClick={logout} aria-label="Sign out" title="Sign out"
+                className="w-10 h-10 mx-auto flex items-center justify-center rounded-xl text-licet-cream/60 hover:text-white hover:bg-red-500/25">
+                <LogOut size={16} />
+              </button>
             )}
           </div>
         </aside>
 
+        {/* Floating label for the collapsed menu (outside the scrolling sidebar so it isn't clipped) */}
+        {tip && !showText && (
+          <div role="tooltip" style={{ top: tip.top }}
+            className="hidden md:block fixed left-[84px] -translate-y-1/2 z-[60] pointer-events-none font-nav text-[12.5px] font-semibold text-licet-indigo bg-gradient-to-r from-[#F8D88D] to-licet-gold px-3 py-1.5 rounded-lg shadow-xl">
+            <span className="absolute -left-1 top-1/2 -translate-y-1/2 w-2 h-2 rotate-45 bg-[#F8D88D]" />
+            {tip.label}
+          </div>
+        )}
+
         {/* Main */}
         <main id="scroll-container" className="flex-1 overflow-y-auto flex flex-col [scrollbar-width:thin] [scrollbar-color:#DCCAA0_transparent]">
           {current && activeId !== "dashboard" && (
-            <div className="px-5 md:px-8 pt-5 text-[12px] text-muted-foreground flex items-center gap-1.5">
-              <Link href="/dashboard" className="hover:text-licet-indigo">Dashboard</Link>
-              <span aria-hidden>›</span>
-              <span className="text-licet-indigo font-medium">{current.label}</span>
+            <div className="px-5 md:px-8 pt-5 font-nav text-[12px] text-muted-foreground flex items-center gap-1.5">
+              <Link href="/dashboard" className="inline-flex items-center gap-1 hover:text-licet-indigo"><LayoutDashboard size={12} />Dashboard</Link>
+              <span aria-hidden className="text-licet-gold">/</span>
+              <span className="text-licet-indigo font-semibold">{current.label}</span>
             </div>
           )}
           <div className="flex-1">{children}</div>
@@ -394,7 +506,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <button onClick={() => setToast('')} aria-label="Dismiss" className="text-white/70 hover:text-white"><X size={15} /></button>
             </div>
           )}
-          <footer className="shrink-0 bg-licet-parchment border-t border-border px-6 py-3 flex flex-wrap items-center justify-between gap-2 text-[11px] text-muted-foreground">
+          <footer className="shrink-0 bg-licet-parchment border-t border-border px-6 py-3 flex flex-wrap items-center justify-between gap-2 text-[11px] text-muted-foreground font-nav">
             <span>© {now?.getFullYear() ?? ""} Loyola-ICAM College of Engineering and Technology (Autonomous), Chennai</span>
             <span>Maintained by <span className="font-semibold text-licet-indigo">LICET · Department of CSE</span></span>
           </footer>

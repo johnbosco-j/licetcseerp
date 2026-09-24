@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Cormorant_Garamond, DM_Sans, Outfit } from "next/font/google";
+import { Cormorant_Garamond, DM_Sans, Manrope, Marcellus, Outfit } from "next/font/google";
 import "./globals.css";
 
 const dmSans = DM_Sans({
@@ -13,6 +13,20 @@ const cormorant = Cormorant_Garamond({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
   style: ["normal", "italic"],
+});
+
+// Menu typography: Marcellus (classical Roman capitals) for the brand and section
+// headings, Manrope (crisp modern sans) for navigation labels.
+const marcellus = Marcellus({
+  variable: "--font-marcellus",
+  subsets: ["latin"],
+  weight: ["400"],
+});
+
+const manrope = Manrope({
+  variable: "--font-manrope",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
 });
 
 const outfit = Outfit({
@@ -39,7 +53,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en-IN">
-      <body className={`${dmSans.variable} ${cormorant.variable} ${outfit.variable} antialiased`}>
+      <body className={`${dmSans.variable} ${cormorant.variable} ${outfit.variable} ${marcellus.variable} ${manrope.variable} antialiased`}>
         {children}
       </body>
     </html>
