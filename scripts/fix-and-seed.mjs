@@ -2,7 +2,6 @@ import { supabase } from './admin-client.mjs'
 const STAFF_MAP = {
   'hodcse@licet.ac.in':           { name: 'Dr. Sharmila VJ',         role: 'HOD',       empId: 'FAC001' },
   'reme@licet.ac.in':             { name: 'Dr. Remegius Praveen L',   role: 'PROFESSOR', empId: 'FAC002' },
-  'arulmozhi.p@licet.ac.in':      { name: 'Dr. Arulmozhi P',          role: 'PROFESSOR', empId: 'FAC003' },
   'drgk81@licet.ac.in':           { name: 'Dr. Gopalakrishnan K',     role: 'PROFESSOR', empId: 'FAC004' },
   'sharmila.vj@licet.ac.in':      { name: 'Dr. Sharmila VJ Member',   role: 'PROFESSOR', empId: 'FAC005' },
   'jainish.gr@licet.ac.in':       { name: 'Dr. Jainish GR',           role: 'PROFESSOR', empId: 'FAC006' },
@@ -13,7 +12,6 @@ const STAFF_MAP = {
   'dayamarymathew@licet.ac.in':   { name: 'Ms. Daya Mary Mathew',     role: 'PROFESSOR', empId: 'FAC011' },
   'accelia.s@licet.ac.in':        { name: 'Ms. Accelia S',            role: 'PROFESSOR', empId: 'FAC012' },
   'priya.a@licet.ac.in':          { name: 'Ms. Priya A',              role: 'PROFESSOR', empId: 'FAC013' },
-  'reshma.m@licet.ac.in':         { name: 'Ms. Reshma M',             role: 'PROFESSOR', empId: 'FAC014' },
   'shirlysudhakaran@licet.ac.in': { name: 'Ms. Shirly Sudhakaran',    role: 'PROFESSOR', empId: 'FAC015' },
   'limsajoshi@licet.ac.in':       { name: 'Ms. Limsa Joshi',          role: 'PROFESSOR', empId: 'FAC016' },
   'iqac@licet.ac.in':             { name: 'Ms. Nirmala Santiago',     role: 'PROFESSOR', empId: 'FAC017' },

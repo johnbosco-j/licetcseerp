@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
+import { isTier1 } from "@/lib/roles"
 import { printHtml } from "@/lib/print"
 import { academicYear } from "@/lib/utils"
 import { loadDepartmentTotals } from "@/lib/cgpa"
@@ -157,7 +158,7 @@ export default function NAACPage() {
   const [savedDocs, setSavedDocs] = useState<Record<string, any>>({})
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([])
 
-  const isHOD = authUser?.type === 'staff' && authUser.data.role === 'HOD'
+  const isHOD = authUser?.type === 'staff' && isTier1(authUser.data)
 
   useEffect(() => {
     const stored = localStorage.getItem('excelsior_user') || localStorage.getItem('licet_user')

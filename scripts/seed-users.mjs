@@ -11,7 +11,6 @@ const DEPT_ID = '00000000-0000-0000-0000-000000000001'
 const STAFF = [
   { name: 'Dr. Sharmila VJ',          email: 'hodcse@licet.ac.in',       role: 'HOD',       empId: 'FAC001' },
   { name: 'Dr. Remegius Praveen L',   email: 'reme@licet.ac.in',           role: 'PROFESSOR', empId: 'FAC002' },
-  { name: 'Dr. Arulmozhi P',          email: 'arulmozhi.p@licet.ac.in',      role: 'PROFESSOR', empId: 'FAC003' },
   { name: 'Dr. Gopalakrishnan K',     email: 'drgk81@licet.ac.in', role: 'PROFESSOR', empId: 'FAC004' },
   { name: 'Dr. Sharmila VJ Member',  email: 'sharmila.vj@licet.ac.in',       role: 'PROFESSOR', empId: 'FAC005' },
   { name: 'Dr. Jainish GR',           email: 'jainish.gr@licet.ac.in',        role: 'PROFESSOR', empId: 'FAC006' },
@@ -22,7 +21,6 @@ const STAFF = [
   { name: 'Ms. Daya Mary Mathew',     email: 'dayamarymathew@licet.ac.in',           role: 'PROFESSOR', empId: 'FAC011' },
   { name: 'Ms. Accelia S',            email: 'accelia.s@licet.ac.in',        role: 'PROFESSOR', empId: 'FAC012' },
   { name: 'Ms. Priya A',              email: 'priya.a@licet.ac.in',          role: 'PROFESSOR', empId: 'FAC013' },
-  { name: 'Ms. Reshma M',             email: 'reshma.m@licet.ac.in',         role: 'PROFESSOR', empId: 'FAC014' },
   { name: 'Ms. Shirly Sudhakaran',    email: 'shirlysudhakaran@licet.ac.in',         role: 'PROFESSOR', empId: 'FAC015' },
   { name: 'Ms. Limsa Joshi',          email: 'limsajoshi@licet.ac.in',          role: 'PROFESSOR', empId: 'FAC016' },
   { name: 'Ms. Nirmala Santiago',     email: 'iqac@licet.ac.in',        role: 'PROFESSOR', empId: 'FAC017' },

@@ -6,6 +6,7 @@ import { notifyGrievanceUpdate } from "@/lib/send-notification"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
+import { isTier1 } from "@/lib/roles"
 import type { AuthUser } from "@/lib/auth"
 import type { Database } from "@/lib/supabase"
 import { Plus, X, AlertTriangle, CheckCircle2, Clock, Loader2 } from "lucide-react"
@@ -34,7 +35,7 @@ export default function GrievancesPage() {
   const [resolution, setResolution] = useState('')
   const [form, setForm] = useState({ category: 'Academic', subject_line: '', description: '' })
 
-  const isHOD     = authUser?.type === 'staff' && authUser.data.role === 'HOD'
+  const isHOD     = authUser?.type === 'staff' && isTier1(authUser.data)
   const isStudent = authUser?.type === 'student'
 
   useEffect(() => {

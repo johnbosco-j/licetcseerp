@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
+import { isTier1 } from "@/lib/roles"
 import { attendanceStatus } from "@/lib/regulations"
 import type { AuthUser } from "@/lib/auth"
 import { Users, AlertTriangle, CheckCircle2, Clock, Download, Loader2 } from "lucide-react"
@@ -52,7 +53,7 @@ export default function AttendanceAnalysisPage() {
   const [filter, setFilter]       = useState<'ALL'|'FULL_ABSENT'|'PARTIAL'|'PRESENT'>('ALL')
   const [subjectStats, setSubjectStats] = useState<any[]>([])
 
-  const isHOD     = authUser?.type === 'staff' && authUser.data.role === 'HOD'
+  const isHOD     = authUser?.type === 'staff' && isTier1(authUser.data)
   const isFaculty = authUser?.type === 'staff'
 
   useEffect(() => {

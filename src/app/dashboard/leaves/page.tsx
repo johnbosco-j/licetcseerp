@@ -6,6 +6,7 @@ import { notifyLeaveDecision } from "@/lib/send-notification"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
+import { isTier1 } from "@/lib/roles"
 import type { AuthUser } from "@/lib/auth"
 import type { Database } from "@/lib/supabase"
 import { Plus, X, Check, Clock, AlertTriangle, Loader2, Heart } from "lucide-react"
@@ -34,7 +35,7 @@ export default function LeavesPage() {
     leave_type: 'Medical', from_date: '', to_date: '', reason: ''
   })
 
-  const isHOD     = authUser?.type === 'staff' && authUser.data.role === 'HOD'
+  const isHOD     = authUser?.type === 'staff' && isTier1(authUser.data)
   const isFaculty = authUser?.type === 'staff'
   const isStudent = authUser?.type === 'student'
 

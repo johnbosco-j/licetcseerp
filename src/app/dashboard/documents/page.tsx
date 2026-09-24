@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
+import { isTier1 } from "@/lib/roles"
 import { safeUrl } from "@/lib/utils"
 import type { AuthUser } from "@/lib/auth"
 import type { Database } from "@/lib/supabase"
@@ -56,7 +57,7 @@ export default function DocumentsPage() {
     url: '', section: 'ALL'
   })
 
-  const isHOD     = authUser?.type === 'staff' && authUser.data.role === 'HOD'
+  const isHOD     = authUser?.type === 'staff' && isTier1(authUser.data)
   const isFaculty = authUser?.type === 'staff'
   const canUpload = isHOD || isFaculty
 

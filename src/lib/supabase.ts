@@ -37,6 +37,8 @@ export type Database = {
           advisor_section: string | null
           can_reset_passwords: boolean
           must_change_password: boolean
+          designation: string | null
+          access_tier: number | null
           created_at: string
           updated_at: string
         }

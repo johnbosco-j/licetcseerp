@@ -175,3 +175,67 @@ export async function loadNotices(audiences: string[], limit = 6): Promise<Notic
     .limit(limit)
   return (data ?? []).map(n => ({ id: n.id, title: n.title, body: n.body, audience: n.audience, urgent: n.is_urgent, created_at: n.created_at }))
 }
+
+export const WEEK_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+export const todayName = (d = new Date()) => DAY_NAMES[d.getDay()]
+
+export type WeekTimetable = Record<string, Record<number, Slot>>   // day -> period -> slot
+
+/** Full weekly timetable per section (Saturday resolved from its configuration). */
+export async function loadWeekTimetables(sections: string[]): Promise<Record<string, WeekTimetable>> {
+  const out: Record<string, WeekTimetable> = {}
+  if (!sections.length) return out
+  const { data } = await supabase.from('announcements').select('audience, body, created_at')
+    .in('audience', sections.map(s => `TIMETABLE:${s}`))
+    .order('created_at', { ascending: false })
+  for (const section of sections) {
+    out[section] = {}
+    const row = data?.find(r => r.audience === `TIMETABLE:${section}`)
+    if (!row) continue
+    try {
+      const tt = JSON.parse(row.body) as StoredTimetable
+      for (const day of WEEK_DAYS.slice(0, 5)) out[section][day] = { ...(tt.timetable?.[day] ?? {}) }
+      if (tt.satConfig?.enabled) {
+        const src = tt.timetable?.[tt.satConfig.followsDay] ?? {}
+        const limit = tt.satConfig.halfDay ? 5 : 8
+        out[section].Saturday = Object.fromEntries(Object.entries(src).filter(([p]) => Number(p) <= limit))
+      }
+    } catch { /* ignore malformed */ }
+  }
+  return out
+}
+
+export interface ExamItem {
+  id: string; subject_code: string; subject_name: string; exam_type: string
+  date: string; time?: string; venue?: string; section?: string; duration?: string
+}
+
+/** Upcoming examinations from the Examination module (EXAM_SCHED:* records). */
+export async function loadUpcomingExams(sections?: string[], limit = 6): Promise<ExamItem[]> {
+  const { data } = await supabase.from('announcements').select('id, body').like('audience', 'EXAM_SCHED%')
+    .order('created_at', { ascending: false }).limit(300)
+  const today = isoDate()
+  return (data ?? []).flatMap(r => {
+    try {
+      const e = JSON.parse(r.body)
+      if (!e.date || e.date < today) return []
+      if (sections && e.section && !sections.includes(e.section)) return []
+      return [{ id: r.id, ...e } as ExamItem]
+    } catch { return [] }
+  }).sort((a, b) => (a.date + (a.time ?? '')).localeCompare(b.date + (b.time ?? ''))).slice(0, limit)
+}
+
+export interface DocItem { id: string; title: string; category: string; section?: string; created_at: string }
+
+/** Latest shared documents (DOCUMENT:* records), optionally for one section plus department-wide ones. */
+export async function loadRecentDocuments(section?: string, limit = 5): Promise<DocItem[]> {
+  const { data } = await supabase.from('announcements').select('id, title, body, audience, created_at')
+    .like('audience', 'DOCUMENT:%').order('created_at', { ascending: false }).limit(60)
+  return (data ?? []).flatMap(r => {
+    try {
+      const d = JSON.parse(r.body)
+      if (section && d.section && d.section !== 'ALL' && d.section !== section) return []
+      return [{ id: r.id, title: d.title || r.title || d.category, category: d.category ?? r.audience.slice(9), section: d.section, created_at: r.created_at }]
+    } catch { return [] }
+  }).slice(0, limit)
+}

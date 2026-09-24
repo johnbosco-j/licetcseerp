@@ -24,8 +24,10 @@ export async function requireRole(accessToken: string | null | undefined, roles:
   const { data: { user }, error } = await db.auth.getUser(accessToken)
   if (error || !user) throw new AuthError('Session expired — please sign in again')
   const { data: profile } = await db.from('profiles')
-    .select('id, role, is_active, full_name, email, section, advisor_section, can_reset_passwords').eq('id', user.id).single()
-  if (!profile?.is_active || !roles.includes(profile.role as Role)) {
+    .select('id, role, is_active, full_name, email, section, advisor_section, can_reset_passwords, access_tier').eq('id', user.id).single()
+  // Tier-1 faculty (e.g. the Vice Principal) may do whatever the HOD may do.
+  const tier1 = profile?.role === 'PROFESSOR' && profile.access_tier === 1
+  if (!profile?.is_active || !(roles.includes(profile.role as Role) || (tier1 && roles.includes('HOD')))) {
     throw new AuthError('You do not have permission to do this')
   }
   return profile as StaffCaller
@@ -34,4 +36,5 @@ export async function requireRole(accessToken: string | null | undefined, roles:
 export type StaffCaller = {
   id: string; role: Role; is_active: boolean; full_name: string; email: string
   section: string | null; advisor_section: string | null; can_reset_passwords: boolean
+  access_tier: number | null
 }

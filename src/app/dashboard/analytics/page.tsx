@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
+import { isTier1 } from "@/lib/roles"
 import { attendanceStatus } from "@/lib/regulations"
 import { computeRisk, loadStudentStats, type RiskScore, type CGPAResult } from "@/lib/cgpa"
 import type { AuthUser } from "@/lib/auth"
@@ -67,7 +68,7 @@ export default function AnalyticsPage() {
   const [workload, setWorkload]   = useState<FacultyWorkload[]>([])
   const [loadingWorkload, setLoadingWorkload] = useState(false)
 
-  const isHOD     = authUser?.type === 'staff' && authUser.data.role === 'HOD'
+  const isHOD     = authUser?.type === 'staff' && isTier1(authUser.data)
   const isFaculty = authUser?.type === 'staff' && authUser.data.role === 'PROFESSOR'
   const isStudent = authUser?.type === 'student'
   const SECTIONS  = ['I CSE-A','I CSE-B','II CSE-A','II CSE-B','III CSE-A','III CSE-B','IV CSE-A','IV CSE-B']

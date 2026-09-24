@@ -85,6 +85,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [allowed, setAllowed]     = useState<string[]>([])
   const [name, setName]           = useState("")
   const [role, setRole]           = useState("")
+  const [designation, setDesignation] = useState<string | null>(null)
   const [section, setSection]     = useState<string | null>(null)
   const [mustChange, setMustChange] = useState(false)
   const [expanded, setExpanded]   = useState(true)
@@ -124,7 +125,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       const fresh = { type, data: { ...user.data, ...profile, name: profile.full_name } } as AuthUser
       localStorage.setItem("licet_user", JSON.stringify(fresh))
 
-      setAllowed(getAllowedModules({ type, role: profile.role, advisor_section: profile.advisor_section, can_reset_passwords: profile.can_reset_passwords }))
+      setAllowed(getAllowedModules({ type, role: profile.role, advisor_section: profile.advisor_section, can_reset_passwords: profile.can_reset_passwords, access_tier: profile.access_tier }))
+      setDesignation(profile.designation ?? null)
       setName(profile.full_name || "")
       setRole(profile.role)
       setSection(profile.section ?? null)
@@ -261,7 +263,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <span className="hidden md:block text-left leading-tight">
               <span className="block text-[13px] font-medium text-white max-w-[220px] truncate">{name}</span>
               <span className="block text-[10px] font-bold tracking-[2px] uppercase text-licet-gold">
-                {ROLE_LABEL[role] ?? role}{role === "STUDENT" && section ? ` · ${section}` : ""}
+                {designation ?? ROLE_LABEL[role] ?? role}{role === "STUDENT" && section ? ` · ${section}` : ""}
               </span>
             </span>
             <ChevronDown size={14} className="hidden md:block text-licet-cream/70" />

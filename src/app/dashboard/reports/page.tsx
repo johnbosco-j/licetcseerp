@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
+import { isTier1 } from "@/lib/roles"
 import { attendanceStatus } from "@/lib/regulations"
 import { loadDepartmentTotals, loadStudentStats } from "@/lib/cgpa"
 import { academicYear } from "@/lib/utils"
@@ -26,7 +27,7 @@ export default function ReportsPage() {
   const [generated, setGenerated] = useState(false)
   const [stats, setStats]         = useState<any>(null)
 
-  const isHOD = authUser?.type === 'staff' && authUser.data.role === 'HOD'
+  const isHOD = authUser?.type === 'staff' && isTier1(authUser.data)
 
   useEffect(() => {
     const stored = localStorage.getItem('excelsior_user') || localStorage.getItem('licet_user')

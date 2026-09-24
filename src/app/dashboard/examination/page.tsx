@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
+import { isTier1 } from "@/lib/roles"
 import { printHtml } from "@/lib/print"
 import { academicYear, semesterTerm } from "@/lib/utils"
 import { courseResult, type MarkMap } from "@/lib/regulations"
@@ -102,7 +103,7 @@ export default function ExaminationPage() {
     date: '', time: '09:00', venue: '', section: 'ALL', duration: '3 Hours'
   })
 
-  const isHOD     = authUser?.type === 'staff' && authUser.data.role === 'HOD'
+  const isHOD     = authUser?.type === 'staff' && isTier1(authUser.data)
   const isFaculty = authUser?.type === 'staff'
   const currentSem = (s: string) => getActiveSemester(s)
 

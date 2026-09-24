@@ -2,63 +2,79 @@
 
 import { useEffect, useState } from "react"
 import {
-  ClipboardCheck, Award, BookOpen, BellRing, Heart, CalendarClock, CalendarDays, Bell, AlertTriangle,
-  MessageSquareWarning, Clock3, UserRound, CheckCircle2, XCircle, MinusCircle,
+  ClipboardCheck, Award, BookOpen, BellRing, Heart, CalendarClock, AlertTriangle, MessageSquareWarning, Clock3,
+  UserRound, CheckCircle2, XCircle, MinusCircle, Star, CalendarRange, Briefcase, GraduationCap, IdCard, Mail, Hash,
 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { cgpaFromMarks, type CGPAResult } from "@/lib/cgpa"
 import { courseType, markSplit, internalMarks, attendanceStatus, type MarkMap } from "@/lib/regulations"
 import {
-  currentSemester, isoDate, semesterStart, isFinalYear, dayPhase, loadTodaysTimetables, loadUpcomingEvents, loadNotices,
-  attendanceHeadroom, timeAgo, fmtDate, type EventItem, type NoticeItem,
+  PERIODS, currentSemester, isoDate, semesterStart, isFinalYear, dayPhase, loadWeekTimetables, loadUpcomingEvents, loadNotices,
+  loadUpcomingExams, loadRecentDocuments, attendanceHeadroom, timeAgo, fmtDate, todayName,
+  type EventItem, type NoticeItem, type ExamItem, type DocItem, type WeekTimetable,
 } from "@/lib/dashboard"
 import { academicYear, semesterTerm } from "@/lib/utils"
-import { Hero, HeroChip, HeroPanel, Kpi, KpiSkeleton, Panel, PanelEmpty, Ring, Bar, AttPct, Pill, ListRow, Schedule, phaseLabel } from "./widgets"
+import { Hero, HeroChip, HeroPanel, Kpi, KpiSkeleton, Panel, PanelEmpty, Ring, Bar, AttPct, Pill, ListRow, Schedule, phaseLabel, Initials } from "./widgets"
+import { NoticesPanel, EventsPanel, ExamsPanel, DocumentsPanel, TodoPanel, WeekGrid, daysUntil, type Todo } from "./panels"
 
-type Profile = { id: string; full_name: string; section: string | null; register_number: string | null; roll_number: string | null; email: string }
-type Course = { id: string; code: string; name: string; credits: number; faculty: string | null; marks: MarkMap; entered: string[]; subjectAtt: { n: number; p: number } }
+export type StudentMe = { id: string; full_name: string; section: string | null; register_number: string | null; roll_number: string | null; email: string }
+type Course = { id: string; code: string; name: string; credits: number; faculty: string | null; marks: MarkMap; entered: string[]; subjectAtt: { n: number; p: number }; feedbackDone: boolean }
 type Leave = { id: string; leave_type: string; from_date: string; to_date: string; status: string }
 type Grievance = { id: string; subject_line: string; category: string; status: string; created_at: string }
+type Placement = { id: string; company_name: string; role_title: string; package_lpa: number | null; visit_date: string | null }
+type DayRecord = { date: string; parts: Record<number, string> }
 
 interface StudentData {
   sessions: number; present: number
   todayParts: Record<number, string>
+  recent: DayRecord[]
   cgpa: CGPAResult
   courses: Course[]
   advisor: string | null
+  hod: string | null
   alerts: number
-  todayItems: { period: number; code: string; name: string }[]
+  week: WeekTimetable
   leaves: Leave[]
   grievances: Grievance[]
   notices: NoticeItem[]
   events: EventItem[]
+  exams: ExamItem[]
+  docs: DocItem[]
+  placements: Placement[]
 }
 
 const TYPE_LABEL: Record<string, string> = { THEORY: 'Theory', LAB_INTEGRATED: 'Theory + Lab', LAB: 'Laboratory', PROJECT: 'Project', FORMATION: 'Formation' }
 const COMPONENTS: [string, string][] = [['CIA1', 'CIA 1'], ['CIA2', 'CIA 2'], ['SEM_END', 'SEE']]
+const present = (s?: string) => s === 'PRESENT' || s === 'LATE'
 
-async function loadStudent(me: Profile): Promise<StudentData> {
+async function loadStudent(me: StudentMe): Promise<StudentData> {
   const section = me.section ?? ''
   const sem = currentSemester(section)
   const from = semesterStart()
-  const [dayAtt, marksRes, subjectsRes, advisorRes, alertsRes, subjAttRes, todayTT, leavesRes, grievRes, notices, events] = await Promise.all([
-    supabase.from('day_attendance').select('date, part, status').eq('student_id', me.id).gte('date', from).range(0, 9999),
+  const head = { count: 'exact' as const, head: true }
+  const [dayAtt, marksRes, subjectsRes, advisorRes, hodRes, alertsRes, subjAttRes, weekRes, feedbackRes, leavesRes, grievRes, notices, events, exams, docs, placementsRes] = await Promise.all([
+    supabase.from('day_attendance').select('date, part, status').eq('student_id', me.id).gte('date', from).order('date', { ascending: false }).range(0, 9999),
     supabase.from('marks').select('*, subjects(id, code, name, credits, semester, section)').eq('student_id', me.id).range(0, 4999),
     supabase.from('subjects').select('id, code, name, credits, faculty_id').eq('section', section).eq('semester', sem).order('code'),
     supabase.from('profiles').select('full_name').eq('advisor_section', section).maybeSingle(),
-    supabase.from('attendance_alerts').select('id', { count: 'exact', head: true }).eq('student_id', me.id).is('cleared_at', null),
+    supabase.from('profiles').select('full_name').eq('role', 'HOD').eq('is_active', true).limit(1).maybeSingle(),
+    supabase.from('attendance_alerts').select('id', head).eq('student_id', me.id).is('cleared_at', null),
     supabase.from('attendance').select('subject_id, status').eq('student_id', me.id).gte('date', from).range(0, 9999),
-    loadTodaysTimetables([section]),
+    loadWeekTimetables([section]),
+    supabase.from('announcements').select('audience').eq('created_by', me.id).like('audience', 'FEEDBACK:%'),
     supabase.from('leaves').select('id, leave_type, from_date, to_date, status').eq('applicant_id', me.id).order('created_at', { ascending: false }).limit(3),
     supabase.from('grievances').select('id, subject_line, category, status, created_at').eq('student_id', me.id).order('created_at', { ascending: false }).limit(3),
     loadNotices(['ALL', 'STUDENTS', section], 5),
     loadUpcomingEvents(4),
+    loadUpcomingExams([section], 5),
+    loadRecentDocuments(section, 5),
+    supabase.from('placements').select('id, company_name, role_title, package_lpa, visit_date').eq('is_active', true).order('visit_date', { ascending: true, nullsFirst: false }).limit(4),
   ])
 
   const att = dayAtt.data ?? []
+  const byDate = new Map<string, Record<number, string>>()
+  for (const a of att) { const m = byDate.get(a.date) ?? {}; m[a.part] = a.status; byDate.set(a.date, m) }
   const today = isoDate()
-  const todayParts: Record<number, string> = {}
-  for (const a of att) if (a.date === today) todayParts[a.part] = a.status
 
   const subjects = subjectsRes.data ?? []
   const facultyIds = [...new Set(subjects.map(s => s.faculty_id).filter(Boolean))] as string[]
@@ -69,33 +85,38 @@ async function loadStudent(me: Profile): Promise<StudentData> {
   }
   const marks = marksRes.data ?? []
   const subjAtt = subjAttRes.data ?? []
+  const feedbackDone = new Set((feedbackRes.data ?? []).map(r => r.audience.slice('FEEDBACK:'.length)))
 
   return {
     sessions: att.length,
-    present: att.filter(a => a.status === 'PRESENT' || a.status === 'LATE').length,
-    todayParts,
+    present: att.filter(a => present(a.status)).length,
+    todayParts: byDate.get(today) ?? {},
+    recent: [...byDate.entries()].slice(0, 12).map(([date, parts]) => ({ date, parts })).reverse(),
     cgpa: cgpaFromMarks(marks),
     courses: subjects.map(s => {
       const mine = marks.filter(m => m.subject_id === s.id)
-      const map: MarkMap = Object.fromEntries(mine.map(m => [m.exam_type, Number(m.marks_obtained)]))
       const sa = subjAtt.filter(a => a.subject_id === s.id)
       return {
         id: s.id, code: s.code, name: s.name, credits: Number(s.credits),
         faculty: s.faculty_id ? facultyNames.get(s.faculty_id) ?? null : null,
-        marks: map, entered: mine.map(m => m.exam_type),
-        subjectAtt: { n: sa.length, p: sa.filter(a => a.status === 'PRESENT' || a.status === 'LATE').length },
+        marks: Object.fromEntries(mine.map(m => [m.exam_type, Number(m.marks_obtained)])),
+        entered: mine.map(m => m.exam_type),
+        subjectAtt: { n: sa.length, p: sa.filter(a => present(a.status)).length },
+        feedbackDone: feedbackDone.has(s.id),
       }
     }),
     advisor: advisorRes.data?.full_name ?? null,
+    hod: hodRes.data?.full_name ?? null,
     alerts: alertsRes.count ?? 0,
-    todayItems: (todayTT[section] ?? []).map(x => ({ period: x.period.no, code: x.slot.subjectCode, name: x.slot.subjectName })),
+    week: weekRes[section] ?? {},
     leaves: (leavesRes.data ?? []) as Leave[],
     grievances: (grievRes.data ?? []) as Grievance[],
-    notices, events,
+    notices, events, exams, docs,
+    placements: (placementsRes.data ?? []) as Placement[],
   }
 }
 
-export default function StudentDashboard({ me, name, greeting }: { me: Profile | null; name: string; greeting: string }) {
+export default function StudentDashboard({ me, name, greeting }: { me: StudentMe | null; name: string; greeting: string }) {
   const [d, setD] = useState<StudentData | null>(null)
   const [error, setError] = useState(false)
   const [now, setNow] = useState(() => new Date())
@@ -109,23 +130,48 @@ export default function StudentDashboard({ me, name, greeting }: { me: Profile |
 
   const section = me?.section ?? ''
   const sem = currentSemester(section)
-  const phase = dayPhase(now, d ? d.todayItems.length > 0 : true)
+  const final = isFinalYear(section)
+  const today = todayName(now)
+  const todayItems = d ? PERIODS.flatMap(p => { const s = d.week[today]?.[p.no]; return s ? [{ period: p.no, code: s.subjectCode, name: s.subjectName }] : [] }) : []
+  const phase = dayPhase(now, d ? todayItems.length > 0 : true)
   const pct = d?.sessions ? d.present / d.sessions * 100 : null
   const status = pct == null ? null : attendanceStatus(pct)
   const head = d ? attendanceHeadroom(d.present, d.sessions) : { canMiss: 0, mustAttend: 0 }
   const pendingLeaves = d?.leaves.filter(l => l.status === 'PENDING').length ?? 0
   const openGrievances = d?.grievances.filter(g => g.status === 'OPEN' || g.status === 'IN_PROGRESS').length ?? 0
+  const feedbackDue = d?.courses.filter(c => !c.feedbackDone) ?? []
+  const examsSoon = d?.exams.filter(x => daysUntil(x.date) <= 7) ?? []
+  const nextExam = d?.exams[0]
+
+  const todos: Todo[] = d ? [
+    pct == null
+      ? { label: 'No attendance recorded yet this semester', href: '/dashboard/attendance', icon: ClipboardCheck, tone: 'done' }
+      : pct < 75
+        ? { label: `Attendance below 75% — attend the next ${head.mustAttend} session${head.mustAttend === 1 ? '' : 's'}`, detail: pct < 65 ? 'Below 65%: shortage of attendance (SA) under clause 7' : '65–74%: condonation needed for the semester-end examination', count: Math.round(pct), href: '/dashboard/attendance', icon: ClipboardCheck, tone: pct < 65 ? 'bad' : 'warn' }
+        : { label: 'Attendance is at or above 75%', detail: `You can miss up to ${head.canMiss} more session${head.canMiss === 1 ? '' : 's'}`, href: '/dashboard/attendance', icon: ClipboardCheck, tone: 'done' },
+    d.alerts
+      ? { label: 'Attendance alerts to clear with your HOD', count: d.alerts, href: '/dashboard/alerts', icon: BellRing, tone: 'warn' }
+      : { label: 'No pending attendance alerts', href: '/dashboard/alerts', icon: BellRing, tone: 'done' },
+    ...(final ? [] : [feedbackDue.length
+      ? { label: 'Course feedback to submit', detail: feedbackDue.map(c => c.code).join(', '), count: feedbackDue.length, href: '/dashboard/feedback', icon: Star, tone: 'info' as const }
+      : { label: 'Feedback submitted for every course', href: '/dashboard/feedback', icon: Star, tone: 'done' as const }]),
+    ...(examsSoon.length ? [{ label: 'Examinations in the next 7 days', detail: examsSoon.map(x => `${x.subject_code} · ${x.exam_type} · ${fmtDate(x.date)}`).join(', '), count: examsSoon.length, href: '/dashboard/examination', icon: CalendarRange, tone: 'warn' as const }] : []),
+    ...(pendingLeaves ? [{ label: 'Leave applications awaiting approval', count: pendingLeaves, href: '/dashboard/leaves', icon: Heart, tone: 'info' as const }] : []),
+    ...(openGrievances ? [{ label: 'Grievances being processed', count: openGrievances, href: '/dashboard/grievances', icon: MessageSquareWarning, tone: 'info' as const }] : []),
+  ] : []
+  const openTodos = todos.filter(t => t.tone !== 'done').length
 
   return (
     <div className="space-y-6">
       <Hero
         kicker={`${greeting}${name ? `, ${name}` : ''}`}
         title={me?.full_name ?? 'My Dashboard'}
-        subtitle={[me?.register_number || me?.roll_number, section && `B.E. Computer Science & Engineering · ${section}`].filter(Boolean).join(' · ')}
+        subtitle={[me?.register_number, `B.E. Computer Science & Engineering · ${section}`].filter(Boolean).join(' · ')}
         chips={<>
           <HeroChip tone="gold">Semester {sem} · {semesterTerm()} {academicYear(new Date(), true)}</HeroChip>
           <HeroChip tone={phase.kind === 'period' ? 'live' : 'plain'}>{phaseLabel(phase)}</HeroChip>
           {d?.advisor && <HeroChip><UserRound size={12} />Class advisor: {d.advisor}</HeroChip>}
+          {d && <HeroChip>{openTodos ? `${openTodos} item${openTodos === 1 ? '' : 's'} need attention` : 'You are all caught up'}</HeroChip>}
         </>}
         actions={[
           { href: '/dashboard/attendance', label: 'My attendance' },
@@ -160,23 +206,27 @@ export default function StudentDashboard({ me, name, greeting }: { me: Profile |
         </div>
       )}
 
-      <section className="grid gap-4 grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
-        {!d ? <KpiSkeleton count={5} /> : <>
+      <section className="grid gap-4 grid-cols-2 md:grid-cols-3 2xl:grid-cols-6">
+        {!d ? <KpiSkeleton count={6} /> : <>
           <Kpi label="Attendance" value={pct == null ? '—' : `${Math.round(pct)}%`} icon={ClipboardCheck} href="/dashboard/attendance" meter={pct}
             tone={status ? ({ good: 'good', warn: 'warn', bad: 'bad' } as const)[status.tone] : 'default'}
             sub={d.sessions ? `${d.present} of ${d.sessions} sessions this semester` : 'No attendance recorded yet'} />
           <Kpi label="CGPA" value={d.cgpa.totalCredits ? d.cgpa.cgpa.toFixed(2) : '—'} icon={Award} href="/dashboard/analytics"
             sub={d.cgpa.totalCredits ? `${d.cgpa.totalCredits} credits earned` : 'Published after semester results'} />
-          <Kpi label="Courses" value={isFinalYear(section) ? '—' : d.courses.length} icon={BookOpen} href="/dashboard/curriculum"
-            sub={isFinalYear(section) ? 'To be added by the department' : `${d.courses.reduce((a, c) => a + c.credits, 0)} credits in semester ${sem}`} />
-          <Kpi label="Attendance alerts" value={d.alerts} icon={BellRing} tone={d.alerts ? 'warn' : 'default'}
-            sub={d.alerts ? 'Meet your HOD to clear them' : 'No pending alerts'} />
-          <Kpi label="Requests" value={pendingLeaves + openGrievances} icon={Heart} href="/dashboard/leaves"
-            sub={`${pendingLeaves} leave · ${openGrievances} grievance pending`} />
+          <Kpi label="Courses" value={final ? '—' : d.courses.length} icon={BookOpen} href="/dashboard/subjects"
+            sub={final ? 'To be added by the department' : `${d.courses.reduce((a, c) => a + c.credits, 0)} credits · semester ${sem}`} />
+          <Kpi label="Classes today" value={todayItems.length} icon={CalendarClock} href="/dashboard/timetable"
+            sub={todayItems.length ? todayItems.map(i => `P${i.period}`).join(' · ') : 'No classes today'} />
+          <Kpi label="Next exam" value={nextExam ? fmtDate(nextExam.date) : '—'} icon={CalendarRange} href="/dashboard/examination"
+            tone={nextExam && daysUntil(nextExam.date) <= 2 ? 'warn' : 'default'}
+            sub={nextExam ? `${nextExam.subject_code} · ${nextExam.exam_type}` : 'None scheduled'} />
+          <Kpi label="Alerts & requests" value={d.alerts + pendingLeaves + openGrievances} icon={BellRing} href="/dashboard/alerts"
+            tone={d.alerts ? 'warn' : 'default'} sub={`${d.alerts} alert · ${pendingLeaves} leave · ${openGrievances} grievance`} />
         </>}
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[1.1fr_1fr]">
+        <TodoPanel items={todos} loading={!d} title="What needs your attention" />
         <Panel kicker="Regulations 2024 · clause 7" title="Attendance eligibility" href="/dashboard/attendance" hrefLabel="Details">
           {!d ? <div className="h-48 animate-pulse" /> : (
             <div className="p-5 flex flex-col sm:flex-row items-center gap-6">
@@ -184,7 +234,7 @@ export default function StudentDashboard({ me, name, greeting }: { me: Profile |
               <div className="flex-1 space-y-3 w-full">
                 {status ? (
                   <>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <Pill tone={status.tone === 'good' ? 'green' : status.tone === 'warn' ? 'amber' : 'red'}>{status.eligible === 'YES' ? 'Eligible for exams' : status.eligible === 'CONDONATION' ? 'Condonation required' : 'Not eligible (SA)'}</Pill>
                       <span className="text-[12.5px] text-muted-foreground">{status.label}</span>
                     </div>
@@ -204,17 +254,57 @@ export default function StudentDashboard({ me, name, greeting }: { me: Profile |
             </div>
           )}
         </Panel>
+      </section>
 
+      <section className="grid gap-6 xl:grid-cols-[1fr_1.2fr]">
         <Panel kicker={now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' })} title="Today’s timetable" href="/dashboard/timetable" hrefLabel="Full week">
           {!d ? <div className="h-48 animate-pulse" /> : (
-            <Schedule items={d.todayItems} phase={phase}
-              empty={<PanelEmpty icon={CalendarClock}>No classes on your timetable today.</PanelEmpty>} />
+            <Schedule items={todayItems} phase={phase} empty={<PanelEmpty icon={CalendarClock}>No classes on your timetable today.</PanelEmpty>} />
+          )}
+        </Panel>
+        <Panel kicker="Last working days" title="Recent attendance" href="/dashboard/attendance" hrefLabel="Full record">
+          {!d ? <div className="h-48 animate-pulse" /> : d.recent.length === 0 ? <PanelEmpty icon={ClipboardCheck}>No attendance recorded yet this semester.</PanelEmpty> : (
+            <div className="p-5">
+              <div className="overflow-x-auto">
+                <table className="border-separate border-spacing-1 text-[11px]">
+                  <tbody>
+                    {[1, 2, 3].map(part => (
+                      <tr key={part} className="!bg-transparent">
+                        <td className="!p-0 pr-2 text-[11px] font-semibold text-muted-foreground whitespace-nowrap">Part {['I', 'II', 'III'][part - 1]}</td>
+                        {d.recent.map(r => {
+                          const s = r.parts[part]
+                          return <td key={r.date} title={`${fmtDate(r.date)} · Part ${part}: ${s ?? 'not marked'}`}
+                            className={`!p-0 w-7 h-7 rounded ${!s ? 'bg-muted' : s === 'ABSENT' ? 'bg-red-700' : s === 'LATE' ? 'bg-amber-500' : 'bg-green-700'}`} />
+                        })}
+                      </tr>
+                    ))}
+                    <tr className="!bg-transparent">
+                      <td />
+                      {d.recent.map(r => <td key={r.date} className="!p-0 text-center text-[9.5px] text-muted-foreground whitespace-nowrap">{new Date(r.date).getDate()}/{new Date(r.date).getMonth() + 1}</td>)}
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground mt-3">
+                <span className="inline-flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-green-700" />Present</span>
+                <span className="inline-flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-amber-500" />Late</span>
+                <span className="inline-flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-red-700" />Absent</span>
+                <span className="inline-flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-muted" />Not marked</span>
+              </div>
+            </div>
           )}
         </Panel>
       </section>
 
+      <Panel kicker={section} title="Weekly timetable" href="/dashboard/timetable" hrefLabel="Timetable">
+        {!d ? <div className="h-56 animate-pulse" /> : (
+          <WeekGrid week={d.week} phase={phase} emptyNote="The timetable for your section has not been published yet."
+            cell={(day, p) => { const s = d.week[day]?.[p]; return s ? { code: s.subjectCode } : null }} />
+        )}
+      </Panel>
+
       <Panel kicker={`Semester ${sem} · R2024`} title="My courses" href="/dashboard/marks" hrefLabel="All marks">
-        {!d ? <div className="h-48 animate-pulse" /> : isFinalYear(section) ? (
+        {!d ? <div className="h-48 animate-pulse" /> : final ? (
           <PanelEmpty icon={BookOpen}>Your batch follows the pre-autonomy curriculum. Your courses will be added by the department.</PanelEmpty>
         ) : d.courses.length === 0 ? (
           <PanelEmpty icon={BookOpen}>No courses have been added for your section this semester.</PanelEmpty>
@@ -223,8 +313,7 @@ export default function StudentDashboard({ me, name, greeting }: { me: Profile |
             {d.courses.map(c => {
               const type = courseType(c.code)
               const { internal: max } = markSplit(type)
-              const hasCia = c.entered.some(e => e.startsWith('CIA'))
-              const internal = hasCia ? internalMarks(c.code, c.marks) : null
+              const internal = c.entered.some(e => e.startsWith('CIA')) ? internalMarks(c.code, c.marks) : null
               const subPct = c.subjectAtt.n ? c.subjectAtt.p / c.subjectAtt.n * 100 : null
               return (
                 <div key={c.id} className="bg-card p-4 flex flex-col gap-3">
@@ -238,15 +327,14 @@ export default function StudentDashboard({ me, name, greeting }: { me: Profile |
                   </div>
                   <div className="flex flex-wrap gap-1">
                     {COMPONENTS.map(([k, l]) => <Pill key={k} tone={c.entered.some(e => e.startsWith(k)) ? 'green' : 'neutral'}>{l}</Pill>)}
+                    <Pill tone={c.feedbackDone ? 'green' : 'gold'}>{c.feedbackDone ? 'Feedback given' : 'Feedback due'}</Pill>
                   </div>
                   <div className="mt-auto space-y-2">
                     <div>
                       <div className="flex justify-between text-[11.5px] mb-1"><span className="text-muted-foreground">Internal (CIA) so far</span><span className="font-semibold text-licet-indigo tabular-nums">{internal == null ? '—' : `${internal} / ${max}`}</span></div>
                       <Bar value={internal ?? 0} max={max || 1} />
                     </div>
-                    {subPct != null && (
-                      <div className="flex justify-between text-[11.5px]"><span className="text-muted-foreground">Course attendance</span><AttPct value={subPct} /></div>
-                    )}
+                    <div className="flex justify-between text-[11.5px]"><span className="text-muted-foreground">Course attendance</span>{subPct == null ? <span className="text-muted-foreground">—</span> : <AttPct value={subPct} />}</div>
                   </div>
                 </div>
               )
@@ -256,40 +344,66 @@ export default function StudentDashboard({ me, name, greeting }: { me: Profile |
       </Panel>
 
       <section className="grid gap-6 lg:grid-cols-3">
-        <Panel kicker="Latest" title="Notices" href="/dashboard/notices">
-          {!d ? <div className="h-40 animate-pulse" /> : d.notices.length === 0 ? <PanelEmpty icon={Bell}>No active notices.</PanelEmpty> : (
-            <ul className="divide-y divide-border">
-              {d.notices.map(n => (
-                <ListRow key={n.id} href="/dashboard/notices">
-                  <span className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${n.urgent ? 'bg-red-50 text-red-800' : 'bg-licet-cream text-licet-indigo'}`}>{n.urgent ? <AlertTriangle size={15} /> : <Bell size={15} />}</span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[13.5px] font-medium text-licet-indigo truncate">{n.title}</p>
-                    <p className="text-[11.5px] text-muted-foreground">{timeAgo(n.created_at)}</p>
+        <ExamsPanel items={d?.exams ?? []} loading={!d} showSection={false} />
+        <Panel kicker="Clause 14" title="Grade record" href="/dashboard/analytics" hrefLabel="Analytics">
+          {!d ? <div className="h-40 animate-pulse" /> : d.cgpa.semesters.length === 0 ? <PanelEmpty icon={Award}>Semester GPAs appear here once results are published.</PanelEmpty> : (
+            <div className="p-5">
+              <div className="flex items-end gap-3 h-36">
+                {d.cgpa.semesters.map(s => (
+                  <div key={s.semester} className="flex-1 flex flex-col items-center justify-end gap-1.5 h-full">
+                    <span className="text-[11.5px] font-semibold text-licet-indigo tabular-nums">{s.gpa.toFixed(2)}</span>
+                    <div className="w-full max-w-[42px] rounded-t-md bg-gradient-to-t from-licet-indigo to-licet-violet" style={{ height: `${Math.max(6, s.gpa * 10)}%` }} />
+                    <span className="text-[10.5px] text-muted-foreground">Sem {s.semester}</span>
                   </div>
-                  {n.urgent && <Pill tone="red">Urgent</Pill>}
+                ))}
+              </div>
+              <p className="text-[12px] text-muted-foreground mt-3">CGPA <b className="text-licet-indigo">{d.cgpa.cgpa.toFixed(2)}</b> over {d.cgpa.totalCredits} credits</p>
+            </div>
+          )}
+        </Panel>
+        <Panel kicker="My class" title={section || 'My class'}>
+          <ul className="divide-y divide-border text-[13px]">
+            {[
+              { icon: Hash, label: 'Register no.', value: me?.register_number ?? '—' },
+              { icon: IdCard, label: 'Roll no.', value: me?.roll_number ?? '—' },
+              { icon: Mail, label: 'Email', value: me?.email ?? '—' },
+              { icon: CalendarRange, label: 'Semester', value: `${sem} · ${semesterTerm()}` },
+              { icon: UserRound, label: 'Class advisor', value: d?.advisor ?? 'To be assigned' },
+              { icon: GraduationCap, label: 'Head of Dept.', value: d?.hod ?? '—' },
+            ].map(r => (
+              <li key={r.label} className="flex items-center gap-3 px-5 py-2.5">
+                <r.icon size={15} className="text-licet-violet shrink-0" />
+                <span className="w-28 text-muted-foreground shrink-0">{r.label}</span>
+                <span className="text-licet-indigo font-medium truncate">{r.value}</span>
+              </li>
+            ))}
+          </ul>
+        </Panel>
+      </section>
+
+      <section className="grid gap-6 lg:grid-cols-3">
+        <NoticesPanel items={d?.notices ?? []} loading={!d} />
+        <EventsPanel items={d?.events ?? []} loading={!d} />
+        <Panel kicker="Placement cell" title="Placement drives" href="/dashboard/placements">
+          {!d ? <div className="h-40 animate-pulse" /> : d.placements.length === 0 ? <PanelEmpty icon={Briefcase}>No active placement drives.</PanelEmpty> : (
+            <ul className="divide-y divide-border">
+              {d.placements.map(p => (
+                <ListRow key={p.id} href="/dashboard/placements">
+                  <Initials name={p.company_name} className="w-8 h-8 !rounded-lg" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[13.5px] font-medium text-licet-indigo truncate">{p.company_name}</p>
+                    <p className="text-[11.5px] text-muted-foreground truncate">{p.role_title}{p.visit_date ? ` · ${fmtDate(p.visit_date)}` : ''}</p>
+                  </div>
+                  {p.package_lpa ? <Pill tone="green">{p.package_lpa} LPA</Pill> : null}
                 </ListRow>
               ))}
             </ul>
           )}
         </Panel>
-        <Panel kicker="Calendar" title="Upcoming events" href="/dashboard/events">
-          {!d ? <div className="h-40 animate-pulse" /> : d.events.length === 0 ? <PanelEmpty icon={CalendarDays}>No upcoming events scheduled.</PanelEmpty> : (
-            <ul className="divide-y divide-border">
-              {d.events.map(e => (
-                <ListRow key={e.id} href="/dashboard/events">
-                  <span className="w-11 h-11 rounded-lg bg-licet-indigo text-white flex flex-col items-center justify-center shrink-0">
-                    <span className="text-[9px] font-bold tracking-wider uppercase text-licet-gold">{new Date(e.date).toLocaleDateString('en-IN', { month: 'short' })}</span>
-                    <span className="font-serif text-[18px] font-semibold leading-none">{new Date(e.date).getDate()}</span>
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[13.5px] font-medium text-licet-indigo truncate">{e.title}</p>
-                    {e.venue && <p className="text-[11.5px] text-muted-foreground truncate">{e.venue}</p>}
-                  </div>
-                </ListRow>
-              ))}
-            </ul>
-          )}
-        </Panel>
+      </section>
+
+      <section className="grid gap-6 lg:grid-cols-2">
+        <DocumentsPanel items={d?.docs ?? []} loading={!d} />
         <Panel kicker="Requests" title="Leaves & grievances" href="/dashboard/leaves">
           {!d ? <div className="h-40 animate-pulse" /> : d.leaves.length + d.grievances.length === 0 ? (
             <PanelEmpty icon={Heart}>You have no leave applications or grievances.</PanelEmpty>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
+import { isTier1 } from "@/lib/roles"
 import type { AuthUser } from "@/lib/auth"
 import type { Database } from "@/lib/supabase"
 import { Plus, X, Package, Monitor, Wrench, AlertTriangle, Loader2, Download, Search, CheckCircle2 } from "lucide-react"
@@ -33,7 +34,7 @@ export default function InventoryPage() {
     location: 'CS Lab 1', purchase_date: '', purchase_value: '', next_service_date: '', notes: ''
   })
 
-  const isHOD = authUser?.type === 'staff' && authUser.data.role === 'HOD'
+  const isHOD = authUser?.type === 'staff' && isTier1(authUser.data)
   const isFaculty = authUser?.type === 'staff'
   const DEPT = '00000000-0000-0000-0000-000000000001'
 

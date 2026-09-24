@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
+import { isTier1 } from "@/lib/roles"
 import type { AuthUser } from "@/lib/auth"
 import type { Database } from "@/lib/supabase"
 import { Users, TrendingUp, GraduationCap, AlertTriangle, CheckCircle2, Loader2, Calendar, Trash2 } from "lucide-react"
@@ -49,14 +50,14 @@ export default function PromotionPage() {
   const [academicYear, setAcademicYear] = useState('2026-2027')
   const [runError, setRunError]   = useState('')
 
-  const isHOD = authUser?.type === 'staff' && authUser.data.role === 'HOD'
+  const isHOD = authUser?.type === 'staff' && isTier1(authUser.data)
 
   useEffect(() => {
     const stored = localStorage.getItem('excelsior_user') || localStorage.getItem('licet_user')
     if (!stored) { router.push('/login'); return }
     const au = JSON.parse(stored) as AuthUser
     setAuthUser(au)
-    if (au.type !== 'staff' || (au.data as any).role !== 'HOD') {
+    if (au.type !== 'staff' || !isTier1(au.data)) {
       router.push('/dashboard'); return
     }
     supabase.from('profiles').select('*').eq('email', au.data.email).single()
