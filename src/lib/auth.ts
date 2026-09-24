@@ -39,19 +39,25 @@ export async function signIn(email: string, password: string): Promise<{
   authUser: AuthUser | null
   error: string | null
 }> {
-  const { error } = await supabase.auth.signInWithPassword({ email, password })
-  if (error) return { authUser: null, error: "Invalid email or password" }
+  const { data: auth, error } = await supabase.auth.signInWithPassword({ email: email.toLowerCase(), password })
+  if (error?.name === "AuthRetryableFetchError" || (error && !error.status)) {
+    return { authUser: null, error: "Can't reach the ERP server. Check your connection and try again." }
+  }
+  if (error || !auth.user) return { authUser: null, error: "Invalid email or password" }
 
-  // Build AuthUser from the live profiles table (source of truth),
-  // not from the static STUDENTS/USERS arrays.
   const { data: profile, error: profErr } = await supabase
     .from('profiles')
     .select('*')
-    .eq('email', email)
+    .eq('id', auth.user.id)
     .single()
 
   if (profErr || !profile) {
-    return { authUser: null, error: "User profile not found" }
+    await supabase.auth.signOut()
+    return { authUser: null, error: "No ERP profile is linked to this account. Contact the department office." }
+  }
+  if (!profile.is_active) {
+    await supabase.auth.signOut()
+    return { authUser: null, error: "This account has been deactivated." }
   }
 
   if (profile.role === 'HOD' || profile.role === 'PROFESSOR') {
@@ -79,17 +85,16 @@ export async function signIn(email: string, password: string): Promise<{
     section: profile.section,
     batch_year: profile.batch_year ?? null,
     year: profile.batch_year ?? null,
-    roll_number: (profile as any).roll_number ?? null,
-    register_number: (profile as any).register_number ?? null,
+    roll_number: profile.roll_number ?? null,
+    register_number: profile.register_number ?? null,
     department_id: profile.department_id,
   }
   return { authUser: { type: "student", data }, error: null }
 }
 
-// Keep authenticateAny as async wrapper for login/page.tsx
-export async function authenticateAny(email: string, password: string): Promise<AuthUser | null> {
-  const { authUser } = await signIn(email, password)
-  return authUser
+export async function getAccessToken(): Promise<string | null> {
+  const { data } = await supabase.auth.getSession()
+  return data.session?.access_token ?? null
 }
 
 export async function signOut() {

@@ -1,18 +1,23 @@
-// send-notification.ts
-// Use this in "use client" components instead of importing email.ts directly.
-// Sends a POST to /api/send-email which holds the server-side Resend key.
+// Client-side helpers: POST to /api/send-email, which holds the Resend key
+// server-side and checks that the caller is signed-in staff.
 
 import { emailTemplates } from './email'
+import { getAccessToken } from './auth'
 
 type EmailPayload = { to: string; subject: string; html: string }
 
 async function postEmail(payload: EmailPayload): Promise<{ success: boolean }> {
-  const res = await fetch('/api/send-email', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  })
-  return { success: res.ok }
+  try {
+    const token = await getAccessToken()
+    const res = await fetch('/api/send-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token ?? ''}` },
+      body: JSON.stringify(payload),
+    })
+    return { success: res.ok }
+  } catch {
+    return { success: false }
+  }
 }
 
 export async function notifyAttendanceAbsent(

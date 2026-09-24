@@ -10,6 +10,7 @@ out/
 # env files — NEVER commit these
 .env
 .env.local
+.env*.bak
 .env.development.local
 .env.test.local
 .env.production.local
@@ -32,3 +33,12 @@ tsconfig.tsbuildinfo
 src/lib.zip
 src/**/*.zip
 src/app/**/*.zip
+
+# Local data backups (contain personal data)
+scripts/backups/
+
+# Student lists (personal data) — keep local
+scripts/data/
+
+# Local tool settings
+.claude/

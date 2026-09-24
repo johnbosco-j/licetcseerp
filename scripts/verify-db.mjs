@@ -1,10 +1,5 @@
-import { createClient } from '@supabase/supabase-js'
-const supabase = createClient(
-  'https://cvazyvdxnjmoenasavvq.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN2YXp5dmR4bmptb2VuYXNhdnZxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3Mzg5ODU3MywiZXhwIjoyMDg5NDc0NTczfQ.oeQFsIfGewelt77Jy66zy2tALex0EWtNBATMqWA6mZc'
-)
-
-const tables = ['day_attendance','promotion_log','student_promotion_history']
+import { supabase } from './admin-client.mjs'
+const tables = ['departments','profiles','subjects','attendance','day_attendance','marks','subject_locks','announcements','leaves','grievances','inventory','placements','finance_ledger','student_risk_scores','attendance_alerts','promotion_log','student_promotion_history']
 for (const t of tables) {
   const { error } = await supabase.from(t).select('count').limit(1)
   console.log(`${error ? '✗' : '✓'} ${t} ${error ? '— '+error.message : ''}`)

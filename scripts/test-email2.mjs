@@ -1,4 +1,5 @@
-const RESEND_API_KEY = 're_6dJ5jN3d_8FXbZFgGsVPcz77XjtqPJhKB'
+if (process.env.RESEND_API_KEY === undefined) process.loadEnvFile('.env.local')
+const RESEND_API_KEY = process.env.RESEND_API_KEY
 
 const res = await fetch('https://api.resend.com/emails', {
   method: 'POST',

@@ -1,7 +1,11 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl  = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabaseUrl  = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+if (!supabaseUrl || !supabaseAnon) {
+  throw new Error('Supabase is not configured: set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local (see .env.example).')
+}
 
 export const supabase = createClient(supabaseUrl, supabaseAnon, {
   auth: {
@@ -24,10 +28,15 @@ export type Database = {
           phone: string | null
           avatar_url: string | null
           roll_no: string | null
+          roll_number: string | null
+          register_number: string | null
           employee_id: string | null
           batch_year: number | null
           section: string | null
           is_active: boolean
+          advisor_section: string | null
+          can_reset_passwords: boolean
+          must_change_password: boolean
           created_at: string
           updated_at: string
         }
@@ -38,7 +47,7 @@ export type Database = {
           id: string; code: string; name: string
           department_id: string | null; semester: number
           credits: number; section: string | null
-          academic_year: string | null; created_at: string
+          academic_year: string | null; faculty_id: string | null; created_at: string
         }
       }
       attendance: {
@@ -118,5 +127,3 @@ export type Database = {
     }
   }
 }
-// Append to Database type — subject_locks table
-// (added separately to avoid rewriting the full type)
