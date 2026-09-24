@@ -7,11 +7,11 @@ export const dynamic = "force-dynamic"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
+import { isTier1 } from "@/lib/roles"
 import { courseType as regulationCourseType } from "@/lib/regulations"
 import type { AuthUser } from "@/lib/auth"
 import type { Database } from "@/lib/supabase"
 import { BookOpen, Users, ChevronDown, ChevronUp, Save, Loader2 } from "lucide-react"
-import { USERS } from "@/lib/users"
 
 type Subject = Database['public']['Tables']['subjects']['Row']
 type Profile = Database['public']['Tables']['profiles']['Row']
@@ -496,7 +496,7 @@ export default function SubjectsPage() {
   const [saveMsg, setSaveMsg]     = useState('')
   const [activeTab, setActiveTab]  = useState<'view'|'manage'>('view')
 
-  const isHOD     = authUser?.type === 'staff' && authUser.data.role === 'HOD'
+  const isHOD     = authUser?.type === 'staff' && isTier1(authUser.data)
   const isFaculty = authUser?.type === 'staff' && authUser.data.role === 'PROFESSOR'
   const isStudent = authUser?.type === 'student'
   const SECTIONS  = ['I CSE-A','I CSE-B','II CSE-A','II CSE-B','III CSE-A','III CSE-B','IV CSE-A','IV CSE-B']
@@ -516,7 +516,7 @@ export default function SubjectsPage() {
 
   // Load faculty profiles
   useEffect(() => {
-    supabase.from('profiles').select('*').eq('role', 'PROFESSOR').order('full_name')
+    supabase.from('profiles').select('*').eq('role', 'PROFESSOR').eq('is_active', true).order('full_name')
       .then(({ data }) => { if (data) setFaculty(data) })
   }, [])
 
@@ -692,9 +692,9 @@ export default function SubjectsPage() {
                               onChange={e => assignFaculty(subject.id, e.target.value)}
                               className="flex-1 h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none">
                               <option value="">— Unassigned —</option>
-                              {USERS.filter(u => u.role !== 'HOD').map(u => (
-                                <option key={u.email} value={faculty.find(f => f.email === u.email)?.id ?? ''}>
-                                  {u.name} ({u.email})
+                              {faculty.map(f => (
+                                <option key={f.id} value={f.id}>
+                                  {f.full_name}{f.designation ? ` · ${f.designation}` : ''}
                                 </option>
                               ))}
                             </select>

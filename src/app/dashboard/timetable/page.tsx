@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
+import { isTier1 } from "@/lib/roles"
 import type { AuthUser } from "@/lib/auth"
 import type { Database } from "@/lib/supabase"
 import { Save, Loader2, Settings } from "lucide-react"
@@ -88,7 +89,7 @@ export default function TimetablePage() {
   const [timetable, setTimetable] = useState<Record<string, Record<number, TimetableSlot>>>({})
   const [satConfig, setSatConfig] = useState<SaturdayConfig>({ enabled: false, followsDay: 'Monday', halfDay: true })
 
-  const isHOD     = authUser?.type === 'staff' && authUser.data.role === 'HOD'
+  const isHOD     = authUser?.type === 'staff' && isTier1(authUser.data)
   const isFaculty = authUser?.type === 'staff'
   const isStudent = authUser?.type === 'student'
   const currentSem = (s: string) => getActiveSemester(s)

@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic"
 import { useEffect, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
+import { isTier1 } from "@/lib/roles"
 import type { AuthUser } from "@/lib/auth"
 import type { Database } from "@/lib/supabase"
 import { Save, Loader2, BarChart3, Download, Lock, Unlock } from "lucide-react"
@@ -113,7 +114,7 @@ export default function MarksPage() {
   const [exportStudentId, setExportStudentId]   = useState('')
   const [activeTab, setActiveTab]   = useState<'cia1'|'cia2'|'sem'|'summary'>('cia1')
 
-  const isHOD     = authUser?.type === 'staff' && authUser.data.role === 'HOD'
+  const isHOD     = authUser?.type === 'staff' && isTier1(authUser.data)
   const isFaculty = authUser?.type === 'staff' && authUser.data.role === 'PROFESSOR'
   const isStudent = authUser?.type === 'student'
 

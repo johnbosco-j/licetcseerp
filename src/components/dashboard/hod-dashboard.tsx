@@ -4,22 +4,23 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import {
   Users, GraduationCap, BookOpen, ClipboardCheck, ShieldAlert, Award, Heart, MessageSquareWarning,
-  BellRing, UserCog, KeyRound, CalendarDays, Briefcase, Wallet, Boxes, History, Bell, CheckCircle2,
-  AlertTriangle, CalendarCheck, Megaphone,
+  BellRing, UserCog, KeyRound, Briefcase, Wallet, Boxes, History, CheckCircle2,
+  AlertTriangle, CalendarCheck,
 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { loadDepartmentTotals, type DepartmentTotals } from "@/lib/cgpa"
 import {
   SECTIONS, currentSemester, isFinalYear, isoDate, semesterStart, dayPhase, loadTodaysTimetables, loadSectionAttendance,
-  loadStudentAttendance, loadUpcomingEvents, loadNotices, timeAgo, fmtDate, inr,
-  type SectionAttendance, type StudentAttendance, type EventItem, type NoticeItem, type Period, type Slot,
+  loadStudentAttendance, loadUpcomingEvents, loadNotices, loadUpcomingExams, loadRecentDocuments, timeAgo, fmtDate, inr,
+  type SectionAttendance, type StudentAttendance, type EventItem, type NoticeItem, type ExamItem, type DocItem, type Period, type Slot,
 } from "@/lib/dashboard"
 import { academicYear, semesterTerm } from "@/lib/utils"
 import {
   Hero, HeroChip, HeroPanel, Kpi, KpiSkeleton, Panel, PanelEmpty, Bar, AttPct, Pill, Initials, ListRow, phaseLabel,
 } from "./widgets"
+import { NoticesPanel, EventsPanel, ExamsPanel, DocumentsPanel } from "./panels"
 
-type Staff = { id: string; full_name: string; role: string; advisor_section: string | null }
+type Staff = { id: string; full_name: string; role: string; advisor_section: string | null; designation: string | null }
 type Subject = { id: string; code: string; name: string; semester: number; section: string; faculty_id: string | null; credits: number }
 type Leave = { id: string; leave_type: string; from_date: string; to_date: string; created_at: string; applicant_id: string; status: string }
 type Grievance = { id: string; subject_line: string; category: string; status: string; created_at: string; student_id: string }
@@ -41,6 +42,8 @@ interface HodData {
   alerts: number
   events: EventItem[]
   notices: NoticeItem[]
+  exams: ExamItem[]
+  docs: DocItem[]
   placements: Placement[]
   finance: { credit: number; debit: number; entries: number }
   inventory: { total: number; maintenance: number; serviceDue: number }
@@ -61,11 +64,11 @@ async function loadHod(): Promise<HodData> {
   const head = { count: 'exact' as const, head: true }
   const [
     studentsRes, mustChangeRes, staffRes, subjectsRes, sectionAtt, allAtt, totals, leavesRes, onLeaveRes,
-    grievRes, alertsRes, events, notices, placementsRes, financeRes, inventoryRes, auditRes, todayTT,
+    grievRes, alertsRes, events, notices, placementsRes, financeRes, inventoryRes, auditRes, todayTT, exams, docs,
   ] = await Promise.all([
     supabase.from('profiles').select('section').eq('role', 'STUDENT').eq('is_active', true).range(0, 4999),
     supabase.from('profiles').select('id', head).eq('role', 'STUDENT').eq('must_change_password', true),
-    supabase.from('profiles').select('id, full_name, role, advisor_section').in('role', ['HOD', 'PROFESSOR']).eq('is_active', true).order('full_name'),
+    supabase.from('profiles').select('id, full_name, role, advisor_section, designation').in('role', ['HOD', 'PROFESSOR']).eq('is_active', true).order('full_name'),
     supabase.from('subjects').select('id, code, name, semester, section, faculty_id, credits').range(0, 4999),
     loadSectionAttendance(),
     loadStudentAttendance(),
@@ -81,6 +84,8 @@ async function loadHod(): Promise<HodData> {
     supabase.from('inventory').select('status, next_service_date').range(0, 9999),
     supabase.from('audit_log').select('at, actor, action, table_name').order('at', { ascending: false }).limit(300),
     loadTodaysTimetables(SECTIONS),
+    loadUpcomingExams(undefined, 6),
+    loadRecentDocuments(undefined, 5),
   ])
 
   const strength: Record<string, number> = Object.fromEntries(SECTIONS.map(s => [s, 0]))
@@ -139,7 +144,7 @@ async function loadHod(): Promise<HodData> {
     grievances: openGrievances.map(g => ({ ...g, name: nameOf(g.student_id) })),
     grievanceCounts,
     alerts: alertsRes.count ?? 0,
-    events, notices,
+    events, notices, exams, docs,
     placements: (placementsRes.data ?? []) as Placement[],
     finance: { credit, debit, entries: financeRes.data?.length ?? 0 },
     inventory: {
@@ -152,7 +157,7 @@ async function loadHod(): Promise<HodData> {
   }
 }
 
-export default function HodDashboard({ name, greeting }: { name: string; greeting: string }) {
+export default function HodDashboard({ name, greeting, designation }: { name: string; greeting: string; designation?: string | null }) {
   const [d, setD] = useState<HodData | null>(null)
   const [error, setError] = useState(false)
   const [now, setNow] = useState(() => new Date())
@@ -205,7 +210,7 @@ export default function HodDashboard({ name, greeting }: { name: string; greetin
       <Hero
         kicker={`${greeting}${name ? `, ${name}` : ''}`}
         title={<>Department of <span className="italic">Computer Science</span> &amp; Engineering</>}
-        subtitle={`${now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} · Head of Department overview`}
+        subtitle={`${now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} · ${designation ?? 'Head of Department'} · Tier 1 leadership overview`}
         chips={<>
           <HeroChip tone="gold">{semesterTerm()} · {academicYear(new Date(), true)}</HeroChip>
           <HeroChip tone={phase.kind === 'period' ? 'live' : 'plain'}>{phaseLabel(phase)}</HeroChip>
@@ -413,7 +418,7 @@ export default function HodDashboard({ name, greeting }: { name: string; greetin
                   <div className="min-w-0 flex-1">
                     <p className="text-[13.5px] font-medium text-licet-indigo truncate">{f.full_name}</p>
                     <p className="text-[11.5px] text-muted-foreground truncate">
-                      {f.advisor_section ? `Class advisor, ${f.advisor_section}` : 'Faculty'}{f.sections.length ? ` · teaches ${f.sections.join(', ')}` : ''}
+                      {[f.designation ?? 'Faculty', f.advisor_section && `Class advisor, ${f.advisor_section}`].filter(Boolean).join(' · ')}{f.sections.length ? ` · teaches ${f.sections.join(', ')}` : ''}
                     </p>
                   </div>
                   {f.courses === 0 ? <Pill>No courses</Pill> : <Pill tone="indigo">{f.courses} course{f.courses === 1 ? '' : 's'} · {f.credits} cr</Pill>}
@@ -475,48 +480,16 @@ export default function HodDashboard({ name, greeting }: { name: string; greetin
         </Panel>
       </section>
 
-      {/* Notices, events, placements & resources */}
-      <section className="grid gap-6 lg:grid-cols-2 2xl:grid-cols-3">
-        <Panel kicker="Latest" title="Notices" href="/dashboard/notices">
-          {!d ? <div className="h-40 animate-pulse" /> : d.notices.length === 0 ? <PanelEmpty icon={Megaphone}>No active notices.</PanelEmpty> : (
-            <ul className="divide-y divide-border">
-              {d.notices.map(n => (
-                <ListRow key={n.id} href="/dashboard/notices">
-                  <span className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${n.urgent ? 'bg-red-50 text-red-800' : 'bg-licet-cream text-licet-indigo'}`}>{n.urgent ? <AlertTriangle size={15} /> : <Bell size={15} />}</span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[13.5px] font-medium text-licet-indigo truncate">{n.title}</p>
-                    <p className="text-[11.5px] text-muted-foreground truncate">{n.audience === 'ALL' ? 'Everyone' : n.audience === 'PROFESSOR' || n.audience === 'FACULTY' ? 'Faculty' : n.audience === 'STUDENTS' ? 'All students' : n.audience} · {timeAgo(n.created_at)}</p>
-                  </div>
-                  {n.urgent && <Pill tone="red">Urgent</Pill>}
-                </ListRow>
-              ))}
-            </ul>
-          )}
-        </Panel>
+      {/* Examinations, notices, events */}
+      <section className="grid gap-6 lg:grid-cols-3">
+        <ExamsPanel items={d?.exams ?? []} loading={!d} />
+        <NoticesPanel items={d?.notices ?? []} loading={!d} showAudience />
+        <EventsPanel items={d?.events ?? []} loading={!d} />
+      </section>
 
-        <Panel kicker="Calendar" title="Upcoming events" href="/dashboard/events">
-          {!d ? <div className="h-40 animate-pulse" /> : d.events.length === 0 ? <PanelEmpty icon={CalendarDays}>No upcoming events scheduled.</PanelEmpty> : (
-            <ul className="divide-y divide-border">
-              {d.events.map(e => {
-                const dt = new Date(e.date)
-                return (
-                  <ListRow key={e.id} href="/dashboard/events">
-                    <span className="w-11 h-11 rounded-lg bg-licet-indigo text-white flex flex-col items-center justify-center shrink-0">
-                      <span className="text-[9px] font-bold tracking-wider uppercase text-licet-gold">{dt.toLocaleDateString('en-IN', { month: 'short' })}</span>
-                      <span className="font-serif text-[18px] font-semibold leading-none">{dt.getDate()}</span>
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[13.5px] font-medium text-licet-indigo truncate">{e.title}</p>
-                      <p className="text-[11.5px] text-muted-foreground truncate">{[e.type?.replace(/_/g, ' ').toLowerCase().replace(/^\w/, c => c.toUpperCase()), e.venue].filter(Boolean).join(' · ')}</p>
-                    </div>
-                  </ListRow>
-                )
-              })}
-            </ul>
-          )}
-        </Panel>
-
-        <Panel kicker="Department" title="Placements & resources" className="lg:col-span-2 2xl:col-span-1">
+      {/* Placements, resources, documents */}
+      <section className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
+        <Panel kicker="Department" title="Placements & resources">
           {!d ? <div className="h-40 animate-pulse" /> : (
             <div className="divide-y divide-border">
               <div className="grid grid-cols-3 divide-x divide-border">
@@ -553,6 +526,7 @@ export default function HodDashboard({ name, greeting }: { name: string; greetin
             </div>
           )}
         </Panel>
+        <DocumentsPanel items={d?.docs ?? []} loading={!d} />
       </section>
 
       {/* Audit trail */}

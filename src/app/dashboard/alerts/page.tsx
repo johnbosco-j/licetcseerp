@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
+import { isTier1 } from "@/lib/roles"
 import type { AuthUser } from "@/lib/auth"
 import type { Database } from "@/lib/supabase"
 import { Bell, CheckCircle, XCircle, Clock, AlertTriangle, CheckCheck } from "lucide-react"
@@ -45,7 +46,7 @@ export default function AlertsPage() {
   const [actionMsg, setActionMsg]         = useState('')
   const [bulkClearing, setBulkClearing]   = useState(false)
 
-  const isHOD     = authUser?.type === 'staff' && authUser.data.role === 'HOD'
+  const isHOD     = authUser?.type === 'staff' && isTier1(authUser.data)
   const isFaculty = authUser?.type === 'staff' && authUser.data.role === 'PROFESSOR'
   const isStudent = authUser?.type === 'student'
 

@@ -4,6 +4,7 @@ import { toTitleCase } from "@/lib/utils"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
+import { isTier1 } from "@/lib/roles"
 import type { AuthUser } from "@/lib/auth"
 import type { Database } from "@/lib/supabase"
 import { Plus, X, Search, Edit2, Trash2, Loader2, Users, AlertTriangle, Check, KeyRound } from "lucide-react"
@@ -30,7 +31,7 @@ export default function StudentsPage() {
   const [editId, setEditId]     = useState<string | null>(null)
   const [form, setForm]         = useState({ full_name: '', email: '', section: 'I CSE-A', batch_year: new Date().getFullYear(), roll_number: '', register_number: '' })
 
-  const isHOD = authUser?.type === 'staff' && authUser.data.role === 'HOD'
+  const isHOD = authUser?.type === 'staff' && isTier1(authUser.data)
 
   useEffect(() => {
     const stored = localStorage.getItem('excelsior_user') || localStorage.getItem('licet_user')

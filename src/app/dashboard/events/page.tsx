@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
+import { isTier1 } from "@/lib/roles"
 import type { AuthUser } from "@/lib/auth"
 import type { Database } from "@/lib/supabase"
 import { Plus, X, Briefcase, Users, BookOpen, Building, Loader2, Calendar } from "lucide-react"
@@ -47,7 +48,7 @@ export default function EventsPage() {
     date: '', venue: '', speaker: '', organization: '', sections: 'ALL'
   })
 
-  const isHOD     = authUser?.type === 'staff' && authUser.data.role === 'HOD'
+  const isHOD     = authUser?.type === 'staff' && isTier1(authUser.data)
   const isFaculty = authUser?.type === 'staff'
   const canPost   = isHOD || isFaculty
 

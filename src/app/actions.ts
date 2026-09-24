@@ -76,7 +76,7 @@ export async function resetPassword(accessToken: string, userId: string, newPass
   try {
     const actor = await requireRole(accessToken, ['HOD', 'PROFESSOR'])
     const db = adminClient()
-    const { data: target } = await db.from('profiles').select('id, role, section, email').eq('id', userId).single()
+    const { data: target } = await db.from('profiles').select('id, role, section, email, access_tier').eq('id', userId).single()
     if (!target) return { error: 'Account not found' }
     if (!canResetPassword(actor, target)) return { error: 'You are not allowed to reset this password' }
 

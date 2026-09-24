@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
+import { isTier1 } from "@/lib/roles"
 import type { AuthUser } from "@/lib/auth"
 import type { Database } from "@/lib/supabase"
 import { Plus, X, Wallet, TrendingUp, TrendingDown, Loader2, Download } from "lucide-react"
@@ -28,7 +29,7 @@ export default function FinancePage() {
     description: '', reference_no: ''
   })
 
-  const isHOD = authUser?.type === 'staff' && authUser.data.role === 'HOD'
+  const isHOD = authUser?.type === 'staff' && isTier1(authUser.data)
   const DEPT  = '00000000-0000-0000-0000-000000000001'
 
   useEffect(() => {

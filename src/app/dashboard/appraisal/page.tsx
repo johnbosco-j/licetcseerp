@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
+import { isTier1 } from "@/lib/roles"
 import type { AuthUser } from "@/lib/auth"
 import { Star, CheckCircle2, Loader2, BarChart3, Users, Plus, X } from "lucide-react"
 
@@ -45,7 +46,7 @@ export default function AppraisalPage() {
   const [loadingResults, setLoadingResults] = useState(false)
   const [selectedMonth, setSelectedMonth] = useState(MONTHS[new Date().getMonth()])
 
-  const isHOD     = authUser?.type === 'staff' && authUser.data.role === 'HOD'
+  const isHOD     = authUser?.type === 'staff' && isTier1(authUser.data)
   const isStudent = authUser?.type === 'student'
   const isFaculty = authUser?.type === 'staff' && !isHOD
   const year      = new Date().getFullYear()

@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic"
 import { useEffect, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
+import { isTier1 } from "@/lib/roles"
 import { notifyAttendanceAbsent } from "@/lib/send-notification"
 import type { AuthUser } from "@/lib/auth"
 import type { Database } from "@/lib/supabase"
@@ -96,7 +97,7 @@ export default function AttendancePage() {
   const [showDayLockModal, setShowDayLockModal] = useState(false)
   const [dayLockReason, setDayLockReason] = useState('')
 
-  const isHOD     = authUser?.type === 'staff' && authUser.data.role === 'HOD'
+  const isHOD     = authUser?.type === 'staff' && isTier1(authUser.data)
   const isFaculty = authUser?.type === 'staff' && authUser.data.role === 'PROFESSOR'
   const isStudent = authUser?.type === 'student'
   const currentSem = (s: string) => getActiveSemester(s)

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { KeyRound, Loader2, Search, ShieldCheck, UserCog, Users, X, Check, Copy } from "lucide-react"
 import { supabase } from "@/lib/supabase"
+import { isTier1 } from "@/lib/roles"
 import type { Database } from "@/lib/supabase"
 import { getAccessToken } from "@/lib/auth"
 import { resetPassword } from "@/app/actions"
@@ -26,7 +27,8 @@ export default function AccountsPage() {
   const [message, setMessage]   = useState<{ tone: 'ok' | 'err'; text: string } | null>(null)
   const [copied, setCopied]     = useState(false)
 
-  const isHOD = me?.role === 'HOD'
+  const isHOD = isTier1(me)              // tier 1: HOD or Vice Principal
+  const isRealHOD = me?.role === 'HOD'   // only the HOD grants password-admin rights
   const isPasswordAdmin = isHOD || !!me?.can_reset_passwords
   const advisorOnly = !isPasswordAdmin && !!me?.advisor_section
 
@@ -37,7 +39,7 @@ export default function AccountsPage() {
     const { data: self } = await supabase.from('profiles').select('*').eq('id', session.user.id).single()
     setMe(self)
     let q = supabase.from('profiles').select('*').in('role', ['STUDENT', 'PROFESSOR']).order('full_name')
-    if (self && self.role !== 'HOD' && !self.can_reset_passwords && self.advisor_section) {
+    if (self && !isTier1(self) && !self.can_reset_passwords && self.advisor_section) {
       q = q.eq('role', 'STUDENT').eq('section', self.advisor_section)
     }
     const { data } = await q
@@ -190,8 +192,9 @@ export default function AccountsPage() {
                         </td>
                         <td className="px-5 py-3">
                           <button role="switch" aria-checked={p.can_reset_passwords} onClick={() => togglePasswordAdmin(p)}
+                            disabled={!isRealHOD} title={isRealHOD ? undefined : 'Only the HOD can change password-admin rights'}
                             aria-label={`Password admin: ${p.full_name}`}
-                            className={`relative w-10 h-6 rounded-full transition-colors ${p.can_reset_passwords ? 'bg-licet-indigo' : 'bg-muted border border-border'}`}>
+                            className={`relative w-10 h-6 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${p.can_reset_passwords ? 'bg-licet-indigo' : 'bg-muted border border-border'}`}>
                             <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${p.can_reset_passwords ? 'left-[18px]' : 'left-0.5'}`} />
                           </button>
                         </td>

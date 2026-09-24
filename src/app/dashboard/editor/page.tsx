@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
+import { isTier1 } from "@/lib/roles"
 import { printHtml } from "@/lib/print"
 import { academicYear, semesterTerm } from "@/lib/utils"
 import { RichEditor } from "@/components/rich-editor"
@@ -192,7 +193,7 @@ export default function EditorPage() {
   const [showNew, setShowNew]   = useState(false)
   const [saveMsg, setSaveMsg]   = useState('')
 
-  const isHOD     = authUser?.type === 'staff' && authUser.data.role === 'HOD'
+  const isHOD     = authUser?.type === 'staff' && isTier1(authUser.data)
   const isFaculty = authUser?.type === 'staff'
   const canEdit   = isHOD || isFaculty
 
