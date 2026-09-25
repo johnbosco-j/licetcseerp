@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase"
-import { getActiveSemester, getCurrentSemParity } from "@/lib/semester"
+import { getActiveSemester, semesterStartDate } from "@/lib/semester"
 
 export const SECTIONS = ['I CSE-A', 'I CSE-B', 'II CSE-A', 'II CSE-B', 'III CSE-A', 'III CSE-B', 'IV CSE-A', 'IV CSE-B']
 export const YEARS = ['I', 'II', 'III', 'IV'] as const
@@ -9,10 +9,9 @@ export const yearOf = (section: string) => section.split(' ')[0]
 export const isFinalYear = (section: string) => yearOf(section) === 'IV'
 export const currentSemester = getActiveSemester
 
-/** First day of the running semester: odd semesters start in June, even in January. */
+/** First day of the running semester (the promotion date for odd semesters, 1 January for even). */
 export function semesterStart(d = new Date()): string {
-  const y = d.getFullYear()
-  return getCurrentSemParity() === 'odd' ? `${y}-06-01` : `${y}-01-01`
+  return isoDate(semesterStartDate(d))
 }
 
 export const isoDate = (d = new Date()) =>

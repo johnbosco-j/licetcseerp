@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { getCurrentSemParity } from "./semester"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -32,9 +33,9 @@ export function academicYear(d = new Date(), short = false): string {
   return short ? `${start}-${String(start + 1).slice(2)}` : `${start}-${start + 1}`
 }
 
-// Odd semesters run June–December (including end-semester exams), even semesters January–May.
+// Odd semester from promotion (June–December), even semester January–May — see lib/semester.
 export function semesterTerm(d = new Date()): 'Odd Semester' | 'Even Semester' {
-  return d.getMonth() >= 5 ? 'Odd Semester' : 'Even Semester'
+  return getCurrentSemParity(d) === 'odd' ? 'Odd Semester' : 'Even Semester'
 }
 
 /**

@@ -9,6 +9,7 @@ import { isTier1 } from "@/lib/roles"
 import type { AuthUser } from "@/lib/auth"
 import type { Database } from "@/lib/supabase"
 import { Save, Loader2, Settings } from "lucide-react"
+import { getActiveSemester } from "@/lib/semester"
 
 type Subject = Database['public']['Tables']['subjects']['Row']
 
@@ -61,19 +62,6 @@ interface TimetableSlot { subjectId: string; subjectCode: string; subjectName: s
 interface SaturdayConfig { enabled: boolean; followsDay: string; halfDay: boolean }
 
 
-// Semester helper — June–Dec = odd (1,3,5,7), Jan–May = even (2,4,6,8)
-function getActiveSemester(s: string): number {
-  const m = new Date().getMonth() + 1
-  const odd = m >= 6
-  const map: Record<string, [number,number]> = {
-    'I CSE-A':[1,2],'I CSE-B':[1,2],
-    'II CSE-A':[3,4],'II CSE-B':[3,4],
-    'III CSE-A':[5,6],'III CSE-B':[5,6],
-    'IV CSE-A':[7,8],'IV CSE-B':[7,8],
-  }
-  const [o,e] = map[s] ?? [1,2]
-  return odd ? o : e
-}
 export default function TimetablePage() {
   const router = useRouter()
   const [authUser, setAuthUser]   = useState<AuthUser | null>(null)

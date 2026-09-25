@@ -97,18 +97,70 @@ export async function resetPassword(accessToken: string, userId: string, newPass
 }
 
 // Removes students marked GRADUATED (login + profile; linked records cascade).
-export async function removeGraduatedStudents(accessToken: string): Promise<ActionResult & { removed?: number }> {
+// Archive-then-remove: every graduate's complete record is saved to the private
+// "archives" storage bucket first; accounts are deleted only if that succeeds.
+export async function removeGraduatedStudents(accessToken: string): Promise<ActionResult & { removed?: number; archive?: string }> {
   try {
-    await requireRole(accessToken, ['HOD'])
+    const actor = await requireRole(accessToken, ['HOD'])
     const db = adminClient()
-    const { data: grads, error } = await db.from('profiles').select('id').eq('role', 'STUDENT').eq('section', 'GRADUATED')
+    const { data: grads, error } = await db.from('profiles').select('*').eq('role', 'STUDENT').eq('section', 'GRADUATED')
     if (error) return { error: error.message }
+    if (!grads?.length) return { success: true, removed: 0 }
+
+    const ids = grads.map(g => g.id)
+    const all = async (table: string, select: string, column: string) => {
+      const rows: unknown[] = []
+      for (let i = 0; i < ids.length; i += 100) {
+        for (let from = 0; ; from += 1000) {
+          const { data, error: e } = await db.from(table).select(select).in(column, ids.slice(i, i + 100)).range(from, from + 999)
+          if (e) throw new Error(`${table}: ${e.message}`)
+          rows.push(...(data ?? []))
+          if (!data || data.length < 1000) break
+        }
+      }
+      return rows
+    }
+    const archive = {
+      kind: 'graduated-students',
+      generated_at: new Date().toISOString(),
+      generated_by: { id: actor.id, name: actor.full_name },
+      students: grads,
+      day_attendance: await all('day_attendance', '*', 'student_id'),
+      subject_attendance: await all('attendance', '*, subjects(code, name, semester)', 'student_id'),
+      marks: await all('marks', '*, subjects(code, name, semester, credits)', 'student_id'),
+      leaves: await all('leaves', '*', 'applicant_id'),
+      grievances: await all('grievances', '*', 'student_id'),
+      attendance_alerts: await all('attendance_alerts', '*', 'student_id'),
+      promotion_history: await all('student_promotion_history', '*', 'student_id'),
+    }
+    const path = `graduates/${archive.generated_at.slice(0, 19).replace(/:/g, '')}-${grads.length}-students.json`
+    const { error: upErr } = await db.storage.from('archives')
+      .upload(path, JSON.stringify(archive, null, 2), { contentType: 'application/json', upsert: false })
+    if (upErr) return { error: `Archive could not be saved, nothing was removed: ${upErr.message}` }
+
     let removed = 0
-    for (const g of grads ?? []) {
+    for (const g of grads) {
       const { error: e } = await db.auth.admin.deleteUser(g.id)
       if (!e) removed++
     }
-    return { success: true, removed }
+    return { success: true, removed, archive: path }
+  } catch (e) {
+    return failure(e)
+  }
+}
+
+/** Archived graduate records with short-lived download links (tier 1 only). */
+export async function listArchives(accessToken: string): Promise<{ error?: string; files?: { name: string; created_at: string; url: string }[] }> {
+  try {
+    await requireRole(accessToken, ['HOD'])
+    const db = adminClient()
+    const { data, error } = await db.storage.from('archives').list('graduates', { sortBy: { column: 'created_at', order: 'desc' } })
+    if (error) return { error: error.message }
+    const files = await Promise.all((data ?? []).filter(f => f.name.endsWith('.json')).map(async f => {
+      const { data: signed } = await db.storage.from('archives').createSignedUrl(`graduates/${f.name}`, 600, { download: true })
+      return { name: f.name, created_at: f.created_at ?? '', url: signed?.signedUrl ?? '' }
+    }))
+    return { files }
   } catch (e) {
     return failure(e)
   }
