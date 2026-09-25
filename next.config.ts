@@ -10,7 +10,7 @@ const csp = [
   "img-src 'self' data: blob: https://licet.ac.in https://*.supabase.co",
   "font-src 'self' data:",
   "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
-  "frame-src 'self' https://*.supabase.co",
+  "frame-src 'self' https://*.supabase.co https://www.youtube-nocookie.com",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",

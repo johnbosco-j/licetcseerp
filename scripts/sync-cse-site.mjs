@@ -80,6 +80,23 @@ const fixText = t => FIX_TEXT.reduce((s, [re, to]) => s.replace(re, to), t)
 const EXCLUDE_PEOPLE = [/justine\s+yasappan/i]
 const excluded = name => EXCLUDE_PEOPLE.some(re => re.test(name))
 
+// Removes every mention of an excluded person: their paragraph in text blocks,
+// their card or accordion entry, and fixes "We have N recognized research supervisors".
+function dropExcluded(blocks) {
+  const scrub = html => {
+    let out = html.replace(/<(p|li|tr)\b[^>]*>(?:(?!<\/\1>)[\s\S])*<\/\1>/gi, m => (excluded(m.replace(/<[^>]+>/g, ' ')) ? '' : m))
+    const n = (out.match(/Research Supervisor:/gi) || []).length
+    if (n) out = out.replace(/We have \d+ recognized research supervisors/i, `We have ${n} recognized research supervisors`)
+    return out
+  }
+  return blocks.map(b => {
+    if (b.t === 'html') return { ...b, html: scrub(b.html) }
+    if (b.t === 'toggle') return { ...b, items: b.items.filter(i => !excluded(i.title)).map(i => ({ ...i, html: scrub(i.html) })) }
+    if (b.t === 'cards') return { ...b, items: b.items.filter(c => !excluded(c.title) && !excluded(c.html.replace(/<[^>]+>/g, ' '))) }
+    return b
+  }).filter(b => !(b.t === 'cards' && !b.items.length) && !(b.t === 'html' && !b.html.replace(/<[^>]+>/g, '').trim()))
+}
+
 function widgetBlock($, w) {
   const $w = $(w), type = $w.attr('data-widget_type').split('.')[0]
   if (type === 'heading' || type === 'animated-headline') {
@@ -279,6 +296,7 @@ for (const s of SECTIONS) {
     const end = acc >= 0 ? blocks.findIndex((b, i) => i > acc && b.t === 'toggle') : -1
     blocks = end > 0 ? blocks.slice(0, end + 1) : blocks.filter(b => b.t === 'h' || b.t === 'html').slice(0, 3)
   }
+  blocks = dropExcluded(blocks)
   out.sections.push({ id: s.id, title: s.title, url, blocks })
   console.log(`${blocks.length} blocks`)
 }

@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { ChevronDown, PlayCircle, X, ChevronLeft, ChevronRight, ExternalLink } from "lucide-react"
+import { ChevronDown, X, ChevronLeft, ChevronRight, ExternalLink } from "lucide-react"
 
 // Content blocks synced from licet.ac.in by scripts/sync-cse-site.mjs. The HTML in
 // "html" / toggle blocks is rebuilt at sync time from a strict allow-list (text
@@ -69,16 +69,44 @@ function Gallery({ images }: { images: string[] }) {
   )
 }
 
-/** Partner / recruiter logos: uniform white tiles, logos scaled to fit. */
+/** Partner / recruiter logos in one row: a few fit side by side, many scroll as a strip. */
 function Logos({ images }: { images: string[] }) {
-  return (
-    <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3">
-      {images.map(src => (
-        <div key={src} className="h-24 rounded-xl border border-border bg-white flex items-center justify-center p-2 hover:border-licet-gold transition-colors">
-          <img src={src} alt="" loading="lazy" referrerPolicy="no-referrer" className="h-full w-full object-contain" />
-        </div>
-      ))}
+  const tile = (src: string, key: string) => (
+    <div key={key} className="h-16 sm:h-20 rounded-xl border border-border bg-white flex items-center justify-center p-2.5 shadow-sm hover:border-licet-gold hover:shadow-md transition">
+      <img src={src} alt="" loading="lazy" referrerPolicy="no-referrer" className="max-h-full max-w-full object-contain" />
     </div>
+  )
+  if (images.length <= 8) {
+    return (
+      <div className="grid gap-2.5 sm:gap-3 max-w-4xl" style={{ gridTemplateColumns: `repeat(${images.length}, minmax(0, 1fr))` }}>
+        {images.map(src => tile(src, src))}
+      </div>
+    )
+  }
+  return (
+    <div className="logo-strip overflow-hidden py-1">
+      <div className="flex gap-3">
+        {[...images, ...images].map((src, i) => <div key={i} className="w-32 sm:w-40 shrink-0" aria-hidden={i >= images.length}>{tile(src, src + i)}</div>)}
+      </div>
+    </div>
+  )
+}
+
+/** YouTube video playing inline (privacy-enhanced embed, loaded when scrolled into view). */
+function Video({ url }: { url: string }) {
+  const id = url.match(/(?:youtu\.be\/|v=|embed\/|shorts\/)([\w-]{11})/)?.[1]
+  if (!id) return null
+  return (
+    <figure className="max-w-4xl">
+      <div className="relative aspect-video rounded-2xl overflow-hidden bg-licet-indigo shadow-xl shadow-licet-indigo/20 ring-1 ring-licet-gold/40">
+        <iframe src={`https://www.youtube-nocookie.com/embed/${id}?rel=0&modestbranding=1`} title="Department video" loading="lazy"
+          allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen
+          referrerPolicy="strict-origin-when-cross-origin" className="absolute inset-0 w-full h-full border-0" />
+      </div>
+      <figcaption className="mt-2 text-[12.5px] text-muted-foreground">
+        <a href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 hover:text-licet-violet">Watch on YouTube <ExternalLink size={12} /></a>
+      </figcaption>
+    </figure>
   )
 }
 
@@ -169,13 +197,7 @@ export function Blocks({ blocks }: { blocks: Block[] }) {
               </div>
             )
           case "video":
-            return (
-              <a key={i} href={b.url} target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-3 rounded-xl border border-border bg-white px-5 py-3.5 hover:border-licet-gold hover:bg-licet-cream/40">
-                <PlayCircle className="w-7 h-7 text-licet-violet" />
-                <span><span className="block text-[14px] font-semibold text-licet-indigo">Watch the video</span><span className="block text-[12px] text-muted-foreground">Opens on YouTube</span></span>
-              </a>
-            )
+            return <Video key={i} url={b.url} />
           case "posts":
             return (
               <div key={i} className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">

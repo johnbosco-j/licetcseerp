@@ -240,7 +240,7 @@ export default function PlacementsPage() {
             ].map(({ label, value }) => (
               <div key={label} className="bg-card border border-border rounded-lg p-4">
                 <p className="text-[10.5px] font-bold tracking-[1.5px] uppercase text-muted-foreground mb-1">{label}</p>
-                <p className="font-serif text-[30px] font-semibold leading-none text-licet-indigo">{value}</p>
+                <p className="font-display text-[28px] font-bold tracking-[-0.03em] leading-none text-licet-indigo">{value}</p>
               </div>
             ))}
           </div>
@@ -370,7 +370,7 @@ export default function PlacementsPage() {
             ].map(({ label, value, icon: Icon, sub }) => (
               <div key={label} className="bg-card border border-border rounded-lg p-4">
                 <div className="flex items-center justify-between"><p className="text-[10.5px] font-bold tracking-[1.5px] uppercase text-muted-foreground">{label}</p><Icon className="w-4 h-4 text-licet-violet" /></div>
-                <p className="font-serif text-[28px] font-semibold leading-none text-licet-indigo mt-2">{value}</p>
+                <p className="font-display text-[26px] font-bold tracking-[-0.03em] leading-none text-licet-indigo mt-2">{value}</p>
                 {sub && <p className="text-[11.5px] text-muted-foreground mt-1.5">{sub}</p>}
               </div>
             ))}

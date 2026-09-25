@@ -260,7 +260,7 @@ export default function AnalyticsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
             <div className="bg-card border border-border rounded-lg p-5">
               <p className="text-[10.5px] font-bold tracking-[1.5px] uppercase text-muted-foreground mb-1">Total Faculty</p>
-              <p className="font-serif text-[30px] font-semibold leading-none text-licet-indigo">{workload.length}</p>
+              <p className="font-display text-[28px] font-bold tracking-[-0.03em] leading-none text-licet-indigo">{workload.length}</p>
             </div>
             <div className="bg-card border border-border rounded-lg p-5">
               <p className="text-[10.5px] font-bold tracking-[1.5px] uppercase text-muted-foreground mb-1">Overloaded (&gt; 16 cr)</p>
@@ -268,7 +268,7 @@ export default function AnalyticsPage() {
             </div>
             <div className="bg-card border border-border rounded-lg p-5">
               <p className="text-[10.5px] font-bold tracking-[1.5px] uppercase text-muted-foreground mb-1">Avg Credits / Faculty</p>
-              <p className="font-serif text-[30px] font-semibold leading-none text-licet-indigo">{workload.length ? (workload.reduce((s, w) => s + w.totalCredits, 0) / workload.length).toFixed(1) : 0}</p>
+              <p className="font-display text-[28px] font-bold tracking-[-0.03em] leading-none text-licet-indigo">{workload.length ? (workload.reduce((s, w) => s + w.totalCredits, 0) / workload.length).toFixed(1) : 0}</p>
             </div>
           </div>
 
@@ -333,7 +333,7 @@ export default function AnalyticsPage() {
                 ].map(({ label, value, sub }) => (
                   <div key={label} className="bg-card border border-border rounded-lg p-4">
                     <p className="text-[10.5px] font-bold tracking-[1.5px] uppercase text-muted-foreground mb-1">{label}</p>
-                    <p className="font-serif text-[30px] font-semibold leading-none text-licet-indigo">{value}</p>
+                    <p className="font-display text-[28px] font-bold tracking-[-0.03em] leading-none text-licet-indigo">{value}</p>
                     <p className="text-[13.5px] text-muted-foreground mt-1.5 max-w-3xl">{sub}</p>
                   </div>
                 ))}

@@ -371,7 +371,7 @@ export default function FacultyDashboard({ me, name, greeting, embedded = false 
               })().map(x => (
                 <div key={x.label} className="rounded-lg border border-border p-3">
                   <p className="flex items-center gap-1.5 text-[10.5px] font-bold tracking-wider uppercase text-muted-foreground"><x.icon size={12} />{x.label}</p>
-                  <p className={`font-serif text-[26px] font-semibold leading-none mt-2 ${x.tone || 'text-licet-indigo'}`}>{x.value}</p>
+                  <p className={`font-display text-[24px] font-bold tracking-[-0.03em] leading-none mt-2 ${x.tone || 'text-licet-indigo'}`}>{x.value}</p>
                 </div>
               ))}
               <div className="col-span-2 flex flex-wrap gap-3">
