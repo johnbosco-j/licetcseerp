@@ -12,6 +12,7 @@
 import { load } from 'cheerio'
 import { mkdirSync, writeFileSync, existsSync, rmSync } from 'node:fs'
 import sharp from 'sharp'
+import { createHash } from 'node:crypto'
 
 const BASE = 'https://licet.ac.in/computer-science-and-engineering/'
 const SECTIONS = [
@@ -264,13 +265,18 @@ function extractPeople($, main) {
 const slug = s => s.toLowerCase().replace(/^(dr|mr|ms|mrs|rev)\.?\s+/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 
 // Portraits are resized to 480 px squares (JPEG) so the pages stay light;
-// cropped from the top so faces are never cut off.
-async function savePhoto(url, name) {
+// cropped from the top so faces are never cut off. The person record keeps a
+// hash of the original image: re-encoding can differ by a few bytes between
+// machines, so change detection (scripts/autosync.mjs) relies on this hash.
+async function savePhoto(person) {
+  const url = person.photo, name = person.name
   if (!url || /NoPhoto/i.test(url)) return null
   const file = `public/cse/people/${slug(name)}.jpg`
   const r = await fetch(url, { headers: UA })
   if (!r.ok) return url                       // fall back to the website copy
-  await sharp(Buffer.from(await r.arrayBuffer()))
+  const original = Buffer.from(await r.arrayBuffer())
+  person.photoHash = createHash('sha1').update(original).digest('hex').slice(0, 12)
+  await sharp(original)
     .resize(480, 480, { fit: 'cover', position: 'north' })   // keep the head in frame
     .flatten({ background: '#F3E5C4' })       // transparent PNG cut-outs get the LICET cream
     .jpeg({ quality: 82, mozjpeg: true })
@@ -303,9 +309,9 @@ for (const s of SECTIONS) {
 
 const p = out.people
 if (!p?.hod || !p.faculty.length) throw new Error('Faculty page layout changed: no HOD / faculty found. Nothing written.')
-p.hod.photo = await savePhoto(p.hod.photo, p.hod.name)
-for (const f of p.faculty) f.photo = await savePhoto(f.photo, f.name)
-for (const s of p.staff) s.photo = await savePhoto(s.photo, s.name)
+p.hod.photo = await savePhoto(p.hod)
+for (const f of p.faculty) f.photo = await savePhoto(f)
+for (const s of p.staff) s.photo = await savePhoto(s)
 
 // People go in their own small file: the dashboards load only that.
 writeFileSync('src/data/cse-people.json', JSON.stringify({ syncedAt: out.syncedAt, source: BASE + 'computer-science-and-engineering-faculty/', ...p }, null, 1))
