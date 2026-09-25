@@ -16,6 +16,7 @@ import {
 import { academicYear, semesterTerm } from "@/lib/utils"
 import { Hero, HeroChip, HeroPanel, Kpi, KpiSkeleton, Panel, PanelEmpty, Bar, AttPct, Pill, Initials, ListRow, Schedule, phaseLabel, CallParent } from "./widgets"
 import { NoticesPanel, EventsPanel, ExamsPanel, DocumentsPanel, TodoPanel, WeekGrid, daysUntil, type Todo } from "./panels"
+import { DepartmentPeople } from "@/components/site/people"
 
 type Subject = { id: string; code: string; name: string; semester: number; section: string; credits: number }
 export type FacultyMe = {
@@ -445,6 +446,11 @@ export default function FacultyDashboard({ me, name, greeting, embedded = false 
           </ul>
         </Panel>
       </section>
+      {!embedded && (
+        <Panel kicker="Department of Computer Science & Engineering" title="Head of Department, Faculty & Staff" bodyClass="p-5">
+          <DepartmentPeople compact />
+        </Panel>
+      )}
     </div>
   )
 }

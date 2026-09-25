@@ -1,0 +1,187 @@
+{
+ "syncedAt": "2026-09-25T01:28:50.199Z",
+ "source": "https://licet.ac.in/computer-science-and-engineering/computer-science-and-engineering-faculty/",
+ "hod": {
+  "name": "Dr Sharmila V J",
+  "role": "Head of the Department",
+  "designation": "Associate Professor",
+  "email": "hodcse@licet.ac.in",
+  "bio": "Dr V J Sharmila , Associate Professor, completed Ph.D. in the Faculty of Information and Communication in the year 2023 from Anna University, Chennai, India. She has completed her Masters in Computer Science and Engineering in the year 2008 from Dr Sivanthi Aditanar College of Engineering,Tiruchendur, India. She has got an experience of 14 years in teaching and research. She has published four articles in International Journals and 2 presentations in Conferences and recognized research supervisor of Anna University, Chennai. Her research interests include Machine Learning, Deep Learning, Big Data and Cloud Computing.",
+  "photo": "/cse/people/sharmila-v-j.jpg"
+ },
+ "faculty": [
+  {
+   "name": "Dr Gopalakrishnan K",
+   "designation": "Professor",
+   "email": "drgk81@licet.ac.in",
+   "otherEmails": [],
+   "bio": "Dr. K Gopalakrishnan has completed his Full Time Ph.D. in Faculty of Information and Communication Engineering from the College of Engineering, Guindy, Anna University, Chennai. He was selected as one among the three awardees of Senior Research Fellow (Direct SRF under ENG43) by Council of Scientific and Industrial Research(CSIR), Govt. of India during the year 2008. He has 5 years of experience in research as Senior Research Fellow and 11 years of teaching experience in reputed engineering institutions till March 2021. Published research articles in Springer and IEEE. Reviewer of IEEE, Springer and a recognized research supervisor of Anna University, Chennai.",
+   "photo": "/cse/people/gopalakrishnan-k.jpg"
+  },
+  {
+   "name": "Rev. Dr. Justine Yasappan, SJ",
+   "designation": "Associate Professor",
+   "email": "frjustine@licet.ac.in",
+   "otherEmails": [
+    "director@licet.ac.in"
+   ],
+   "bio": "Rev Dr Justine obtained his PhD in Computer Science and Applied Mathematics, from ICAI, University of Comillas , Madrid, SPAIN. He holds a Master of Engineering degree in Mathematical Models of Engineering Systems, with more than 15 years of RESEARCH and TEACHING experience. He has authored two books and edited five books. He has a few captivating Short stories to his credit. He is an ardent seeker and learner of memory methods and study techniques. He can Speak and Write in English, Spanish, French and Tamil.",
+   "photo": "/cse/people/dr-justine-yasappan-sj.jpg"
+  },
+  {
+   "name": "Ms Nirmala S",
+   "designation": "Associate Professor",
+   "email": "iqac@licet.ac.in",
+   "otherEmails": [],
+   "bio": "Ms. Nirmala S has 19 years of teaching experience. She is interested in Mathematical foundations of Computer Science. She has completed a Project on “Interactive Virtual Historical Monuments of Tamil Nadu”, funded by TNSCST in 2019 and has Coordinated 11 Funded Programs. She has published 3 papers in International Journals. She has delivered Guest lectures on “Theory of Computation”, “Lex and Yacc Tools” and on Quality Management System in Engineering Colleges. She has produced 100% results in the courses like “Data analytics”, “Software Project Management”, “Programming in C”.",
+   "photo": "/cse/people/nirmala-s.jpg"
+  },
+  {
+   "name": "Dr G R Jainish",
+   "designation": "Associate Professor",
+   "email": "jainish.gr@licet.ac.in",
+   "otherEmails": [],
+   "bio": "Dr G R Jainish has completed her Ph.D in Faculty of Computer Science and Engineering in the year 2019. She has qualified UGC-NET in Computer Science and Applications. She has been the Co-investigator for the project “Multiframe – Super Resolution of 3D CMR for Improved Diagnosis of Coronary Heart Disease” funded by AICTE. She has published 10 research articles in Journals including Springer publication and 17 papers in conferences. She worked as Assistant Professor in the Department of Computer Science and Engineering at Dr.Sivanthi Aditanar College of Engineering, before joining LICET. She also has experience in preparation of documents for AICTE Approval process and NBA accreditation. She has 16+ years of experience in teaching and her areas of specialization include Medical Imaging, Machine Learning, Deep Learning and IoT.",
+   "photo": "/cse/people/g-r-jainish.jpg"
+  },
+  {
+   "name": "Ms Jeevitha A",
+   "designation": "Assistant Professor",
+   "email": "jeevitha.a@licet.ac.in",
+   "otherEmails": [],
+   "bio": "Ms Jeevitha A completed her Masters degree in Computer Science and Engineering from Anna University, Trichy. She had worked as an Assistant Professor in Kodaikanal Institute of Technology for a year and 2 years as an Assistant Professor in Tagore Engineering College, Chennai. Her area of specialization includes Network Security and blockchain Technology. She has published a paper in the National Conference organized by NIT Trichy, on the topic “Hierarchical Distance Based Clustering Scheme for Network Traffic Analysis”, Advanced Pattern Mining and Multimedia",
+   "photo": "/cse/people/jeevitha-a.jpg"
+  },
+  {
+   "name": "Ms Sathia Priya R",
+   "designation": "Assistant Professor",
+   "email": "sathiapriya.r@licet.ac.in",
+   "otherEmails": [],
+   "bio": "Ms Sathia Priya R has wide teaching experience in reputed institutions and has taught various courses for B.E., M.E., M.C.A, and M.Phil. Degree Programmes. She has a post-graduate degree in Systems Engineering and is currently pursuing a Ph.D. at Anna University. She is the recipient of Prof. T.R. Natesan Endowment Award and Silver medal for securing the second position in M.E. Her research interests include Big Data Frameworks and Machine Learning.",
+   "photo": "/cse/people/sathia-priya-r.jpg"
+  },
+  {
+   "name": "Dr Remegius Praveen Sahayaraj L",
+   "designation": "Assistant Professor",
+   "email": "reme@licet.ac.in",
+   "otherEmails": [],
+   "bio": "Dr Remegius Praveen Sahayaraj L completed Ph.D. in the Faculty of Information and Communication in the year 2023 from Anna University, Chennai, India. He has completed his Masters in Computer Science and Engineering in the year 2013 from SRM University, Chennai, India. He has got an experience of 9+ years in teaching and research. Currently he is working as an Assistant Professor in Loyola-ICAM College of Engineering and Technology, Chennai, India. He has published 7 articles in International Journals and 5 presentations in International Conferences. He is an active reviewer of research articles in IEEE and other reputed International Journals. His research interests include Cloud Computing, IoT, Web Security, Managing Spatial Data in Cloud and Log Analysis. Currently he holds the additional roles of Deputy Controller of Examinations and Web Manager.",
+   "photo": "/cse/people/remegius-praveen-sahayaraj-l.jpg"
+  },
+  {
+   "name": "Ms Limsa Joshi J",
+   "designation": "Assistant Professor",
+   "email": "limsajoshi@licet.ac.in",
+   "otherEmails": [],
+   "bio": "Ms J Limsa Joshi, received her B.E CSE degree (First Class with Distinction) in 2010 and M.E CSE degree (First Class with Distinction) in 2012 from Anna University. She has nearly 8 years of teaching experience. Her domain of specialization includes Cloud Computing, Internet of Things, and Software Engineering. She has presented and published several papers in national and international conferences as part of UG and PG. She guided around 20 UG projects under various areas of Computer Science and Engineering.",
+   "photo": "/cse/people/limsa-joshi-j.jpg"
+  },
+  {
+   "name": "Ms Delphy P",
+   "designation": "Assistant Professor",
+   "email": "delphy.p@licet.ac.in",
+   "otherEmails": [],
+   "bio": "Ms P Delphy completed her Undergraduate in Computer Science and Engineering (B.E CSE) with First Class in 2015 and her Masters in Computer Science and Engineering (M.E CSE) with First Class Distinction in 2017. She secured the 12th Rank in Anna university in her masters degree. She has an experience of 4+ years as Assistant Professor and as Placement Coordinator in the department of Computer Science and Engineering at E.G.S.Pillay Engineering College, Nagapattinam, Tamilnadu. She has presented research articles in National and international Conferences. Her areas of interest include cryptography, network security and database.",
+   "photo": "/cse/people/delphy-p.jpg"
+  },
+  {
+   "name": "Ms Daya Mary Mathew",
+   "designation": "Assistant Professor",
+   "email": "dayamarymathew@licet.ac.in",
+   "otherEmails": [],
+   "bio": "Ms Daya Mary Mathew has received Master’s Degree for Computer Science and Engineering from APJ Abdul Kalam Technological University (Kerala) in 2017. She has 9.5 years of experience in the IT industry. She has worked as faculty in Jeppiaar Institute and Technology and Rajalakshmi Engineering College prior to joining LICET in August 2022. She has presented research articles in National and international Conferences. Her areas of interest include Data Mining, Machine Learning and Cryptography.",
+   "photo": "/cse/people/daya-mary-mathew.jpg"
+  },
+  {
+   "name": "Ms Priya A",
+   "designation": "Assistant Professor",
+   "email": "priya.a@licet.ac.in",
+   "otherEmails": [],
+   "bio": "Completed B.E. from Loyola-ICAM College of Engineering and Technology and M.E. from Arupadai Veedu Institute of Technology, graduating with first-class distinction and securing a university rank. Currently, she is pursuing Ph.D. in Artificial Intelligence and Deep Learning. She has previously worked as an Assistant Professor at Panimalar Engineering College. Additionally, she has completed certifications from IIT-M in Advanced Programming Professional and Master Data Science. She has published two papers in Scopus journals and presented at conferences. Her area of interest include Data Science, Artificial Intelligence, and Deep Learning.",
+   "photo": "/cse/people/priya-a.jpg"
+  },
+  {
+   "name": "Ms Accelia S",
+   "designation": "Assistant Professor",
+   "email": "accelia.s@licet.ac.in",
+   "otherEmails": [],
+   "bio": "Completed Undergraduate in Information Technology (B.Tech IT) with First Class and Masters in Computer Science and Engineering (M.E CSE) with First Class. Has presented research articles in National Conferences. Her areas of interest include Machine Learning, Cloud Computing and Database.",
+   "photo": "/cse/people/accelia-s.jpg"
+  },
+  {
+   "name": "Ms. L. Freesie Greta",
+   "designation": "Assistant Professor",
+   "email": "freesiegreta.l@licet.ac.in",
+   "otherEmails": [],
+   "bio": "Ms. L. Freesie Greta is an Assistant Professor with a passion for teaching and 9 years of experience in the field. She earned her B.E. in Computer Science and Engineering from Manonmaniam Sundaranar University and her M.E. in the same discipline from Anna University. Throughout her career, she has handled various subjects for both undergraduate and postgraduate students, guiding numerous projects at both levels. She has organized events such as Faculty Development Programs (FDP) and has experience managing various academic files, contributing to NBA Criteria 5. With a strong interest in cybersecurity, she aims to pursue a Ph.D. in this specialization in the near future.",
+   "photo": "/cse/people/l-freesie-greta.jpg"
+  },
+  {
+   "name": "Ms. Shirly Sudhakaran",
+   "designation": "Assistant Professor",
+   "email": "shirlysudhakaran@licet.ac.in",
+   "otherEmails": [],
+   "bio": "Ms. Shirly Sudhakaran, Assistant Professor, has professional experience in Educational Institutions and various Government projects. A prototype of the Indian Government proposal for Online Toll Gate Payment and Anti-Theft using RFID was built and submitted to the Department of Computer Science and Engineering in SRM Valliammai Engineering College, Anna University, during her Bachelor of Engineering (CSE). She also enhanced her management and training skills by serving as a freelance Communication trainer and Recruiter for various job sectors in India, later extended to Gulf placements. Focusing on her technical skills, she built a Smart System for the Chennai Suburban Railways in Chennai Institute of Technology, Anna University, during her Master of Engineering (CSE). As this project involved study of humans and Supply Chain Management, she strengthened her knowledge in the same through Master of Business Administration (HRM) from Annamalai University (DDE). Working in DDUGKY – Government project as a Communication Trainer helped her to practically learn the behaviour of humans. She is currently pursuing Ph.D. in VIT Chennai working on A Novel Framework for Automated Route Generation in Railways. She is also associated with Learnident, an affiliate of Glomazer Services, as a (freelance) member of the Academic Committee. As a researcher and an active learner in latest technologies she has a keen interest in learning and building Smart City towards which she is working presently.",
+   "photo": "/cse/people/shirly-sudhakaran.jpg"
+  },
+  {
+   "name": "Ms Saratha B",
+   "designation": "Assistant Professor",
+   "email": "saratha.b@licet.ac.in",
+   "otherEmails": [],
+   "bio": "Ms. Saratha holds a Bachelor’s degree in Computer Science and Engineering, an M.B.A., and an M.E. in Computer Science and Engineering. She is currently pursuing her Ph.D. in Computer Science and Engineering at B.S. Abdur Rahman Crescent Institute of Science and Technology, Chennai. She has more than 13 years of teaching experience in higher education. Her academic interests include Artificial Intelligence, Machine Learning and Data Science. She actively participates in research and has published books, patents and research papers in national and international conferences and journals.",
+   "photo": "/cse/people/saratha-b.jpg"
+  },
+  {
+   "name": "Ms Princess Benita L",
+   "designation": "Assistant Professor",
+   "email": "princessbenita.l@licet.ac.in",
+   "otherEmails": [],
+   "bio": "Ms Princess Benita completed Undergraduate in Information Technology (B.Tech IT) and Masters in Embedded Systems (M.E) both with First class. She has academic teaching experience as an Assistant Professor and has published a research paper in an International Journal. Her areas of interest include Artificial intelligence, Networking and Database.",
+   "photo": "/cse/people/princess-benita-l.jpg"
+  },
+  {
+   "name": "Mr Sureshkumar C",
+   "designation": "Assistant Professor",
+   "email": "sureshkumar.c@licet.ac.in",
+   "otherEmails": [],
+   "bio": "",
+   "photo": null
+  },
+  {
+   "name": "Ms Minna Fathima",
+   "designation": "Assistant Professor",
+   "email": "minnafathima@licet.ac.in",
+   "otherEmails": [],
+   "bio": "Ms. Minna Fathima is an Assistant Professor in the Department of Computer Science and Engineering. She completed her Integrated M.Tech in Software Engineering from VIT Chennai. She completed an Internship at the Vikram Sarabhai Space Centre (VSSC), Thiruvananthapuram, a lead centre of the Indian Space Research Organisation (ISRO), where she gained practical exposure to advanced technological applications and professional practices.Her areas of interest include Artificial Intelligence, Machine Learning, Data Science, and Software Engineering. She aspires to pursue a Ph.D. in the future and contribute to research and advancements in the fields of Artificial Intelligence and Machine Learning.",
+   "photo": "/cse/people/minna-fathima.jpg"
+  }
+ ],
+ "staff": [
+  {
+   "name": "Mr Murugan S",
+   "role": "System administrator",
+   "photo": "/cse/people/murugan-s.jpg"
+  },
+  {
+   "name": "Mr Ramkumar K",
+   "role": "Lab instructor",
+   "photo": "/cse/people/ramkumar-k.jpg"
+  },
+  {
+   "name": "Ms. Sangeetha Doss",
+   "role": "Lab instructor",
+   "photo": "/cse/people/sangeetha-doss.jpg"
+  },
+  {
+   "name": "Ms M P Vishali",
+   "role": "Lab instructor",
+   "photo": "/cse/people/m-p-vishali.jpg"
+  },
+  {
+   "name": "Ms Aaradhana Stuthi",
+   "role": "Lab instructor",
+   "photo": "/cse/people/aaradhana-stuthi.jpg"
+  }
+ ]
+}
