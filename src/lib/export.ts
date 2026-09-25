@@ -25,6 +25,7 @@ export const DATASETS = [
   { id: "grievances", label: "Grievances",                  hint: "Category, status and resolution" },
   { id: "alerts",     label: "Attendance alerts",           hint: "Absence alerts and when they were cleared" },
   { id: "promotion",  label: "Promotion history",           hint: "Year-to-year section changes" },
+  { id: "offers",     label: "Placement offers",            hint: "Company, role, package and status of each offer" },
   { id: "courses",    label: "Courses & allotment",         hint: "Course list with allotted faculty", departmentOnly: true },
   { id: "finance",    label: "Finance ledger",              hint: "Department ledger entries", departmentOnly: true },
   { id: "inventory",  label: "Assets & inventory",          hint: "Department assets and service dates", departmentOnly: true },
@@ -230,6 +231,17 @@ export async function buildWorkbook(opts: ExportOptions): Promise<{ workbook: XL
     sheets.push(["Promotion history", rows.map(r => ({
       ...who(r.student_id), "Academic Year": r.academic_year, "From": r.from_section, "To": r.to_section === "GRADUATED" ? "Graduated" : r.to_section,
       "From Semester": r.from_sem, "To Semester": r.to_section === "GRADUATED" ? "" : r.to_sem, "Date": dt(r.promoted_at),
+    }))])
+  }
+
+  if (want("offers")) {
+    onProgress("Reading placement offers…")
+    // Department scope reads every offer, including those of graduates who are no longer on the rolls.
+    const rows = await readForStudents(ids, "student_id", () => inRange(supabase.from("placement_offers").select("*").order("offer_date"), "offer_date"))
+    sheets.push(["Placement offers", rows.map(r => ({
+      "Roll No": r.roll_number ?? "", "Name": r.student_name, "Section": r.section ?? "", "Batch": r.batch_year ?? "",
+      "Company": r.company_name, "Role": r.role_title ?? "", "Package (LPA)": r.package_lpa ?? "", "Type": cap(r.offer_type),
+      "Status": cap(r.status), "Offer date": d(r.offer_date), "Notes": r.notes ?? "",
     }))])
   }
 

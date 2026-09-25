@@ -111,11 +111,12 @@ export default function AttendancePage() {
       const section = profile.section ?? (authUser.data as any)?.section ?? ''
       query = query.eq('section', section).eq('semester', currentSem(section))
     } else if (selectedSection) {
-      query = query.eq('section', selectedSection)
+      query = query.eq('section', selectedSection).eq('semester', currentSem(selectedSection))
     }
     query.then(({ data, error }) => {
       if (error) { console.error('Failed to load subjects', error); return }
-      if (data) setSubjects(data)
+      // Attendance is taken only for the current semester's courses of each section.
+      if (data) setSubjects(isStudent || selectedSection ? data : data.filter(s => s.section && s.semester === currentSem(s.section)))
     })
   }, [authUser, profile, isStudent, selectedSection])
 

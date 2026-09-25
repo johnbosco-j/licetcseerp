@@ -252,7 +252,7 @@ export default function NoticesPage() {
                       <span className={`font-mono text-xs px-1.5 py-0.5 border rounded ${aud.color}`}>{aud.label}</span>
                     </div>
                     {(isHOD || (isFaculty && notice.created_by === profile?.id)) && (
-                      <button onClick={() => deleteNotice(notice.id)}
+                      <button onClick={() => deleteNotice(notice.id)} title="Delete notice" aria-label={`Delete notice: ${notice.title}`}
                         className="text-muted-foreground hover:text-red-700 transition-colors flex-shrink-0">
                         <X className="w-4 h-4" />
                       </button>
