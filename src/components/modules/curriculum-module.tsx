@@ -6,6 +6,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import type { AuthUser } from "@/lib/auth"
+import { getCurrentSemParity } from "@/lib/semester"
 import {
   BookOpen, Plus, Pencil, Trash2, Save, X,
   ChevronDown, ChevronUp, Users, Loader2, AlertTriangle, Check, Info
@@ -90,10 +91,6 @@ const CO_HINTS: Record<number, string> = {
 }
 
 // ── Component ────────────────────────────────────────────
-function getCurrentSemParity(): "odd" | "even" {
-  const m = new Date().getMonth() + 1
-  return m >= 6 ? "odd" : "even"
-}
 
 export default function CurriculumModule() {
   const router = useRouter()

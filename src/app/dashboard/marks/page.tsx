@@ -11,6 +11,7 @@ import type { Database } from "@/lib/supabase"
 import { Save, Loader2, BarChart3, Download, Lock, Unlock } from "lucide-react"
 import * as XLSX from "xlsx"
 import { courseResult, courseType as regulationCourseType, labIntegratedWeights, markSplit, type MarkMap } from "@/lib/regulations"
+import { getActiveSemester } from "@/lib/semester"
 
 type Profile = Database['public']['Tables']['profiles']['Row']
 type Subject = Database['public']['Tables']['subjects']['Row']
@@ -119,20 +120,7 @@ export default function MarksPage() {
   const isStudent = authUser?.type === 'student'
 
   const SECTIONS = ['I CSE-A','I CSE-B','II CSE-A','II CSE-B','III CSE-A','III CSE-B','IV CSE-A','IV CSE-B']
-  // Semester helper — June–Dec = odd (1,3,5,7), Jan–May = even (2,4,6,8)
-  // Matches subjects/timetable pages for consistency
-  const currentSem = (section: string): number => {
-    const m = new Date().getMonth() + 1
-    const odd = m >= 6
-    const map: Record<string, [number, number]> = {
-      'I CSE-A': [1, 2], 'I CSE-B': [1, 2],
-      'II CSE-A': [3, 4], 'II CSE-B': [3, 4],
-      'III CSE-A': [5, 6], 'III CSE-B': [5, 6],
-      'IV CSE-A': [7, 8], 'IV CSE-B': [7, 8],
-    }
-    const [o, e] = map[section] ?? [1, 2]
-    return odd ? o : e
-  }
+  const currentSem = (section: string): number => getActiveSemester(section)
 
   // Auth
   useEffect(() => {

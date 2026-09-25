@@ -11,6 +11,7 @@ import type { AuthUser } from "@/lib/auth"
 import type { Database } from "@/lib/supabase"
 import { Save, Loader2, Calendar, Download, Lock, Unlock, Clock } from "lucide-react"
 import * as XLSX from "xlsx"
+import { getActiveSemester } from "@/lib/semester"
 
 type Profile = Database['public']['Tables']['profiles']['Row']
 type Subject = Database['public']['Tables']['subjects']['Row']
@@ -58,18 +59,6 @@ const PARTS = [
 
 const SECTIONS = ['I CSE-A','I CSE-B','II CSE-A','II CSE-B','III CSE-A','III CSE-B','IV CSE-A','IV CSE-B']
 
-function getActiveSemester(s: string): number {
-  const m = new Date().getMonth() + 1
-  const odd = m >= 6
-  const map: Record<string, [number,number]> = {
-    'I CSE-A':[1,2],'I CSE-B':[1,2],
-    'II CSE-A':[3,4],'II CSE-B':[3,4],
-    'III CSE-A':[5,6],'III CSE-B':[5,6],
-    'IV CSE-A':[7,8],'IV CSE-B':[7,8],
-  }
-  const [o,e] = map[s] ?? [1,2]
-  return odd ? o : e
-}
 
 export default function AttendancePage() {
   const router = useRouter()

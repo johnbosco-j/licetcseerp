@@ -8,12 +8,13 @@ import {
   PenTool, CalendarDays, BookOpen, MessageSquare, Wallet, AlertTriangle,
   Package, Award, ShieldCheck, Bell, Briefcase, TrendingUp,
   FileBarChart, Users, Library, Clock, LogOut, LayoutDashboard, ChevronLeft, Menu, X,
-  BarChart3, Search, UserCog, History, WifiOff, ChevronDown, GraduationCap, ExternalLink, CalendarMinus, UserCheck, Scale, type LucideIcon
+  BarChart3, Search, UserCog, History, WifiOff, ChevronDown, GraduationCap, ExternalLink, CalendarMinus, UserCheck, Scale, FileSpreadsheet, type LucideIcon
 } from "lucide-react"
 import type { AuthUser } from "@/lib/auth"
 import { signOut } from "@/lib/auth"
 import { supabase } from "@/lib/supabase"
 import { getAllowedModules } from "@/lib/roles"
+import { setAcademicState } from "@/lib/semester"
 import { Wordmark } from "@/components/licet-brand"
 
 type NavItem = { icon: LucideIcon; label: string; id: string }
@@ -53,6 +54,7 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
       { icon: Bell,            label: "Notices & Circulars",   id: "notices" },
       { icon: AlertCircle,     label: "Attendance Alerts",     id: "alerts" },
       { icon: History,         label: "Audit Trail",           id: "audit" },
+      { icon: FileSpreadsheet, label: "Data Export",           id: "export" },
     ]
   },
   {
@@ -123,6 +125,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         await supabase.auth.signOut()
         return goLogin()
       }
+      // Academic state (latest promotion) drives the odd/even semester everywhere.
+      const { data: academic } = await supabase.rpc("current_academic_state" as never)
+      const ac = (academic ?? {}) as { academic_year?: string; promoted_at?: string }
+      setAcademicState({ academicYear: ac.academic_year ?? null, promotedAt: ac.promoted_at ?? null })
+      if (!active) return
+
       const type = profile.role === "STUDENT" ? "student" : "staff"
       const fresh = { type, data: { ...user.data, ...profile, name: profile.full_name } } as AuthUser
       localStorage.setItem("licet_user", JSON.stringify(fresh))
