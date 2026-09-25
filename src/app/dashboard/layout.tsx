@@ -4,66 +4,66 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter, usePathname } from "next/navigation"
 import {
-  AlertCircle, Star, ClipboardCheck, PieChart, Key, FileText,
+  AlertCircle, ClipboardCheck, PieChart, Key, FileText,
   PenTool, CalendarDays, BookOpen, MessageSquare, Wallet, AlertTriangle,
-  Package, Heart, Award, ShieldCheck, Bell, Briefcase, TrendingUp,
+  Package, Award, ShieldCheck, Bell, Briefcase, TrendingUp,
   FileBarChart, Users, Library, Clock, LogOut, LayoutDashboard, ChevronLeft, Menu, X,
-  BarChart3, Search, UserCog, History, WifiOff, ChevronDown, GraduationCap, ExternalLink, type LucideIcon
+  BarChart3, Search, UserCog, History, WifiOff, ChevronDown, GraduationCap, ExternalLink, CalendarMinus, UserCheck, Scale, type LucideIcon
 } from "lucide-react"
 import type { AuthUser } from "@/lib/auth"
 import { signOut } from "@/lib/auth"
 import { supabase } from "@/lib/supabase"
-import { getAllowedModules, tierOf } from "@/lib/roles"
+import { getAllowedModules } from "@/lib/roles"
 import { LicetLogo } from "@/components/licet-brand"
 
 type NavItem = { icon: LucideIcon; label: string; id: string }
 
 const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
   {
-    title: "Academic",
+    title: "Academics",
     items: [
-      { icon: LayoutDashboard, label: "Dashboard",       id: "dashboard" },
-      { icon: Users,           label: "Students",        id: "students" },
-      { icon: ClipboardCheck,  label: "Attendance",      id: "attendance" },
-      { icon: Award,           label: "Marks",           id: "marks" },
-      { icon: Library,         label: "Subjects",        id: "subjects" },
-      { icon: GraduationCap,   label: "Curriculum",      id: "curriculum" },
-      { icon: Clock,           label: "Timetable",       id: "timetable" },
-      { icon: BookOpen,        label: "Examination",     id: "examination" },
-      { icon: BarChart3,       label: "Analytics",       id: "analytics" },
+      { icon: LayoutDashboard, label: "Dashboard",             id: "dashboard" },
+      { icon: Users,           label: "Student Records",       id: "students" },
+      { icon: ClipboardCheck,  label: "Attendance Register",   id: "attendance" },
+      { icon: Award,           label: "Assessments & Marks",   id: "marks" },
+      { icon: Library,         label: "Courses",               id: "subjects" },
+      { icon: GraduationCap,   label: "Curriculum & Syllabus", id: "curriculum" },
+      { icon: Clock,           label: "Class Timetable",       id: "timetable" },
+      { icon: BookOpen,        label: "Examinations",          id: "examination" },
+      { icon: BarChart3,       label: "Academic Analytics",    id: "analytics" },
     ]
   },
   {
     title: "Administration",
     items: [
-      { icon: Wallet,          label: "Finance",         id: "finance" },
-      { icon: Package,         label: "Inventory",       id: "inventory" },
-      { icon: Briefcase,       label: "Placements",      id: "placements" },
-      { icon: Heart,           label: "Leaves",          id: "leaves" },
-      { icon: CalendarDays,    label: "Events",          id: "events" },
-      { icon: UserCog,         label: "Accounts",        id: "accounts" },
+      { icon: Wallet,          label: "Finance Ledger",        id: "finance" },
+      { icon: Package,         label: "Assets & Inventory",    id: "inventory" },
+      { icon: Briefcase,       label: "Training & Placement",  id: "placements" },
+      { icon: CalendarMinus,   label: "Leave Management",      id: "leaves" },
+      { icon: CalendarDays,    label: "Events & Activities",   id: "events" },
+      { icon: UserCog,         label: "User Accounts",         id: "accounts" },
     ]
   },
   {
-    title: "Records",
+    title: "Records & Circulars",
     items: [
-      { icon: FileText,        label: "Documents",       id: "documents" },
-      { icon: MessageSquare,   label: "Feedback",        id: "feedback" },
-      { icon: AlertTriangle,   label: "Grievances",      id: "grievances" },
-      { icon: Bell,            label: "Notices",         id: "notices" },
-      { icon: AlertCircle,     label: "Alerts",          id: "alerts" },
-      { icon: History,         label: "Audit Log",       id: "audit" },
+      { icon: FileText,        label: "Document Repository",   id: "documents" },
+      { icon: MessageSquare,   label: "Course Feedback",       id: "feedback" },
+      { icon: Scale,           label: "Grievance Redressal",   id: "grievances" },
+      { icon: Bell,            label: "Notices & Circulars",   id: "notices" },
+      { icon: AlertCircle,     label: "Attendance Alerts",     id: "alerts" },
+      { icon: History,         label: "Audit Trail",           id: "audit" },
     ]
   },
   {
-    title: "Faculty & Quality",
+    title: "Quality Assurance",
     items: [
-      { icon: Star,            label: "Appraisal",       id: "appraisal" },
-      { icon: PieChart,        label: "Att. Analysis",   id: "attendance-analysis" },
-      { icon: PenTool,         label: "Editor",          id: "editor" },
-      { icon: ShieldCheck,     label: "NAAC / NBA",      id: "naac" },
-      { icon: TrendingUp,      label: "Promotion",       id: "promotion" },
-      { icon: FileBarChart,    label: "Reports",         id: "reports" },
+      { icon: UserCheck,       label: "Faculty Appraisal",     id: "appraisal" },
+      { icon: PieChart,        label: "Attendance Analysis",   id: "attendance-analysis" },
+      { icon: PenTool,         label: "Document Editor",       id: "editor" },
+      { icon: ShieldCheck,     label: "NAAC & NBA",            id: "naac" },
+      { icon: TrendingUp,      label: "Year Promotion",        id: "promotion" },
+      { icon: FileBarChart,    label: "Departmental Reports",  id: "reports" },
     ]
   },
 ]
@@ -86,7 +86,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [name, setName]           = useState("")
   const [role, setRole]           = useState("")
   const [designation, setDesignation] = useState<string | null>(null)
-  const [tier, setTier]           = useState<1 | 2 | 3>(3)
   const [closedGroups, setClosedGroups] = useState<string[]>([])
   const [tip, setTip]             = useState<{ label: string; top: number } | null>(null)
   const [section, setSection]     = useState<string | null>(null)
@@ -130,7 +129,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       setAllowed(getAllowedModules({ type, role: profile.role, advisor_section: profile.advisor_section, can_reset_passwords: profile.can_reset_passwords, access_tier: profile.access_tier }))
       setDesignation(profile.designation ?? null)
-      setTier(tierOf(profile))
       setName(profile.full_name || "")
       setRole(profile.role)
       setSection(profile.section ?? null)
@@ -226,7 +224,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const date = now?.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" }) ?? ""
   const showText = expanded || mobileOpen
 
-  const TIER_LABEL = { 1: "Tier 1 · Leadership", 2: "Tier 2 · Faculty", 3: "Tier 3 · Student" } as const
   const roleLine = `${designation ?? ROLE_LABEL[role] ?? role}${role === "STUDENT" && section ? ` · ${section}` : ""}`
   const openSearch = () => { setExpanded(true); setMobile(true); setTimeout(() => searchRef.current?.focus(), 60) }
 
@@ -317,7 +314,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <div className="px-4 py-3.5 bg-gradient-to-br from-licet-indigo to-licet-violet text-white">
                   <p className="text-[13.5px] font-semibold truncate">{name}</p>
                   <p className="text-[11px] text-licet-cream/80 truncate">{roleLine}</p>
-                  <span className="inline-block mt-2 text-[10px] font-bold tracking-[1.5px] uppercase px-2 py-0.5 rounded-full bg-licet-gold text-licet-indigo">{TIER_LABEL[tier]}</span>
                 </div>
                 <Link href="/dashboard" role="menuitem" className="flex items-center gap-2.5 px-4 py-2.5 text-[13px] hover:bg-licet-cream/60">
                   <LayoutDashboard size={15} className="text-licet-violet" /> My dashboard
@@ -376,7 +372,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <div className="min-w-0">
                   <p className="text-[13.5px] font-semibold text-white truncate">{name}</p>
                   <p className="text-[11px] text-licet-cream/65 truncate">{roleLine}</p>
-                  <span className="inline-block mt-1 text-[9.5px] font-bold tracking-[1.4px] uppercase px-1.5 py-[1px] rounded bg-licet-gold/15 text-[#F8D88D] border border-licet-gold/30">{TIER_LABEL[tier]}</span>
                 </div>
               </div>
             ) : (
@@ -421,9 +416,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   {showText ? (
                     <button onClick={() => toggleGroup(group.title)} aria-expanded={open}
                       className="group/h w-full flex items-center gap-2.5 px-5 pt-3.5 pb-2 text-left">
-                      <span className="font-brand text-[11.5px] tracking-[3px] uppercase text-licet-gold">{group.title}</span>
+                      <span className="font-brand text-[11px] tracking-[2.2px] uppercase text-licet-gold whitespace-nowrap">{group.title}</span>
                       <span className="flex-1 h-px bg-gradient-to-r from-licet-gold/40 to-transparent" />
-                      <span className="text-[10px] font-semibold text-licet-cream/40 tabular-nums">{group.items.length}</span>
                       <ChevronDown size={13} className={`text-licet-cream/40 group-hover/h:text-licet-gold transition-transform ${open ? "" : "-rotate-90"}`} />
                     </button>
                   ) : <div className="mx-5 my-3 h-px bg-gradient-to-r from-transparent via-licet-gold/35 to-transparent" />}
