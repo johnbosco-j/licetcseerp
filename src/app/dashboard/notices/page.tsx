@@ -9,6 +9,7 @@ import { isTier1 } from "@/lib/roles"
 import type { AuthUser } from "@/lib/auth"
 import type { Database } from "@/lib/supabase"
 import { Bell, Plus, X, AlertTriangle, Clock, Users, BookOpen, Loader2 } from "lucide-react"
+import { reportResult } from "@/components/toaster"
 
 type Announcement = Database['public']['Tables']['announcements']['Row']
 type Profile = Database['public']['Tables']['profiles']['Row']
@@ -88,7 +89,7 @@ export default function NoticesPage() {
       department_id: '00000000-0000-0000-0000-000000000001'
     })
     setSaving(false)
-    if (!error) {
+    if (reportResult(error, 'Notice posted')) {
       setForm({ title: '', body: '', audience: 'ALL', is_urgent: false, expires_at: '' })
       setShowForm(false)
       loadNotices()
@@ -96,8 +97,9 @@ export default function NoticesPage() {
   }
 
   const deleteNotice = async (id: string) => {
-    await supabase.from('announcements').delete().eq('id', id)
-    loadNotices()
+    if (!confirm('Delete this notice for everyone?')) return
+    const { error } = await supabase.from('announcements').delete().eq('id', id)
+    if (reportResult(error, 'Notice deleted')) loadNotices()
   }
 
   const canPost = isHOD || isFaculty

@@ -6,8 +6,9 @@ import { supabase } from "@/lib/supabase"
 import { isTier1 } from "@/lib/roles"
 import type { AuthUser } from "@/lib/auth"
 import type { Database } from "@/lib/supabase"
-import { Plus, X, Package, Monitor, Wrench, AlertTriangle, Loader2, Download, Search, CheckCircle2 } from "lucide-react"
+import { Plus, X, Package, Monitor, Wrench, AlertTriangle, Loader2, Download, Search, CheckCircle2, Pencil, Trash2, CalendarClock } from "lucide-react"
 import * as XLSX from "xlsx"
+import { reportResult } from "@/components/toaster"
 
 type InventoryItem = Database['public']['Tables']['inventory']['Row']
 
@@ -28,6 +29,8 @@ export default function InventoryPage() {
   const [search, setSearch] = useState("")
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [statusFilter, setStatusFilter] = useState('ALL')
   
   const [form, setForm] = useState({
     asset_tag: '', name: '', category: 'Computers', status: 'OPERATIONAL' as 'OPERATIONAL'|'MAINTENANCE'|'RETIRED',
@@ -74,19 +77,38 @@ export default function InventoryPage() {
     }, { onConflict: 'asset_tag' })
     
     setSaving(false)
-    if (error) {
-      alert(error.message)
-    } else {
+    if (reportResult(error, 'Asset saved')) {
       setShowForm(false)
-      setForm({ asset_tag: '', name: '', category: 'Computers', status: 'OPERATIONAL', location: 'CS Lab 1', purchase_date: '', purchase_value: '', next_service_date: '', notes: '' })
+      setEditing(false)
+      setForm(EMPTY_FORM)
       loadInventory()
     }
   }
 
   const updateStatus = async (id: string, newStatus: string) => {
-    await supabase.from('inventory').update({ status: newStatus as any }).eq('id', id)
-    loadInventory()
+    const { error } = await supabase.from('inventory').update({ status: newStatus as 'OPERATIONAL' | 'MAINTENANCE' | 'RETIRED' }).eq('id', id)
+    if (reportResult(error, `Status changed to ${newStatus.toLowerCase()}`)) loadInventory()
   }
+
+  const EMPTY_FORM = { asset_tag: '', name: '', category: 'Computers', status: 'OPERATIONAL' as 'OPERATIONAL'|'MAINTENANCE'|'RETIRED', location: 'CS Lab 1', purchase_date: '', purchase_value: '', next_service_date: '', notes: '' }
+
+  const editAsset = (i: InventoryItem) => {
+    setForm({ asset_tag: i.asset_tag, name: i.name, category: i.category, status: i.status, location: i.location ?? 'CS Lab 1',
+      purchase_date: i.purchase_date ?? '', purchase_value: i.purchase_value?.toString() ?? '', next_service_date: i.next_service_date ?? '', notes: i.notes ?? '' })
+    setEditing(true)
+    setShowForm(true)
+    document.getElementById('scroll-container')?.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const deleteAsset = async (i: InventoryItem) => {
+    if (!confirm(`Delete asset ${i.asset_tag} (${i.name}) from the register? Consider marking it Retired instead to keep its history.`)) return
+    const { error } = await supabase.from('inventory').delete().eq('id', i.id)
+    if (reportResult(error, `${i.asset_tag} deleted`)) loadInventory()
+  }
+
+  const today = new Date().toLocaleDateString('en-CA')
+  const in30 = new Date(Date.now() + 30 * 86_400_000).toLocaleDateString('en-CA')
+  const serviceState = (i: InventoryItem) => i.status === 'RETIRED' || !i.next_service_date ? null : i.next_service_date < today ? 'overdue' : i.next_service_date <= in30 ? 'due' : null
 
   const exportXLSX = () => {
     const rows = inventory.map(i => ({
@@ -106,9 +128,9 @@ export default function InventoryPage() {
     XLSX.writeFile(wb, `CSE_Inventory_Assets_${new Date().toISOString().split('T')[0]}.xlsx`)
   }
 
-  const filtered = inventory.filter(i => 
-    i.name.toLowerCase().includes(search.toLowerCase()) || 
-    i.asset_tag.toLowerCase().includes(search.toLowerCase())
+  const filtered = inventory.filter(i =>
+    (statusFilter === 'ALL' || (statusFilter === 'SERVICE' ? !!serviceState(i) : i.status === statusFilter)) &&
+    [i.name, i.asset_tag, i.location, i.category].some(v => v?.toLowerCase().includes(search.toLowerCase()))
   )
 
   const stats = {
@@ -134,7 +156,7 @@ export default function InventoryPage() {
             <Download className="w-3 h-3" /> Export NAAC Report
           </button>
           {isHOD && (
-            <button onClick={() => setShowForm(true)}
+            <button onClick={() => { setForm(EMPTY_FORM); setEditing(false); setShowForm(true) }}
               className="flex items-center gap-2 px-4 py-2 bg-licet-indigo text-white text-[13px] font-semibold rounded-md hover:bg-licet-violet shadow-sm transition-colors">
               <Plus className="w-3 h-3" /> Add Asset
             </button>
@@ -164,14 +186,14 @@ export default function InventoryPage() {
       {showForm && isHOD && (
         <div className="bg-card border border-licet-gold border-t-[3px] rounded-xl p-6 shadow-md space-y-4">
           <div className="flex items-center justify-between">
-            <span className="eyebrow">NEW ASSET ENTRY</span>
-            <button onClick={() => setShowForm(false)}><X className="w-4 h-4 text-muted-foreground hover:text-foreground" /></button>
+            <span className="eyebrow">{editing ? `EDIT ASSET ${form.asset_tag}` : 'NEW ASSET ENTRY'}</span>
+            <button onClick={() => { setShowForm(false); setEditing(false) }} aria-label="Close"><X className="w-4 h-4 text-muted-foreground hover:text-foreground" /></button>
           </div>
           
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="space-y-1">
               <label className="font-mono text-xs text-muted-foreground">Asset Tag (ID) *</label>
-              <input value={form.asset_tag} onChange={e => setForm({...form, asset_tag: e.target.value})}
+              <input value={form.asset_tag} readOnly={editing} onChange={e => setForm({...form, asset_tag: e.target.value})}
                 placeholder="e.g. LICET-CSE-PC01"
                 className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none uppercase" />
             </div>
@@ -237,13 +259,20 @@ export default function InventoryPage() {
 
       {/* List View */}
       <div className="bg-card border border-border rounded-lg overflow-hidden">
-        <div className="p-4 border-b border-border bg-accent/30 flex items-center justify-between">
+        <div className="p-4 border-b border-border bg-accent/30 flex flex-wrap items-center justify-between gap-3">
           <div className="relative w-full max-w-xs">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Search asset tag or model..."
+              placeholder="Search tag, model, location…"
               className="w-full h-9 pl-9 pr-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none" />
           </div>
+          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="h-9 px-2 bg-white border border-input rounded-md text-[13px]">
+            <option value="ALL">All statuses</option>
+            <option value="OPERATIONAL">Operational</option>
+            <option value="MAINTENANCE">Under repair</option>
+            <option value="RETIRED">Retired</option>
+            <option value="SERVICE">Service due / overdue ({inventory.filter(i => serviceState(i)).length})</option>
+          </select>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
@@ -272,6 +301,11 @@ export default function InventoryPage() {
                   <td className="p-4">
                     <p className="text-sm font-medium">{item.name}</p>
                     <p className="font-mono text-xs text-muted-foreground mt-0.5">{item.category}</p>
+                    {serviceState(item) && (
+                      <p className={`inline-flex items-center gap-1 text-[11px] font-semibold mt-1 ${serviceState(item) === 'overdue' ? 'text-red-700' : 'text-amber-700'}`}>
+                        <CalendarClock className="w-3 h-3" />Service {serviceState(item) === 'overdue' ? 'overdue since' : 'due'} {new Date(item.next_service_date!).toLocaleDateString('en-IN')}
+                      </p>
+                    )}
                   </td>
                   <td className="p-4 font-mono text-xs text-muted-foreground">{item.location}</td>
                   <td className="p-4">
@@ -289,6 +323,8 @@ export default function InventoryPage() {
                         <option value="MAINTENANCE">Send to Repair</option>
                         <option value="RETIRED">Retire Asset</option>
                       </select>
+                      <button onClick={() => editAsset(item)} className="ml-2 p-1.5 text-muted-foreground hover:text-licet-indigo hover:bg-licet-cream/60 rounded align-middle" title="Edit asset" aria-label={`Edit ${item.asset_tag}`}><Pencil className="w-4 h-4" /></button>
+                      <button onClick={() => deleteAsset(item)} className="p-1.5 text-muted-foreground hover:text-red-700 hover:bg-red-50 rounded align-middle" title="Delete asset" aria-label={`Delete ${item.asset_tag}`}><Trash2 className="w-4 h-4" /></button>
                     </td>
                   )}
                 </tr>

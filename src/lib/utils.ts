@@ -33,6 +33,13 @@ export function academicYear(d = new Date(), short = false): string {
   return short ? `${start}-${String(start + 1).slice(2)}` : `${start}-${start + 1}`
 }
 
+/** Graduating year for a section in the current academic year: in 2026-27, IV → 2027 … I → 2030. */
+export function graduationYear(section: string, d = new Date()): number {
+  const start = Number(academicYear(d).slice(0, 4))
+  const left = { IV: 1, III: 2, II: 3, I: 4 }[section.split(' ')[0]] ?? 4
+  return start + left
+}
+
 // Odd semester from promotion (June–December), even semester January–May — see lib/semester.
 export function semesterTerm(d = new Date()): 'Odd Semester' | 'Even Semester' {
   return getCurrentSemParity(d) === 'odd' ? 'Odd Semester' : 'Even Semester'

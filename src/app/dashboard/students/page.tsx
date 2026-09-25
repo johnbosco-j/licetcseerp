@@ -1,13 +1,15 @@
 "use client"
-import { toTitleCase, normalizeMobile, formatMobile } from "@/lib/utils"
+import { toTitleCase, normalizeMobile, formatMobile, graduationYear } from "@/lib/utils"
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
+import { StudentImport } from "@/components/student-import"
 import { supabase } from "@/lib/supabase"
 import { isTier1 } from "@/lib/roles"
 import type { AuthUser } from "@/lib/auth"
 import type { Database } from "@/lib/supabase"
-import { Phone, Plus, X, Search, Edit2, Trash2, Loader2, Users, AlertTriangle, Check, KeyRound } from "lucide-react"
+import { Phone, Plus, X, Search, Edit2, Trash2, Loader2, Users, AlertTriangle, Check, KeyRound, FileSpreadsheet, ChevronRight } from "lucide-react"
 import { addStudentAdmin, deleteStudentAdmin, resetPassword } from "@/app/actions"
 import { getAccessToken } from "@/lib/auth"
 
@@ -29,7 +31,8 @@ export default function StudentsPage() {
   const [error, setError]       = useState("")
   const [notice, setNotice]     = useState("")
   const [editId, setEditId]     = useState<string | null>(null)
-  const [form, setForm]         = useState({ full_name: '', email: '', section: 'I CSE-A', batch_year: new Date().getFullYear(), roll_number: '', register_number: '', parent_mobile: '' })
+  const [importing, setImporting] = useState(false)
+  const [form, setForm]         = useState({ full_name: '', email: '', section: 'I CSE-A', batch_year: graduationYear('I CSE-A'), roll_number: '', register_number: '', parent_mobile: '' })
 
   const isHOD = authUser?.type === 'staff' && isTier1(authUser.data)
 
@@ -108,7 +111,7 @@ export default function StudentsPage() {
       full_name: student.full_name,
       email: student.email,
       section: student.section ?? 'I CSE-A',
-      batch_year: student.batch_year ?? new Date().getFullYear(),
+      batch_year: student.batch_year ?? graduationYear(student.section ?? 'I CSE-A'),
       roll_number: (student as any).roll_number ?? '',
       register_number: (student as any).register_number ?? '',
       parent_mobile: student.parent_mobile ?? '',
@@ -118,15 +121,16 @@ export default function StudentsPage() {
   }
 
   const openAdd = () => {
-    setForm({ full_name: '', email: '', section: 'I CSE-A', batch_year: new Date().getFullYear(), roll_number: '', register_number: '', parent_mobile: '' })
+    setForm({ full_name: '', email: '', section: 'I CSE-A', batch_year: graduationYear('I CSE-A'), roll_number: '', register_number: '', parent_mobile: '' })
     setEditId(null)
     setShowForm(true)
   }
 
   const filtered = students.filter(s => {
     const matchSec = sectionFilter === 'ALL' || s.section === sectionFilter
-    const matchSearch = s.full_name.toLowerCase().includes(search.toLowerCase()) || 
-                        s.email.toLowerCase().includes(search.toLowerCase())
+    const q = search.trim().toLowerCase()
+    const matchSearch = !q || [s.full_name, s.email, s.roll_number, s.register_number, s.parent_mobile]
+      .some(v => v?.toLowerCase().includes(q))
     return matchSec && matchSearch
   })
 
@@ -139,9 +143,14 @@ export default function StudentsPage() {
           <p className="text-[13.5px] text-muted-foreground mt-1.5 max-w-3xl">Manage student profiles, sections, and access</p>
         </div>
         {isHOD && (
-          <button onClick={openAdd} className="flex items-center gap-2 px-4 py-2 bg-licet-indigo text-white text-[13px] font-semibold rounded-md hover:bg-licet-violet shadow-sm transition-colors">
-            <Plus className="w-3 h-3" /> Add Student
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button onClick={() => setImporting(true)} className="flex items-center gap-2 px-3 py-2 border border-licet-indigo/25 bg-white text-licet-indigo text-[13px] font-semibold rounded-md hover:bg-licet-cream/60 shadow-sm">
+              <FileSpreadsheet className="w-3.5 h-3.5" /> Import from Excel
+            </button>
+            <button onClick={openAdd} className="flex items-center gap-2 px-4 py-2 bg-licet-indigo text-white text-[13px] font-semibold rounded-md hover:bg-licet-violet shadow-sm transition-colors">
+              <Plus className="w-3 h-3" /> Add Student
+            </button>
+          </div>
         )}
       </div>
 
@@ -164,7 +173,7 @@ export default function StudentsPage() {
         <div className="flex-1 min-w-[200px] relative">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Search by name or email..."
+            placeholder="Search by name, email, roll or register number, or parent mobile"
             className="w-full h-10 pl-9 pr-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none" />
         </div>
         <select value={sectionFilter} onChange={e => setSectionFilter(e.target.value)}
@@ -201,13 +210,13 @@ export default function StudentsPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="font-mono text-xs text-muted-foreground">Section *</label>
-                  <select value={form.section} onChange={e => setForm({...form, section: e.target.value})}
+                  <select value={form.section} onChange={e => setForm({...form, section: e.target.value, batch_year: editId ? form.batch_year : graduationYear(e.target.value)})}
                     className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none">
                     {SECTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
                 <div className="space-y-1">
-                  <label className="font-mono text-xs text-muted-foreground">Batch Year *</label>
+                  <label className="font-mono text-xs text-muted-foreground">Batch (graduating year) *</label>
                   <input type="number" value={form.batch_year} onChange={e => setForm({...form, batch_year: Number(e.target.value)})}
                     className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none" />
                 </div>
@@ -267,7 +276,7 @@ export default function StudentsPage() {
               <th className="p-4 font-mono text-xs text-muted-foreground font-normal">Reg No</th>
               <th className="p-4 font-mono text-xs text-muted-foreground font-normal">Parent / Guardian</th>
               <th className="p-4 font-mono text-xs text-muted-foreground font-normal">Section</th>
-              <th className="p-4 font-mono text-xs text-muted-foreground font-normal">Year</th>
+              <th className="p-4 font-mono text-xs text-muted-foreground font-normal">Batch</th>
               <th className="p-4 font-mono text-xs text-muted-foreground font-normal text-right">Actions</th>
             </tr>
           </thead>
@@ -289,7 +298,9 @@ export default function StudentsPage() {
               <tr key={s.id} className="hover:bg-accent/20 transition-colors">
                 <td className="p-4 font-mono text-xs text-muted-foreground">{idx + 1}</td>
                 <td className="p-4">
-                  <p className="text-sm font-medium">{toTitleCase(s.full_name)}</p>
+                  <Link href={`/dashboard/students/${s.id}`} className="group inline-flex items-center gap-1 text-sm font-medium text-licet-indigo hover:text-licet-violet hover:underline">
+                    {toTitleCase(s.full_name)}<ChevronRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </Link>
                   <p className="font-mono text-xs text-muted-foreground mt-0.5">{s.email}</p>
                 </td>
                 <td className="p-4 font-mono text-xs">{(s as any).roll_number ?? '—'}</td>
@@ -325,6 +336,7 @@ export default function StudentsPage() {
           </tbody>
         </table>
       </div>
+      {importing && <StudentImport onClose={() => setImporting(false)} onDone={loadStudents} existingEmails={new Set(students.map(x => x.email.toLowerCase()))} />}
     </div>
   )
 }

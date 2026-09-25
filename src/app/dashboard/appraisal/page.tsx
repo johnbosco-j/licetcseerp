@@ -8,6 +8,7 @@ import { supabase } from "@/lib/supabase"
 import { isTier1 } from "@/lib/roles"
 import type { AuthUser } from "@/lib/auth"
 import { Star, CheckCircle2, Loader2, BarChart3, Users, Plus, X } from "lucide-react"
+import { toast, reportResult } from "@/components/toaster"
 
 const APPRAISAL_QUESTIONS = [
   { id: 'teaching',    label: 'Teaching Quality',           sub: 'Clarity of explanation, pace, use of examples' },
@@ -63,18 +64,43 @@ export default function AppraisalPage() {
           if ((data as any).section) setSurveySection((data as any).section)
         }
       })
-    supabase.from('profiles').select('id, full_name, email').eq('role', 'PROFESSOR').order('full_name')
-      .then(({ data }) => { if (data) setFaculty(data) })
+    // Students appraise the faculty who teach their section; everyone else sees all faculty.
+    ;(async () => {
+      const { data: all } = await supabase.from('profiles').select('id, full_name, email').eq('role', 'PROFESSOR').eq('is_active', true).order('full_name')
+      let list = all ?? []
+      if (au.type === 'student' && (au.data as { section?: string }).section) {
+        const { data: subs } = await supabase.from('subjects').select('faculty_id').eq('section', (au.data as { section?: string }).section!).not('faculty_id', 'is', null)
+        const mine = new Set((subs ?? []).map(s => s.faculty_id))
+        if (mine.size) list = list.filter(f => mine.has(f.id))
+      }
+      setFaculty(list)
+    })()
   }, [router])
+
+  useEffect(() => { if (isFaculty) setTab('results') }, [isFaculty])
+
+  const [mySummary, setMySummary] = useState<{ reviews: number; by_question: Record<string, number>; comments: string[] } | null>(null)
+  useEffect(() => {
+    if (tab !== 'results' || !isFaculty) return
+    supabase.rpc('my_appraisal_summary', { p_year: year }).then(({ data, error }) => {
+      if (error) toast.error(error.message)
+      else setMySummary(data)
+    })
+  }, [tab, isFaculty, year])
 
   const submitAppraisal = async () => {
     if (!profile || !selectedFaculty || Object.keys(appraisalRatings).length < APPRAISAL_QUESTIONS.length) return
     setSaving(true)
     const avgRating = Object.values(appraisalRatings).reduce((a, b) => a + b, 0) / APPRAISAL_QUESTIONS.length
 
-    await supabase.from('announcements').insert({
-      title: `APPRAISAL:${selectedFaculty}:${profile.id}:${year}`,
-      body: JSON.stringify({
+    const apTitle = `APPRAISAL:${selectedFaculty}:${profile.id}:${year}`
+    const { data: prior } = await supabase.from('announcements').select('id').eq('title', apTitle).eq('created_by', profile.id).maybeSingle()
+    if (prior) {
+      setSaving(false)
+      toast.info(`You have already appraised ${faculty.find(f => f.id === selectedFaculty)?.full_name ?? 'this faculty member'} for ${year}. Each student can appraise a faculty member once a year.`)
+      return
+    }
+    const apBody = {
         type: 'faculty_appraisal',
         faculty_id: selectedFaculty,
         reviewer_id: profile.id,
@@ -83,14 +109,11 @@ export default function AppraisalPage() {
         ratings: appraisalRatings,
         avg_rating: avgRating,
         comment: appraisalComment,
-      }),
-      audience: 'APPRAISAL:faculty',
-      is_urgent: false,
-      created_by: profile.id,
-      department_id: '00000000-0000-0000-0000-000000000001'
-    })
+    }
+    const { error } = await supabase.from('announcements').insert({ title: apTitle, body: JSON.stringify(apBody), audience: 'APPRAISAL:faculty', is_urgent: false, created_by: profile.id, department_id: '00000000-0000-0000-0000-000000000001' })
 
     setSaving(false)
+    if (!reportResult(error, 'Appraisal submitted anonymously. Thank you!')) return
     setSaved(true)
     setAppraisalRatings({})
     setAppraisalComment('')
@@ -103,9 +126,14 @@ export default function AppraisalPage() {
     setSaving(true)
     const avgRating = Object.values(surveyRatings).reduce((a, b) => a + b, 0) / SURVEY_QUESTIONS.length
 
-    await supabase.from('announcements').insert({
-      title: `SURVEY:${profile.id}:${surveyMonth}:${year}`,
-      body: JSON.stringify({
+    const svTitle = `SURVEY:${profile.id}:${surveyMonth}:${year}`
+    const { data: priorSv } = await supabase.from('announcements').select('id').eq('title', svTitle).eq('created_by', profile.id).maybeSingle()
+    if (priorSv) {
+      setSaving(false)
+      toast.info(`You have already submitted the ${surveyMonth} ${year} survey.`)
+      return
+    }
+    const svBody = JSON.stringify({
         type: 'monthly_survey',
         student_id: profile.id,
         section: surveySection || profile.section,
@@ -113,14 +141,11 @@ export default function AppraisalPage() {
         year,
         ratings: surveyRatings,
         avg_rating: avgRating,
-      }),
-      audience: 'SURVEY:monthly',
-      is_urgent: false,
-      created_by: profile.id,
-      department_id: '00000000-0000-0000-0000-000000000001'
-    })
+      })
+    const { error } = await supabase.from('announcements').insert({ title: svTitle, body: svBody, audience: 'SURVEY:monthly', is_urgent: false, created_by: profile.id, department_id: '00000000-0000-0000-0000-000000000001' })
 
     setSaving(false)
+    if (!reportResult(error, 'Survey submitted. Thank you!')) return
     setSaved(true)
     setSurveyRatings({})
     setTimeout(() => setSaved(false), 4000)
@@ -172,7 +197,7 @@ export default function AppraisalPage() {
     setLoadingResults(false)
   }
 
-  useEffect(() => { if (tab === 'results' && faculty.length) loadResults() }, [tab, faculty])
+  useEffect(() => { if (tab === 'results' && isHOD && faculty.length) loadResults() }, [tab, faculty, isHOD])
 
   const StarRating = ({ value, onChange, size = 'md' }: { value: number; onChange?: (v: number) => void; size?: 'sm'|'md' }) => (
     <div className="flex gap-0.5">
@@ -356,22 +381,21 @@ export default function AppraisalPage() {
                 </div>
               )}
 
-              {/* Faculty sees their own results */}
-              {isFaculty && results[0]?.data && (
+              {/* Faculty sees their own (anonymous) results */}
+              {isFaculty && (
                 <div className="bg-card border border-border rounded-lg p-6 space-y-4">
                   <span className="eyebrow">YOUR APPRAISAL RESULTS — {year}</span>
-                  {(() => {
-                    const mine = results[0].data.find((f: any) => f.email === profile?.email)
-                    if (!mine || mine.reviews === 0) return (
-                      <p className="font-mono text-sm text-muted-foreground">No appraisals received yet</p>
-                    )
+                  {!mySummary ? <p className="font-mono text-sm text-muted-foreground">Loading…</p>
+                    : mySummary.reviews === 0 ? <p className="font-mono text-sm text-muted-foreground">No appraisals received yet</p> : (() => {
+                    const vals = Object.values(mySummary.by_question).map(Number)
+                    const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0
                     return (
                       <>
                         <div className="flex items-center gap-4">
-                          <p className="text-4xl font-bold text-amber-700">{mine.avg.toFixed(1)}</p>
+                          <p className="text-4xl font-bold text-amber-700">{avg.toFixed(1)}</p>
                           <div>
-                            <StarRating value={Math.round(mine.avg)} />
-                            <p className="text-[13.5px] text-muted-foreground mt-1.5 max-w-3xl">{mine.reviews} student review(s)</p>
+                            <StarRating value={Math.round(avg)} />
+                            <p className="text-[13.5px] text-muted-foreground mt-1.5">{mySummary.reviews} anonymous student review{mySummary.reviews === 1 ? '' : 's'}</p>
                           </div>
                         </div>
                         <div className="space-y-3">
@@ -379,13 +403,18 @@ export default function AppraisalPage() {
                             <div key={q.id} className="flex items-center gap-3">
                               <p className="font-mono text-xs w-40 text-muted-foreground">{q.label}</p>
                               <div className="flex-1 h-2 bg-border rounded-full overflow-hidden">
-                                <div className="h-full bg-amber-600 rounded-full"
-                                  style={{ width: `${(mine.avgByQuestion[q.id] / 5) * 100}%` }} />
+                                <div className="h-full bg-amber-600 rounded-full" style={{ width: `${((Number(mySummary.by_question[q.id]) || 0) / 5) * 100}%` }} />
                               </div>
-                              <p className="font-mono text-xs w-8 text-right">{mine.avgByQuestion[q.id]?.toFixed(1)}</p>
+                              <p className="font-mono text-xs w-8 text-right">{Number(mySummary.by_question[q.id] ?? 0).toFixed(1)}</p>
                             </div>
                           ))}
                         </div>
+                        {mySummary.comments.length > 0 ? (
+                          <div className="pt-2 space-y-2">
+                            <p className="eyebrow">WHAT STUDENTS SAID</p>
+                            {mySummary.comments.map((c, i) => <p key={i} className="text-[13.5px] text-foreground bg-licet-paper border border-border rounded-md px-3 py-2">“{c}”</p>)}
+                          </div>
+                        ) : mySummary.reviews < 3 && <p className="text-[12px] text-muted-foreground">Written comments appear once at least 3 students have responded, so no one can be identified.</p>}
                       </>
                     )
                   })()}

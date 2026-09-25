@@ -16,6 +16,7 @@ import { supabase } from "@/lib/supabase"
 import { getAllowedModules } from "@/lib/roles"
 import { setAcademicState } from "@/lib/semester"
 import { Wordmark } from "@/components/licet-brand"
+import { Toaster } from "@/components/toaster"
 
 type NavItem = { icon: LucideIcon; label: string; id: string }
 
@@ -226,7 +227,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     router.replace("/login")
   }
 
-  const current = ALL_ITEMS.find(i => i.id === activeId) ?? (activeId === "change-password" ? { label: "Change Password" } : null)
+  const current = ALL_ITEMS.find(i => i.id === activeId) ?? (activeId === "change-password" ? { label: "Change Password" } : activeId === "profile" ? { label: "My Profile" } : null)
   const initials = name.replace(/^(Dr|Mr|Ms|Mrs|Rev)\.?\s+/i, "").split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase()
   const time = now?.toLocaleTimeString("en-IN", { hour12: true, hour: "2-digit", minute: "2-digit" }) ?? ""
   const date = now?.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" }) ?? ""
@@ -324,6 +325,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </div>
                 <Link href="/dashboard" role="menuitem" className="flex items-center gap-2.5 px-4 py-2.5 text-[13px] hover:bg-licet-cream/60">
                   <LayoutDashboard size={15} className="text-licet-violet" /> My dashboard
+                </Link>
+                <Link href="/dashboard/profile" role="menuitem" className="flex items-center gap-2.5 px-4 py-2.5 text-[13px] hover:bg-licet-cream/60">
+                  <UserCog size={15} className="text-licet-violet" /> My profile
                 </Link>
                 <Link href="/dashboard/change-password" role="menuitem" className="flex items-center gap-2.5 px-4 py-2.5 text-[13px] hover:bg-licet-cream/60">
                   <Key size={15} className="text-licet-violet" /> Change password
@@ -513,6 +517,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </footer>
         </main>
       </div>
+      <Toaster />
     </div>
   )
 }

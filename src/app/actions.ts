@@ -23,38 +23,75 @@ function failure(e: unknown): ActionResult {
   return { error: e instanceof AuthError ? e.message : 'Something went wrong. Please try again.' }
 }
 
+async function createStudent(db: ReturnType<typeof adminClient>, data: NewStudent): Promise<ActionResult> {
+  const email = data.email?.trim().toLowerCase()
+  const full_name = data.full_name?.trim()
+  if (!full_name || !email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: 'Enter a valid name and email' }
+  if (!SECTIONS.includes(data.section)) return { error: 'Choose a valid section' }
+
+  const password = defaultStudentPassword(email)
+  const { data: authData, error: authErr } = await db.auth.admin.createUser({ email, password, email_confirm: true })
+  if (authErr || !authData.user) return { error: authErr?.message ?? 'Failed to create login' }
+
+  const { error: profErr } = await db.from('profiles').upsert({
+    id: authData.user.id,
+    role: 'STUDENT',
+    department_id: DEPT_ID,
+    full_name,
+    email,
+    section: data.section,
+    batch_year: Number(data.batch_year) || null,
+    roll_number: data.roll_number?.trim() || null,
+    register_number: data.register_number?.trim() || null,
+    parent_mobile: normalizeMobile(data.parent_mobile) || null,
+    is_active: true,
+    must_change_password: true,
+  })
+  if (profErr) {
+    await db.auth.admin.deleteUser(authData.user.id)
+    return { error: profErr.message }
+  }
+  return { success: true, password }
+}
+
 export async function addStudentAdmin(accessToken: string, data: NewStudent): Promise<ActionResult> {
   try {
     await requireRole(accessToken, ['HOD'])
-    const email = data.email?.trim().toLowerCase()
-    const full_name = data.full_name?.trim()
-    if (!full_name || !email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: 'Enter a valid name and email' }
-    if (!SECTIONS.includes(data.section)) return { error: 'Choose a valid section' }
+    return await createStudent(adminClient(), data)
+  } catch (e) {
+    return failure(e)
+  }
+}
+
+export interface ImportRowResult { row: number; email: string; status: 'created' | 'skipped' | 'failed'; message?: string }
+
+// Bulk admission: creates each student like addStudentAdmin. Existing emails are
+// skipped, never overwritten. Every new account starts on the default password
+// and must change it at first login.
+export async function importStudentsAdmin(accessToken: string, rows: NewStudent[]): Promise<{ error?: string; results?: ImportRowResult[] }> {
+  try {
+    await requireRole(accessToken, ['HOD'])
+    if (!Array.isArray(rows) || rows.length === 0) return { error: 'The file has no student rows' }
+    if (rows.length > 50) return { error: 'Send at most 50 students per request' }
 
     const db = adminClient()
-    const password = defaultStudentPassword(email)
-    const { data: authData, error: authErr } = await db.auth.admin.createUser({ email, password, email_confirm: true })
-    if (authErr || !authData.user) return { error: authErr?.message ?? 'Failed to create login' }
+    const emails = rows.map(r => r.email?.trim().toLowerCase()).filter(Boolean)
+    const { data: existing } = await db.from('profiles').select('email').in('email', emails)
+    const taken = new Set((existing ?? []).map(e => e.email.toLowerCase()))
+    const seen = new Set<string>()
 
-    const { error: profErr } = await db.from('profiles').upsert({
-      id: authData.user.id,
-      role: 'STUDENT',
-      department_id: DEPT_ID,
-      full_name,
-      email,
-      section: data.section,
-      batch_year: Number(data.batch_year) || null,
-      roll_number: data.roll_number?.trim() || null,
-      register_number: data.register_number?.trim() || null,
-      parent_mobile: normalizeMobile(data.parent_mobile) || null,
-      is_active: true,
-      must_change_password: true,
-    })
-    if (profErr) {
-      await db.auth.admin.deleteUser(authData.user.id)
-      return { error: profErr.message }
+    const results: ImportRowResult[] = []
+    for (const [i, r] of rows.entries()) {
+      const email = r.email?.trim().toLowerCase() ?? ''
+      const row = i + 1
+      if (taken.has(email)) { results.push({ row, email, status: 'skipped', message: 'Account already exists' }); continue }
+      if (seen.has(email)) { results.push({ row, email, status: 'skipped', message: 'Repeated in the file' }); continue }
+      seen.add(email)
+      if (r.parent_mobile && normalizeMobile(r.parent_mobile) === null) { results.push({ row, email, status: 'failed', message: 'Parent mobile is not a 10-digit number' }); continue }
+      const res = await createStudent(db, r)
+      results.push(res.error ? { row, email, status: 'failed', message: res.error } : { row, email, status: 'created' })
     }
-    return { success: true, password }
+    return { results }
   } catch (e) {
     return failure(e)
   }

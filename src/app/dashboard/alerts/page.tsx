@@ -9,6 +9,7 @@ import { isTier1 } from "@/lib/roles"
 import type { AuthUser } from "@/lib/auth"
 import type { Database } from "@/lib/supabase"
 import { Bell, CheckCircle, XCircle, Clock, AlertTriangle, CheckCheck } from "lucide-react"
+import { reportResult } from "@/components/toaster"
 
 type Profile = Database['public']['Tables']['profiles']['Row']
 
@@ -43,7 +44,6 @@ export default function AlertsPage() {
   const [loading, setLoading]   = useState(true)
   const [filterSection, setFilterSection] = useState('')
   const [showResolved, setShowResolved]   = useState(false)
-  const [actionMsg, setActionMsg]         = useState('')
   const [bulkClearing, setBulkClearing]   = useState(false)
 
   const isHOD     = authUser?.type === 'staff' && isTier1(authUser.data)
@@ -74,9 +74,6 @@ export default function AlertsPage() {
         .select('*, student:profiles!student_id(full_name, email, roll_number)')
         .order('created_at', { ascending: false })
 
-      if (isFaculty && profile.section) {
-        query = query.eq('section', profile.section)
-      }
       if (filterSection) {
         query = query.eq('section', filterSection)
       }
@@ -90,57 +87,42 @@ export default function AlertsPage() {
     setLoading(false)
   }
 
+  useEffect(() => { if (profile?.advisor_section && isFaculty && !isHOD) setFilterSection(profile.advisor_section) }, [profile, isFaculty, isHOD])
   useEffect(() => { if (profile) loadAlerts() }, [profile, filterSection, showResolved])
 
   const markMetHOD = async (alertId: string) => {
-    await (supabase.from('attendance_alerts' as any) as any)
-      .update({ met_hod: true, met_hod_at: new Date().toISOString() })
-      .eq('id', alertId)
-    setActionMsg('✓ Marked as met HOD')
-    setTimeout(() => setActionMsg(''), 3000)
-    loadAlerts()
+    const { error } = await supabase.rpc('acknowledge_alert', { p_alert: alertId })
+    if (reportResult(error, 'Marked as met HOD. The HOD will clear the alert.')) loadAlerts()
   }
 
   const clearAlert = async (alertId: string) => {
     if (!profile) return
-    await (supabase.from('attendance_alerts' as any) as any)
+    const { error } = await supabase.from('attendance_alerts')
       .update({ cleared_by: profile.id, cleared_at: new Date().toISOString() })
       .eq('id', alertId)
-    setActionMsg('✓ Alert cleared')
-    setTimeout(() => setActionMsg(''), 3000)
-    loadAlerts()
+    if (reportResult(error, 'Alert cleared')) loadAlerts()
   }
 
   const reopenAlert = async (alertId: string) => {
-    await (supabase.from('attendance_alerts' as any) as any)
+    const { error } = await supabase.from('attendance_alerts')
       .update({ cleared_by: null, cleared_at: null })
       .eq('id', alertId)
-    setActionMsg('✓ Alert reopened')
-    setTimeout(() => setActionMsg(''), 3000)
-    loadAlerts()
+    if (reportResult(error, 'Alert reopened')) loadAlerts()
   }
 
   // HOD bulk: mark all pending met_hod = true + clear all in one go
   const clearAllMetHOD = async () => {
     if (!profile || !isHOD) return
+    const ids = alerts.filter(a => !a.cleared_at).map(a => a.id)
+    if (ids.length === 0) return
+    if (!confirm(`Clear all ${ids.length} pending alert${ids.length > 1 ? 's' : ''} and mark them as Met HOD?`)) return
     setBulkClearing(true)
-    const pending = alerts.filter(a => !a.cleared_at)
-    const ids = pending.map(a => a.id)
-    if (ids.length === 0) { setBulkClearing(false); return }
-
-    await (supabase.from('attendance_alerts' as any) as any)
-      .update({
-        met_hod: true,
-        met_hod_at: new Date().toISOString(),
-        cleared_by: profile.id,
-        cleared_at: new Date().toISOString(),
-      })
+    const now = new Date().toISOString()
+    const { error } = await supabase.from('attendance_alerts')
+      .update({ met_hod: true, met_hod_at: now, cleared_by: profile.id, cleared_at: now })
       .in('id', ids)
-
     setBulkClearing(false)
-    setActionMsg(`✓ Cleared ${ids.length} alert${ids.length > 1 ? 's' : ''} — all marked as Met HOD`)
-    setTimeout(() => setActionMsg(''), 4000)
-    loadAlerts()
+    if (reportResult(error, `Cleared ${ids.length} alert${ids.length > 1 ? 's' : ''}`)) loadAlerts()
   }
 
   const pendingCount  = alerts.filter(a => !a.cleared_at).length
@@ -201,12 +183,6 @@ export default function AlertsPage() {
               {bulkClearing ? 'Clearing...' : `Clear All — Met HOD (${pendingCount})`}
             </button>
           )}
-        </div>
-      )}
-
-      {actionMsg && (
-        <div className="font-mono text-xs text-green-700 bg-green-50 border border-green-200 px-4 py-2 rounded">
-          {actionMsg}
         </div>
       )}
 
