@@ -1,0 +1,39 @@
+# Keeps the public homepage in step with the department pages on licet.ac.in.
+# Every second day at 06:30 IST (01:00 UTC) it runs scripts/autosync.mjs, which
+# commits only when the website content actually changed and the result passes
+# its sanity checks. Vercel redeploys on that commit. Run it any time from the
+# repository's Actions tab ("Sync department website" → "Run workflow").
+name: Sync department website
+
+on:
+  schedule:
+    - cron: "0 1 */2 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-site
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Sync from licet.ac.in
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          node scripts/autosync.mjs --commit --push
