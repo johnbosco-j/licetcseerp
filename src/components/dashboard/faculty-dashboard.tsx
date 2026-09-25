@@ -175,7 +175,7 @@ export default function FacultyDashboard({ me, name, greeting, embedded = false 
       {embedded ? (
         <div className="flex items-end justify-between gap-3 pt-2">
           <div>
-            <span className="eyebrow">Tier 2 · teaching</span>
+            <span className="eyebrow">Teaching responsibilities</span>
             <h2 className="font-serif text-[28px] font-semibold leading-tight mt-1">My teaching</h2>
           </div>
           <p className="text-[12.5px] text-muted-foreground">{phaseLabel(phase)}</p>

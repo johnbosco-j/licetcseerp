@@ -210,7 +210,7 @@ export default function HodDashboard({ name, greeting, designation }: { name: st
       <Hero
         kicker={`${greeting}${name ? `, ${name}` : ''}`}
         title={<>Department of <span className="italic">Computer Science</span> &amp; Engineering</>}
-        subtitle={`${now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} · ${designation ?? 'Head of Department'} · Tier 1 leadership overview`}
+        subtitle={`${now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} · ${designation ?? 'Head of Department'} · Department overview`}
         chips={<>
           <HeroChip tone="gold">{semesterTerm()} · {academicYear(new Date(), true)}</HeroChip>
           <HeroChip tone={phase.kind === 'period' ? 'live' : 'plain'}>{phaseLabel(phase)}</HeroChip>
