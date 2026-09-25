@@ -1,6 +1,11 @@
-import { redirect } from "next/navigation"
+import { Landing } from "@/components/site/landing"
+import { SiteSections } from "@/components/site/site-sections"
 
-export default function RootPage() {
-  // Automatically bounce users from the root URL to the login page
-  redirect("/login")
+// Public homepage: department content for everyone; "Sign in" opens the login dialog.
+export default function HomePage() {
+  return (
+    <Landing>
+      <SiteSections />
+    </Landing>
+  )
 }

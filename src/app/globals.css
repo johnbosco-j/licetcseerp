@@ -292,3 +292,20 @@
 /* Thin themed scrollbars */
 #scroll-container, #scroll-container .overflow-y-auto, #scroll-container .overflow-x-auto { scrollbar-width: thin; scrollbar-color: var(--licet-gold) transparent; }
 #scroll-container button.rounded-full { white-space: nowrap; }
+
+/* Department website content (synced from licet.ac.in) */
+.site-prose p { margin: 0 0 0.75rem; }
+.site-prose p:last-child { margin-bottom: 0; }
+.site-prose strong { color: var(--licet-indigo); font-weight: 600; }
+.site-prose a { color: var(--licet-violet); text-decoration: underline; text-decoration-color: var(--licet-gold); text-underline-offset: 3px; }
+.site-prose a:hover { color: var(--licet-indigo); }
+.site-prose ul, .site-prose ol { margin: 0.25rem 0 0.9rem; padding-left: 1.35rem; }
+.site-prose ul { list-style: none; padding-left: 0; }
+.site-prose ul > li { position: relative; padding-left: 1.2rem; margin: 0.35rem 0; }
+.site-prose ul > li::before { content: ""; position: absolute; left: 0.1rem; top: 0.62em; width: 6px; height: 6px; transform: rotate(45deg); background: var(--licet-gold); }
+.site-prose ol { list-style: decimal; }
+.site-prose ol > li { margin: 0.35rem 0; }
+.site-prose h4 { font-family: var(--font-cormorant), Georgia, serif; font-size: 1.25rem; font-weight: 600; color: var(--licet-indigo); margin: 1rem 0 0.4rem; }
+.site-prose table { width: 100%; border-collapse: collapse; margin: 0.5rem 0 1rem; font-size: 13px; display: block; overflow-x: auto; }
+.site-prose th, .site-prose td { border: 1px solid var(--border); padding: 0.5rem 0.65rem; text-align: left; vertical-align: top; }
+.site-prose th, .site-prose tr:first-child td { background: var(--licet-paper); color: var(--licet-indigo); font-weight: 600; }
