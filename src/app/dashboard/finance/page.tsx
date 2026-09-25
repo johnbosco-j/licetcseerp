@@ -8,7 +8,8 @@ import { supabase } from "@/lib/supabase"
 import { isTier1 } from "@/lib/roles"
 import type { AuthUser } from "@/lib/auth"
 import type { Database } from "@/lib/supabase"
-import { Plus, X, Wallet, TrendingUp, TrendingDown, Loader2, Download } from "lucide-react"
+import { Plus, X, Wallet, TrendingUp, TrendingDown, Loader2, Download, Search, Undo2 } from "lucide-react"
+import { toast, reportResult } from "@/components/toaster"
 import * as XLSX from "xlsx"
 
 type FinanceRow = Database['public']['Tables']['finance_ledger']['Row']
@@ -23,6 +24,7 @@ export default function FinancePage() {
   const [ledger, setLedger]     = useState<FinanceRow[]>([])
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving]     = useState(false)
+  const [range, setRange]       = useState({ from: '', to: '', category: 'ALL', type: 'ALL', q: '' })
   const [form, setForm] = useState({
     txn_type: 'CREDIT' as 'CREDIT'|'DEBIT',
     category: 'Equipment', amount: '',
@@ -51,10 +53,11 @@ export default function FinancePage() {
   useEffect(() => { if (profile) loadLedger() }, [profile])
 
   const addEntry = async () => {
-    if (!profile || !form.amount || !form.description) return
+    if (!profile || !form.amount || !form.description.trim()) return
+    if (!(Number(form.amount) > 0)) { toast.error('Enter an amount greater than zero.'); return }
     setSaving(true)
     const seq = (ledger[0]?.sequence_no ?? 0) + 1
-    await supabase.from('finance_ledger').insert({
+    const { error } = await supabase.from('finance_ledger').insert({
       department_id: DEPT,
       txn_type: form.txn_type,
       category: form.category,
@@ -65,17 +68,51 @@ export default function FinancePage() {
       sequence_no: seq,
     })
     setSaving(false)
+    if (!reportResult(error, 'Entry added to the ledger')) return
     setForm({ txn_type: 'CREDIT', category: 'Equipment', amount: '', description: '', reference_no: '' })
     setShowForm(false)
     loadLedger()
   }
 
-  const totalCredit = ledger.filter(l => l.txn_type === 'CREDIT').reduce((s, l) => s + Number(l.amount), 0)
-  const totalDebit  = ledger.filter(l => l.txn_type === 'DEBIT').reduce((s, l) => s + Number(l.amount), 0)
+  // Entries can't be edited or deleted (tamper-proof chain), so a mistake is
+  // corrected with an opposite entry that references the original.
+  const reverseEntry = async (l: FinanceRow) => {
+    if (!profile) return
+    if (!confirm(`Record a correcting ${l.txn_type === 'CREDIT' ? 'debit' : 'credit'} of ₹${Number(l.amount).toLocaleString('en-IN')} for entry #${l.sequence_no}?`)) return
+    const { error } = await supabase.from('finance_ledger').insert({
+      department_id: DEPT,
+      txn_type: l.txn_type === 'CREDIT' ? 'DEBIT' : 'CREDIT',
+      category: l.category,
+      amount: Number(l.amount),
+      description: `Correction of entry #${l.sequence_no}: ${l.description}`,
+      reference_no: `REV-${l.sequence_no}`,
+      created_by: profile.id,
+      sequence_no: (ledger[0]?.sequence_no ?? 0) + 1,
+    })
+    if (reportResult(error, `Entry #${l.sequence_no} reversed`)) loadLedger()
+  }
+
+  const reversed = new Set(ledger.map(l => l.reference_no?.match(/^REV-(\d+)$/)?.[1]).filter(Boolean).map(Number))
+  const shown = ledger.filter(l => {
+    const d = new Date(l.created_at).toLocaleDateString('en-CA')
+    const q = range.q.trim().toLowerCase()
+    return (!range.from || d >= range.from) && (!range.to || d <= range.to)
+      && (range.category === 'ALL' || l.category === range.category)
+      && (range.type === 'ALL' || l.txn_type === range.type)
+      && (!q || [l.description, l.reference_no, String(l.sequence_no)].some(v => v?.toLowerCase().includes(q)))
+  })
+  const byCategory = CATEGORIES.map(c => {
+    const rows = shown.filter(l => l.category === c)
+    return { c, credit: rows.filter(l => l.txn_type === 'CREDIT').reduce((s, l) => s + Number(l.amount), 0), debit: rows.filter(l => l.txn_type === 'DEBIT').reduce((s, l) => s + Number(l.amount), 0) }
+  }).filter(x => x.credit || x.debit)
+  const filtering = shown.length !== ledger.length
+
+  const totalCredit = shown.filter(l => l.txn_type === 'CREDIT').reduce((s, l) => s + Number(l.amount), 0)
+  const totalDebit  = shown.filter(l => l.txn_type === 'DEBIT').reduce((s, l) => s + Number(l.amount), 0)
   const balance     = totalCredit - totalDebit
 
   const exportXLSX = () => {
-    const rows = ledger.map(l => ({
+    const rows = shown.map(l => ({
       'Seq': l.sequence_no,
       'Date': new Date(l.created_at).toLocaleDateString(),
       'Type': l.txn_type,
@@ -125,7 +162,7 @@ export default function FinancePage() {
         {[
           { label: 'Total Credits', value: `₹${totalCredit.toLocaleString()}`, color: 'text-green-700', icon: TrendingUp },
           { label: 'Total Debits',  value: `₹${totalDebit.toLocaleString()}`,  color: 'text-red-700',   icon: TrendingDown },
-          { label: 'Balance',       value: `₹${balance.toLocaleString()}`,      color: balance >= 0 ? 'text-green-700' : 'text-red-700', icon: Wallet },
+          { label: filtering ? 'Net (filtered)' : 'Balance', value: `₹${balance.toLocaleString()}`,      color: balance >= 0 ? 'text-green-700' : 'text-red-700', icon: Wallet },
         ].map(({ label, value, color, icon: Icon }) => (
           <div key={label} className="bg-card border border-border rounded-lg p-5">
             <div className="flex items-center gap-2 mb-2">
@@ -136,6 +173,42 @@ export default function FinancePage() {
           </div>
         ))}
       </div>
+
+      {/* Filters */}
+      <div className="bg-card border border-border rounded-lg p-4 flex flex-wrap items-end gap-3">
+        <div className="space-y-1"><label className="font-mono text-xs text-muted-foreground">From</label>
+          <input type="date" value={range.from} onChange={e => setRange({ ...range, from: e.target.value })} className="h-9 px-2 bg-white border border-input rounded-md text-[13px]" /></div>
+        <div className="space-y-1"><label className="font-mono text-xs text-muted-foreground">To</label>
+          <input type="date" value={range.to} min={range.from} onChange={e => setRange({ ...range, to: e.target.value })} className="h-9 px-2 bg-white border border-input rounded-md text-[13px]" /></div>
+        <div className="space-y-1"><label className="font-mono text-xs text-muted-foreground">Category</label>
+          <select value={range.category} onChange={e => setRange({ ...range, category: e.target.value })} className="h-9 px-2 bg-white border border-input rounded-md text-[13px]">
+            <option value="ALL">All categories</option>{CATEGORIES.map(c => <option key={c}>{c}</option>)}
+          </select></div>
+        <div className="space-y-1"><label className="font-mono text-xs text-muted-foreground">Type</label>
+          <select value={range.type} onChange={e => setRange({ ...range, type: e.target.value })} className="h-9 px-2 bg-white border border-input rounded-md text-[13px]">
+            <option value="ALL">Credits & debits</option><option value="CREDIT">Credits</option><option value="DEBIT">Debits</option>
+          </select></div>
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <input value={range.q} onChange={e => setRange({ ...range, q: e.target.value })} placeholder="Search description, reference, entry no."
+            className="w-full h-9 pl-9 pr-3 bg-white border border-input rounded-md text-[13px] focus:border-licet-violet focus:outline-none" />
+        </div>
+        {filtering && <button onClick={() => setRange({ from: '', to: '', category: 'ALL', type: 'ALL', q: '' })} className="h-9 px-3 text-[12.5px] font-semibold text-licet-violet hover:underline">Clear filters</button>}
+      </div>
+
+      {byCategory.length > 0 && (
+        <div className="bg-card border border-border rounded-lg p-4">
+          <p className="eyebrow mb-3">BY CATEGORY{filtering ? ' (FILTERED)' : ''}</p>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {byCategory.map(x => (
+              <div key={x.c} className="rounded-lg border border-border px-3 py-2.5">
+                <p className="text-[12.5px] font-semibold text-licet-indigo">{x.c}</p>
+                <p className="text-[12px] text-muted-foreground tabular-nums"><span className="text-green-700">+₹{x.credit.toLocaleString('en-IN')}</span> · <span className="text-red-700">−₹{x.debit.toLocaleString('en-IN')}</span></p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Add form */}
       {showForm && (
@@ -193,24 +266,24 @@ export default function FinancePage() {
       {/* Ledger table */}
       <div className="bg-card border border-border rounded-lg overflow-hidden">
         <div className="px-6 py-4 border-b border-border bg-licet-paper/70 rounded-t-xl">
-          <span className="eyebrow">LEDGER ({ledger.length} entries)</span>
+          <span className="eyebrow">LEDGER ({filtering ? `${shown.length} of ${ledger.length}` : ledger.length} entries)</span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b border-border bg-accent/50">
-                {['Seq','Date','Type','Category','Description','Amount','Reference'].map(h => (
+                {['Seq','Date','Type','Category','Description','Amount','Reference',''].map(h => (
                   <th key={h} className="text-left px-4 py-3 font-mono text-xs text-muted-foreground">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {ledger.length === 0 ? (
-                <tr><td colSpan={7} className="px-4 py-12 text-center font-mono text-sm text-muted-foreground">No entries yet</td></tr>
-              ) : ledger.map(l => (
+              {shown.length === 0 ? (
+                <tr><td colSpan={8} className="px-4 py-12 text-center font-mono text-sm text-muted-foreground">{ledger.length ? 'No entries match the filters' : 'No entries yet'}</td></tr>
+              ) : shown.map(l => (
                 <tr key={l.id} className="hover:bg-accent/30 transition-colors">
                   <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{l.sequence_no}</td>
-                  <td className="px-4 py-3 font-mono text-xs">{new Date(l.created_at).toLocaleDateString()}</td>
+                  <td className="px-4 py-3 font-mono text-xs">{new Date(l.created_at).toLocaleDateString('en-IN')}</td>
                   <td className="px-4 py-3">
                     <span className={`font-mono text-xs px-2 py-0.5 rounded border ${l.txn_type === 'CREDIT' ? 'text-green-700 bg-green-50 border-green-200' : 'text-red-700 bg-red-50 border-red-200'}`}>
                       {l.txn_type}
@@ -222,6 +295,12 @@ export default function FinancePage() {
                     {l.txn_type === 'CREDIT' ? '+' : '-'}₹{Number(l.amount).toLocaleString()}
                   </td>
                   <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{l.reference_no ?? '—'}</td>
+                  <td className="px-4 py-3 text-right">
+                    {reversed.has(Number(l.sequence_no)) ? <span className="text-[11px] text-muted-foreground">reversed</span>
+                      : !l.reference_no?.startsWith('REV-') && (
+                        <button onClick={() => reverseEntry(l)} className="inline-flex items-center gap-1 text-[12px] font-semibold text-licet-violet hover:underline" title="Record a correcting entry"><Undo2 className="w-3 h-3" />Reverse</button>
+                      )}
+                  </td>
                 </tr>
               ))}
             </tbody>

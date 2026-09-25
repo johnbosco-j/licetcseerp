@@ -9,7 +9,8 @@ import { isTier1 } from "@/lib/roles"
 import { safeUrl } from "@/lib/utils"
 import type { AuthUser } from "@/lib/auth"
 import type { Database } from "@/lib/supabase"
-import { FolderOpen, Plus, X, FileText, Download, ExternalLink, Loader2 } from "lucide-react"
+import { FolderOpen, Plus, X, FileText, Download, ExternalLink, Loader2, Trash2, Search } from "lucide-react"
+import { toast, reportResult } from "@/components/toaster"
 import { FileUpload, FileList, type UploadedFile } from "@/components/file-upload"
 
 type Profile = Database['public']['Tables']['profiles']['Row']
@@ -50,6 +51,7 @@ export default function DocumentsPage() {
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving]     = useState(false)
   const [filter, setFilter]     = useState('ALL')
+  const [search, setSearch]     = useState('')
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([])
   const [showUpload, setShowUpload] = useState(false)
   const [form, setForm] = useState({
@@ -60,6 +62,7 @@ export default function DocumentsPage() {
   const isHOD     = authUser?.type === 'staff' && isTier1(authUser.data)
   const isFaculty = authUser?.type === 'staff'
   const canUpload = isHOD || isFaculty
+  const canDelete = (d: Document) => isHOD || (!!profile && d.uploaded_by === profile.id)
 
   useEffect(() => {
     const stored = localStorage.getItem('excelsior_user') || localStorage.getItem('licet_user')
@@ -88,9 +91,10 @@ export default function DocumentsPage() {
   useEffect(() => { loadDocuments() }, [])
 
   const uploadDocument = async () => {
-    if (!profile || !form.title || !form.url) return
+    if (!profile || !form.title.trim() || !form.url.trim()) return
+    if (!safeUrl(form.url.trim())) { toast.error('The link must start with http:// or https://'); return }
     setSaving(true)
-    await supabase.from('announcements').insert({
+    const { error } = await supabase.from('announcements').insert({
       title: `DOC: ${form.title}`,
       body: JSON.stringify({ ...form, file_type: form.url.split('.').pop()?.toUpperCase() ?? 'LINK' }),
       audience: `DOCUMENT:${form.category}`,
@@ -99,12 +103,26 @@ export default function DocumentsPage() {
       department_id: '00000000-0000-0000-0000-000000000001'
     })
     setSaving(false)
+    if (!reportResult(error, 'Document added')) return
     setForm({ category: 'Syllabus', title: '', description: '', url: '', section: 'ALL' })
     setShowForm(false)
     loadDocuments()
   }
 
-  const filtered = filter === 'ALL' ? documents : documents.filter(d => d.category === filter)
+  const deleteDocument = async (doc: Document) => {
+    if (!confirm(`Delete "${doc.title}"? ${doc.isStorageFile ? 'The uploaded file will be removed too.' : ''}`)) return
+    const { error } = await supabase.from('announcements').delete().eq('id', doc.id)
+    if (!reportResult(error, 'Document deleted')) return
+    if (doc.isStorageFile && doc.storagePath) await supabase.storage.from(doc.bucket ?? 'dept-documents').remove([doc.storagePath])
+    loadDocuments()
+  }
+
+  const mySection = authUser?.type === 'student' ? (authUser.data as { section?: string }).section : null
+  const q = search.trim().toLowerCase()
+  const visible = documents.filter(d => !mySection || !d.section || d.section === 'ALL' || d.section === mySection)
+  const filtered = visible
+    .filter(d => filter === 'ALL' || d.category === filter)
+    .filter(d => !q || [d.title, d.description, d.section, d.category].some(v => v?.toLowerCase().includes(q)))
 
   const grouped = filtered.reduce((acc, doc) => {
     if (!acc[doc.category]) acc[doc.category] = []
@@ -115,10 +133,12 @@ export default function DocumentsPage() {
 
   const handleStorageUpload = async (file: UploadedFile) => {
     if (!profile) return
-    const title = 'DOC: ' + file.name
+    const docTitle = form.title.trim() || file.name.replace(/\.[^.]+$/, '')
+    const title = 'DOC: ' + docTitle
     const fileType = file.name.split('.').pop()?.toUpperCase() ?? 'FILE'
     const body = JSON.stringify({
       ...form,
+      title: docTitle,
       url: file.path,
       file_type: fileType,
       isStorageFile: true,
@@ -127,7 +147,7 @@ export default function DocumentsPage() {
       size: file.size
     })
     const audience = 'DOCUMENT:' + form.category
-    await supabase.from('announcements').insert({
+    const { error } = await supabase.from('announcements').insert({
       title,
       body,
       audience,
@@ -135,7 +155,7 @@ export default function DocumentsPage() {
       created_by: profile.id,
       department_id: '00000000-0000-0000-0000-000000000001'
     })
-    loadDocuments()
+    if (reportResult(error, `Uploaded ${file.name}`)) loadDocuments()
   }
 
   return (
@@ -166,10 +186,10 @@ export default function DocumentsPage() {
       <div className="flex flex-wrap gap-2">
         <button onClick={() => setFilter('ALL')}
           className={`text-[12.5px] font-medium px-3.5 py-1.5 rounded-full border transition-all ${filter === 'ALL' ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:border-primary/50'}`}>
-          ALL ({documents.length})
+          ALL ({visible.length})
         </button>
         {CATEGORIES.map(cat => {
-          const count = documents.filter(d => d.category === cat).length
+          const count = visible.filter(d => d.category === cat).length
           if (count === 0) return null
           return (
             <button key={cat} onClick={() => setFilter(cat)}
@@ -180,6 +200,12 @@ export default function DocumentsPage() {
         })}
       </div>
 
+      <div className="relative w-full sm:w-80">
+        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search documents"
+          className="w-full h-9 pl-9 pr-3 bg-white border border-input rounded-md text-[13px] focus:border-licet-violet focus:outline-none" />
+      </div>
+
       {/* Direct file upload */}
       {showUpload && canUpload && (
         <div className="bg-card border border-licet-gold border-t-[3px] rounded-xl p-6 shadow-md space-y-4">
@@ -187,7 +213,12 @@ export default function DocumentsPage() {
             <span className="eyebrow">UPLOAD DOCUMENT</span>
             <button onClick={() => setShowUpload(false)}><X className="w-4 h-4 text-muted-foreground" /></button>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+            <div className="space-y-1">
+              <label className="font-mono text-xs text-muted-foreground">Title (optional — file name is used otherwise)</label>
+              <input value={form.title} onChange={e => setForm({...form, title: e.target.value})} placeholder="e.g. CS3401 Lab Manual"
+                className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none" />
+            </div>
             <div className="space-y-1">
               <label className="font-mono text-xs text-muted-foreground">Category</label>
               <select value={form.category} onChange={e => setForm({...form, category: e.target.value})}
@@ -275,7 +306,7 @@ export default function DocumentsPage() {
       {Object.keys(grouped).length === 0 ? (
         <div className="bg-card border border-dashed border-licet-gold/70 rounded-xl p-12 text-center">
           <FolderOpen className="w-12 h-12 p-3 rounded-full bg-licet-cream text-licet-indigo mx-auto mb-3" />
-          <p className="font-mono text-sm text-muted-foreground">No documents yet</p>
+          <p className="font-mono text-sm text-muted-foreground">{visible.length ? 'No documents match your search' : 'No documents yet'}</p>
           {canUpload && <p className="text-[13.5px] text-muted-foreground mt-1.5 max-w-3xl">Click "Add Document" to upload</p>}
         </div>
       ) : Object.entries(grouped).map(([cat, docs]) => (
@@ -309,6 +340,11 @@ export default function DocumentsPage() {
                     className="flex items-center gap-1 px-3 py-1.5 bg-primary/10 text-primary font-mono text-xs rounded border border-primary/20 hover:bg-primary/20 transition-colors flex-shrink-0">
                     <ExternalLink className="w-3 h-3" /> Open
                   </a>
+                )}
+                {canDelete(doc) && (
+                  <button onClick={() => deleteDocument(doc)} className="p-1.5 text-muted-foreground hover:text-red-700 hover:bg-red-50 rounded flex-shrink-0" title="Delete document" aria-label={`Delete ${doc.title}`}>
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 )}
               </div>
             ))}

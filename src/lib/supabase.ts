@@ -111,6 +111,18 @@ export type Database = {
           created_by: string; created_at: string
         }
       }
+      placement_offers: {
+        Row: {
+          id: string; student_id: string | null; student_name: string
+          roll_number: string | null; section: string | null; batch_year: number | null
+          placement_id: string | null; company_name: string; role_title: string | null
+          package_lpa: number | null
+          offer_type: 'FULL_TIME' | 'INTERNSHIP' | 'INTERNSHIP_PPO'
+          status: 'OFFERED' | 'ACCEPTED' | 'DECLINED' | 'JOINED'
+          offer_date: string; notes: string | null
+          created_by: string | null; created_at: string
+        }
+      }
       grievances: {
         Row: {
           id: string; student_id: string; category: string

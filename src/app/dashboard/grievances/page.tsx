@@ -10,6 +10,7 @@ import { isTier1 } from "@/lib/roles"
 import type { AuthUser } from "@/lib/auth"
 import type { Database } from "@/lib/supabase"
 import { Plus, X, AlertTriangle, CheckCircle2, Clock, Loader2 } from "lucide-react"
+import { reportResult } from "@/components/toaster"
 
 type Grievance = Database['public']['Tables']['grievances']['Row']
 type Profile = Database['public']['Tables']['profiles']['Row']
@@ -70,7 +71,7 @@ export default function GrievancesPage() {
   const submitGrievance = async () => {
     if (!profile || !form.subject_line || !form.description) return
     setSaving(true)
-    await supabase.from('grievances').insert({
+    const { error } = await supabase.from('grievances').insert({
       student_id: profile.id,
       category: form.category,
       subject_line: form.subject_line,
@@ -78,18 +79,20 @@ export default function GrievancesPage() {
       status: 'OPEN'
     })
     setSaving(false)
+    if (!reportResult(error, 'Grievance submitted. You will be notified when it is updated.')) return
     setForm({ category: 'Academic', subject_line: '', description: '' })
     setShowForm(false)
     loadGrievances()
   }
 
   const updateStatus = async (id: string, status: string, res?: string) => {
-    await supabase.from('grievances').update({
+    const { error } = await supabase.from('grievances').update({
       status,
       resolution: res ?? null,
       assigned_to: profile?.id,
       updated_at: new Date().toISOString()
     }).eq('id', id)
+    if (!reportResult(error, `Grievance marked ${status.replace('_', ' ').toLowerCase()}`)) return
 
     // Send email notification
     const g = grievances.find(x => x.id === id)

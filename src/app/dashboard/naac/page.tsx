@@ -12,6 +12,7 @@ import { loadDepartmentTotals } from "@/lib/cgpa"
 import { RichEditor } from "@/components/rich-editor"
 import type { AuthUser } from "@/lib/auth"
 import { FileText, Save, Loader2, Download, BookOpen, Award } from "lucide-react"
+import { reportResult } from "@/components/toaster"
 import { FileUpload, FileList, type UploadedFile } from "@/components/file-upload"
 
 const NAAC_TEMPLATE = `<h1 style="text-align:center">NATIONAL ASSESSMENT AND ACCREDITATION COUNCIL</h1>
@@ -197,10 +198,9 @@ export default function NAACPage() {
     const body = JSON.stringify({ content, key: activeDoc })
     const docLabel = DOCS.find(d => d.key === activeDoc)?.label ?? activeDoc
 
-    if (existing?.id) {
-      await supabase.from('announcements').update({ body }).eq('id', existing.id)
-    } else {
-      await supabase.from('announcements').insert({
+    const { error } = existing?.id
+      ? await supabase.from('announcements').update({ body }).eq('id', existing.id)
+      : await supabase.from('announcements').insert({
         title: `NAAC: ${docLabel}`,
         body,
         audience: `NAAC:${activeDoc}`,
@@ -208,8 +208,8 @@ export default function NAACPage() {
         created_by: profile.id,
         department_id: '00000000-0000-0000-0000-000000000001'
       })
-    }
     setSaving(false)
+    if (!reportResult(error)) return
     setSaveMsg('✓ Saved')
     loadSaved()
     setTimeout(() => setSaveMsg(''), 3000)

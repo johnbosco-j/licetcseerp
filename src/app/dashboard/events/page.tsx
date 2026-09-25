@@ -8,7 +8,9 @@ import { supabase } from "@/lib/supabase"
 import { isTier1 } from "@/lib/roles"
 import type { AuthUser } from "@/lib/auth"
 import type { Database } from "@/lib/supabase"
-import { Plus, X, Briefcase, Users, BookOpen, Building, Loader2, Calendar } from "lucide-react"
+import { Plus, X, Briefcase, Users, BookOpen, Building, Loader2, Calendar, Pencil, Trash2, Search, Download } from "lucide-react"
+import * as XLSX from "xlsx"
+import { toast, reportResult } from "@/components/toaster"
 
 type Profile = Database['public']['Tables']['profiles']['Row']
 
@@ -43,6 +45,8 @@ export default function EventsPage() {
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving]     = useState(false)
   const [filter, setFilter]     = useState<string>('ALL')
+  const [search, setSearch]     = useState('')
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState({
     type: 'GUEST_LECTURE', title: '', description: '',
     date: '', venue: '', speaker: '', organization: '', sections: 'ALL'
@@ -50,7 +54,9 @@ export default function EventsPage() {
 
   const isHOD     = authUser?.type === 'staff' && isTier1(authUser.data)
   const isFaculty = authUser?.type === 'staff'
+  const isStudent = authUser?.type === 'student'
   const canPost   = isHOD || isFaculty
+  const canManage = (e: Event) => isHOD || (!!profile && e.created_by === profile.id)
 
   useEffect(() => {
     const stored = localStorage.getItem('excelsior_user') || localStorage.getItem('licet_user')
@@ -80,26 +86,61 @@ export default function EventsPage() {
 
   useEffect(() => { loadEvents() }, [])
 
+  const EMPTY = { type: 'GUEST_LECTURE', title: '', description: '', date: '', venue: '', speaker: '', organization: '', sections: 'ALL' }
+
   const postEvent = async () => {
-    if (!profile || !form.title || !form.date) return
+    if (!profile) return
+    if (!form.title.trim() || !form.date) { toast.error('Title and date are required.'); return }
     setSaving(true)
-    await supabase.from('announcements').insert({
-      title: `EVENT: ${form.title}`,
-      body: JSON.stringify(form),
+    const row = {
+      title: `EVENT: ${form.title.trim()}`,
+      body: JSON.stringify({ ...form, title: form.title.trim() }),
       audience: `EVENT:${form.type}`,
-      is_urgent: false,
-      created_by: profile.id,
-      department_id: '00000000-0000-0000-0000-000000000001'
-    })
+    }
+    const { error } = editingId
+      ? await supabase.from('announcements').update(row).eq('id', editingId)
+      : await supabase.from('announcements').insert({ ...row, is_urgent: false, created_by: profile.id, department_id: '00000000-0000-0000-0000-000000000001' })
     setSaving(false)
-    setForm({ type: 'GUEST_LECTURE', title: '', description: '', date: '', venue: '', speaker: '', organization: '', sections: 'ALL' })
+    if (!reportResult(error, editingId ? 'Event updated' : 'Event posted')) return
+    setForm(EMPTY)
+    setEditingId(null)
     setShowForm(false)
     loadEvents()
   }
 
-  const filtered = filter === 'ALL' ? events : events.filter(e => e.type === filter)
-  const upcoming = filtered.filter(e => new Date(e.date) >= new Date())
-  const past     = filtered.filter(e => new Date(e.date) < new Date())
+  const editEvent = (e: Event) => {
+    setForm({ type: e.type, title: e.title, description: e.description ?? '', date: e.date, venue: e.venue ?? '', speaker: e.speaker ?? '', organization: e.organization ?? '', sections: e.sections ?? 'ALL' })
+    setEditingId(e.id)
+    setShowForm(true)
+    document.getElementById('scroll-container')?.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const deleteEvent = async (e: Event) => {
+    if (!confirm(`Delete the event "${e.title}"?`)) return
+    const { error } = await supabase.from('announcements').delete().eq('id', e.id)
+    if (reportResult(error, 'Event deleted')) loadEvents()
+  }
+
+  const exportXLSX = () => {
+    const rows = filtered.map(e => ({
+      Date: e.date, Type: (EVENT_TYPES[e.type] ?? EVENT_TYPES.OTHER).label, Title: e.title, Venue: e.venue ?? '',
+      'Resource person': e.speaker ?? '', Organisation: e.organization ?? '', 'For': e.sections === 'ALL' ? 'All sections' : e.sections, Description: e.description ?? '',
+    }))
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows.length ? rows : [{ Note: 'No events' }]), 'Events')
+    XLSX.writeFile(wb, `CSE_Events_${new Date().toISOString().slice(0, 10)}.xlsx`)
+  }
+
+  const mySection = isStudent ? (authUser?.data as { section?: string })?.section : null
+  const q = search.trim().toLowerCase()
+  const filtered = events
+    .filter(e => filter === 'ALL' || e.type === filter)
+    .filter(e => !mySection || e.sections === 'ALL' || e.sections === mySection)
+    .filter(e => !q || [e.title, e.description, e.venue, e.speaker, e.organization].some(v => v?.toLowerCase().includes(q)))
+    .sort((a, b) => a.date.localeCompare(b.date))
+  const todayIso = new Date().toLocaleDateString('en-CA')
+  const upcoming = filtered.filter(e => e.date >= todayIso)
+  const past     = filtered.filter(e => e.date < todayIso).reverse()
 
   const EventCard = ({ event }: { event: Event }) => {
     const meta = EVENT_TYPES[event.type] ?? EVENT_TYPES.OTHER
@@ -122,10 +163,16 @@ export default function EventsPage() {
             {event.organization && <p className="font-mono text-xs text-muted-foreground">Org: {event.organization}</p>}
             <p className="text-sm text-muted-foreground mt-1">{event.description}</p>
             <div className="flex items-center gap-4 mt-2 font-mono text-xs text-muted-foreground">
-              <span>📅 {new Date(event.date).toLocaleDateString()}</span>
+              <span>📅 {new Date(event.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
               {event.venue && <span>📍 {event.venue}</span>}
             </div>
           </div>
+          {canManage(event) && (
+            <div className="flex gap-1 shrink-0">
+              <button onClick={() => editEvent(event)} className="p-1.5 text-muted-foreground hover:text-licet-indigo hover:bg-licet-cream/60 rounded" title="Edit event" aria-label={`Edit ${event.title}`}><Pencil className="w-4 h-4" /></button>
+              <button onClick={() => deleteEvent(event)} className="p-1.5 text-muted-foreground hover:text-red-700 hover:bg-red-50 rounded" title="Delete event" aria-label={`Delete ${event.title}`}><Trash2 className="w-4 h-4" /></button>
+            </div>
+          )}
         </div>
       </div>
     )
@@ -141,12 +188,19 @@ export default function EventsPage() {
             Guest lectures, industrial visits, workshops, symposiums and association events
           </p>
         </div>
+        <div className="flex gap-2">
         {canPost && (
-          <button onClick={() => setShowForm(!showForm)}
+          <button onClick={exportXLSX} className="flex items-center gap-2 px-3 py-2 border border-licet-indigo/25 bg-white text-licet-indigo text-[13px] font-semibold rounded-md hover:bg-licet-cream/60 shadow-sm">
+            <Download className="w-3.5 h-3.5" /> Export
+          </button>
+        )}
+        {canPost && (
+          <button onClick={() => { setEditingId(null); setForm(EMPTY); setShowForm(!showForm) }}
             className="flex items-center gap-2 px-4 py-2 bg-licet-indigo text-white text-[13px] font-semibold rounded-md hover:bg-licet-violet shadow-sm">
             <Plus className="w-3 h-3" /> Add Event
           </button>
         )}
+        </div>
       </div>
 
       {/* Stats */}
@@ -169,8 +223,8 @@ export default function EventsPage() {
       {showForm && canPost && (
         <div className="bg-card border border-licet-gold border-t-[3px] rounded-xl p-6 shadow-md space-y-4">
           <div className="flex items-center justify-between">
-            <span className="eyebrow">NEW EVENT</span>
-            <button onClick={() => setShowForm(false)}><X className="w-4 h-4 text-muted-foreground" /></button>
+            <span className="eyebrow">{editingId ? 'EDIT EVENT' : 'NEW EVENT'}</span>
+            <button onClick={() => { setShowForm(false); setEditingId(null) }} aria-label="Close"><X className="w-4 h-4 text-muted-foreground" /></button>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1">
@@ -234,10 +288,16 @@ export default function EventsPage() {
           <button onClick={postEvent} disabled={saving || !form.title || !form.date}
             className="flex items-center gap-2 px-4 py-2 bg-licet-indigo text-white text-[13px] font-semibold rounded-md hover:bg-licet-violet shadow-sm disabled:opacity-50">
             {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Calendar className="w-3 h-3" />}
-            {saving ? 'Posting...' : 'Post Event'}
+            {saving ? 'Saving...' : editingId ? 'Save changes' : 'Post Event'}
           </button>
         </div>
       )}
+
+      <div className="relative w-full sm:w-80">
+        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search events, speakers, venues"
+          className="w-full h-9 pl-9 pr-3 bg-white border border-input rounded-md text-[13px] focus:border-licet-violet focus:outline-none" />
+      </div>
 
       {/* Upcoming */}
       {upcoming.length > 0 && (
@@ -253,6 +313,10 @@ export default function EventsPage() {
           <h2 className="eyebrow">PAST EVENTS ({past.length})</h2>
           {past.map(e => <EventCard key={e.id} event={e} />)}
         </div>
+      )}
+
+      {events.length > 0 && filtered.length === 0 && (
+        <p className="text-sm text-muted-foreground">No events match your search.</p>
       )}
 
       {events.length === 0 && (

@@ -14,8 +14,9 @@ import type { AuthUser } from "@/lib/auth"
 import type { Database } from "@/lib/supabase"
 import {
   FileText, Plus, X, Check, Clock, Loader2,
-  Calendar, BarChart3, BookOpen, AlertTriangle, Download
+  Calendar, BarChart3, BookOpen, AlertTriangle, Download, Trash2
 } from "lucide-react"
+import { toast, reportResult } from "@/components/toaster"
 import { FileUpload, FileList, type UploadedFile } from "@/components/file-upload"
 import * as XLSX from "xlsx"
 import { getActiveSemester } from "@/lib/semester"
@@ -124,7 +125,7 @@ export default function ExaminationPage() {
       .like('audience', 'EXAM_SCHED:%').order('created_at', { ascending: false })
     if (schedData) {
       setSchedule(schedData.map(a => {
-        try { return { id: a.id, ...JSON.parse(a.body), created_at: a.created_at } }
+        try { return { id: a.id, ...JSON.parse(a.body), created_at: a.created_at, created_by: a.created_by } }
         catch { return null }
       }).filter(Boolean))
     }
@@ -145,10 +146,9 @@ export default function ExaminationPage() {
       status: editing?.status ?? 'DRAFT',
       content
     })
-    if (editing?.id) {
-      await supabase.from('announcements').update({ body }).eq('id', editing.id)
-    } else {
-      await supabase.from('announcements').insert({
+    const res = editing?.id
+      ? await supabase.from('announcements').update({ body }).eq('id', editing.id).select('id')
+      : await supabase.from('announcements').insert({
         title: `QP: ${editing?.subject_code ?? ''} – ${editing?.exam_type ?? ''}`,
         body,
         audience: `QP:${section}`,
@@ -156,8 +156,9 @@ export default function ExaminationPage() {
         created_by: profile.id,
         department_id: '00000000-0000-0000-0000-000000000001'
       })
-    }
     setSaving(false)
+    const error = res.error ?? (editing?.id && !res.data?.length ? { message: 'Only the faculty who drafted this question paper or the HOD can change it.' } : null)
+    if (!reportResult(error)) return
     setSaveMsg('✓ Saved')
     loadData()
     setTimeout(() => setSaveMsg(''), 3000)
@@ -166,11 +167,11 @@ export default function ExaminationPage() {
   const updateQPStatus = async (id: string, status: QPStatus, currentBody: string) => {
     try {
       const parsed = JSON.parse(currentBody)
-      await supabase.from('announcements').update({
+      const { error } = await supabase.from('announcements').update({
         body: JSON.stringify({ ...parsed, status })
       }).eq('id', id)
-      loadData()
-    } catch {}
+      if (reportResult(error, `Question paper marked ${status.toLowerCase()}`)) loadData()
+    } catch { toast.error('This question paper record is damaged and cannot be updated.') }
   }
 
   const printQP = () => {
@@ -180,7 +181,7 @@ export default function ExaminationPage() {
   const addSchedule = async () => {
     if (!profile || !schedForm.subject_code || !schedForm.date) return
     setSaving(true)
-    await supabase.from('announcements').insert({
+    const { error } = await supabase.from('announcements').insert({
       title: `SCHED: ${schedForm.subject_code} – ${schedForm.exam_type}`,
       body: JSON.stringify(schedForm),
       audience: `EXAM_SCHED:${schedForm.section}`,
@@ -189,9 +190,16 @@ export default function ExaminationPage() {
       department_id: '00000000-0000-0000-0000-000000000001'
     })
     setSaving(false)
+    if (!reportResult(error, 'Exam scheduled')) return
     setShowForm(false)
     setSchedForm({ subject_code:'', subject_name:'', exam_type:'Semester End Exam', date:'', time:'09:00', venue:'', section:'ALL', duration:'3 Hours' })
     loadData()
+  }
+
+  const deleteSchedule = async (s: { id: string; subject_code: string; exam_type: string }) => {
+    if (!confirm(`Remove the ${s.exam_type} for ${s.subject_code} from the schedule?`)) return
+    const { error } = await supabase.from('announcements').delete().eq('id', s.id)
+    if (reportResult(error, 'Exam removed from the schedule')) loadData()
   }
 
   const exportSchedule = () => {
@@ -473,16 +481,16 @@ export default function ExaminationPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border bg-accent/50">
-                  {['Subject','Exam Type','Section','Date','Time','Duration','Venue'].map(h => (
+                  {['Subject','Exam Type','Section','Date','Time','Duration','Venue',''].map(h => (
                     <th key={h} className="text-left px-4 py-3 font-mono text-xs text-muted-foreground">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {schedule.length === 0 ? (
-                  <tr><td colSpan={7} className="px-4 py-12 text-center font-mono text-sm text-muted-foreground">No exams scheduled yet</td></tr>
-                ) : schedule.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).map((s, i) => (
-                  <tr key={i} className="hover:bg-accent/30 transition-colors">
+                  <tr><td colSpan={8} className="px-4 py-12 text-center font-mono text-sm text-muted-foreground">No exams scheduled yet</td></tr>
+                ) : [...schedule].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).map((s) => (
+                  <tr key={s.id} className="hover:bg-accent/30 transition-colors">
                     <td className="px-4 py-3">
                       <p className="font-mono text-xs font-bold">{s.subject_code}</p>
                       <p className="font-mono text-xs text-muted-foreground">{s.subject_name}</p>
@@ -493,6 +501,11 @@ export default function ExaminationPage() {
                     <td className="px-4 py-3 font-mono text-xs">{s.time}</td>
                     <td className="px-4 py-3 font-mono text-xs">{s.duration}</td>
                     <td className="px-4 py-3 font-mono text-xs">{s.venue || '—'}</td>
+                    <td className="px-4 py-3 text-right">
+                      {(isHOD || s.created_by === profile?.id) && (
+                        <button onClick={() => deleteSchedule(s)} className="p-1.5 text-muted-foreground hover:text-red-700 hover:bg-red-50 rounded" title="Remove from schedule" aria-label={`Remove ${s.subject_code}`}><Trash2 className="w-4 h-4" /></button>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>

@@ -9,6 +9,7 @@ import { isTier1 } from "@/lib/roles"
 import type { AuthUser } from "@/lib/auth"
 import type { Database } from "@/lib/supabase"
 import { Save, Loader2, Settings } from "lucide-react"
+import { toast, reportResult } from "@/components/toaster"
 import { getActiveSemester } from "@/lib/semester"
 
 type Subject = Database['public']['Tables']['subjects']['Row']
@@ -157,16 +158,22 @@ export default function TimetablePage() {
   const saveTimetable = async () => {
     if (!profile) return
     setSaving(true)
-    await supabase.from('announcements').delete().eq('audience', `TIMETABLE:${section}`)
-    await supabase.from('announcements').insert({
+    // Write the new version first and only then remove older ones, so a failed
+    // save can never leave the section without a timetable.
+    const { data: saved, error } = await supabase.from('announcements').insert({
       title: `Timetable – ${section}`,
       body: JSON.stringify({ timetable, satConfig }),
       audience: `TIMETABLE:${section}`,
       is_urgent: false,
       created_by: profile.id,
       department_id: '00000000-0000-0000-0000-000000000001'
-    })
+    }).select('id').single()
+    if (!error && saved) {
+      const { error: cleanupError } = await supabase.from('announcements').delete().eq('audience', `TIMETABLE:${section}`).neq('id', saved.id)
+      if (cleanupError) toast.error(`Saved, but older versions could not be removed: ${cleanupError.message}`)
+    }
     setSaving(false)
+    if (!reportResult(error)) return
     setEditing(false)
     setSaveMsg('✓ Timetable saved')
     setTimeout(() => setSaveMsg(''), 3000)

@@ -11,7 +11,8 @@ import { academicYear, semesterTerm } from "@/lib/utils"
 import { RichEditor } from "@/components/rich-editor"
 import type { AuthUser } from "@/lib/auth"
 import type { Database } from "@/lib/supabase"
-import { Save, Download, FileText, Plus, X, Loader2, ChevronDown } from "lucide-react"
+import { Save, Download, FileText, Plus, X, Loader2, ChevronDown, Trash2 } from "lucide-react"
+import { reportResult } from "@/components/toaster"
 
 type Profile = Database['public']['Tables']['profiles']['Row']
 
@@ -243,12 +244,14 @@ export default function EditorPage() {
     setSaving(true)
     const body = JSON.stringify({ content, category: 'editor', section: 'ALL' })
 
+    let error: { message: string } | null = null
     if (current) {
-      await supabase.from('announcements').update({
+      const res = await supabase.from('announcements').update({
         title: `EDITOR: ${title}`, body
-      }).eq('id', current.id)
+      }).eq('id', current.id).select('id')
+      error = res.error ?? (res.data?.length ? null : { message: 'Only the author of this document or the HOD can change it. Use “New Document” to save your own copy.' })
     } else {
-      const { data } = await supabase.from('announcements').insert({
+      const res = await supabase.from('announcements').insert({
         title: `EDITOR: ${title}`,
         body,
         audience: 'EDITOR:document',
@@ -256,13 +259,24 @@ export default function EditorPage() {
         created_by: profile.id,
         department_id: '00000000-0000-0000-0000-000000000001'
       }).select().single()
+      error = res.error
+      const data = res.data
       if (data) setCurrent({ id: data.id, title, content, category: 'editor', created_by: profile.id, created_at: data.created_at, section: 'ALL' })
     }
 
     setSaving(false)
+    if (!reportResult(error)) return
     setSaveMsg('✓ Saved')
     loadDocs()
     setTimeout(() => setSaveMsg(''), 3000)
+  }
+
+  const deleteDoc = async () => {
+    if (!current || !confirm(`Delete "${current.title}"? This cannot be undone.`)) return
+    const { error } = await supabase.from('announcements').delete().eq('id', current.id)
+    if (!reportResult(error, 'Document deleted')) return
+    setCurrent(null); setTitle(''); setContent('')
+    loadDocs()
   }
 
   const printDoc = () => {
@@ -341,6 +355,10 @@ export default function EditorPage() {
                     className="flex items-center gap-1.5 px-3 py-2 border border-border bg-white text-licet-indigo text-[13px] font-semibold rounded-md hover:bg-licet-cream/60 transition-colors">
                     <Download className="w-3 h-3" /> Print / PDF
                   </button>
+                  {current && (isHOD || current.created_by === profile?.id) && (
+                    <button onClick={deleteDoc} title="Delete document" aria-label="Delete document"
+                      className="p-2 border border-border bg-white text-red-700 rounded-md hover:bg-red-50"><Trash2 className="w-3.5 h-3.5" /></button>
+                  )}
                   {canEdit && (
                     <button onClick={saveDoc} disabled={saving}
                       className="flex items-center gap-1.5 px-3 py-2 bg-licet-indigo text-white text-[13px] font-semibold rounded-md hover:bg-licet-violet shadow-sm disabled:opacity-50 transition-colors">

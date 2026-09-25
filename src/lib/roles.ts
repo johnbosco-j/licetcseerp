@@ -6,17 +6,17 @@ export const NAV_HOD_IDS = [
   "analytics","finance","inventory","placements","leaves","events",
   "documents","feedback","grievances","notices","alerts","appraisal",
   "attendance-analysis","change-password","editor","examination",
-  "naac","promotion","curriculum","reports","accounts","audit","export"
+  "naac","promotion","curriculum","reports","accounts","audit","export","profile"
 ]
 
 export const NAV_FACULTY_IDS = [
   "dashboard","students","attendance","marks","subjects","timetable",
-  "alerts","leaves","events","documents","feedback","notices","change-password","export"
+  "alerts","leaves","events","documents","feedback","notices","placements","appraisal","change-password","export","profile"
 ]
 
 export const NAV_STUDENT_IDS = [
   "dashboard","attendance","marks","subjects","timetable","placements",
-  "alerts","leaves","documents","feedback","grievances","notices","change-password","export"
+  "alerts","leaves","events","documents","feedback","grievances","notices","appraisal","change-password","export","profile"
 ]
 
 export interface NavUser {
