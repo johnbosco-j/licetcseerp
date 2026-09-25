@@ -230,7 +230,7 @@ export default function StudentsPage() {
               <div className="space-y-1">
                 <label className="font-mono text-xs text-muted-foreground">Parent / Guardian Mobile</label>
                 <input value={form.parent_mobile} onChange={e => setForm({...form, parent_mobile: e.target.value})}
-                  inputMode="tel" autoComplete="off" placeholder="10-digit number, e.g. 98402 62458"
+                  inputMode="tel" autoComplete="off" placeholder="10-digit number, e.g. 98765 43210"
                   className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none" />
               </div>
               

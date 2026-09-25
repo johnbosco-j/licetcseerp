@@ -48,5 +48,5 @@ export function normalizeMobile(raw: string | null | undefined): string | null {
   return /^[6-9]\d{9}$/.test(ten) ? ten : null
 }
 
-/** 9840262458 → "98402 62458" */
+/** 9876543210 → "98765 43210" */
 export const formatMobile = (m: string | null | undefined) => (m && m.length === 10 ? `${m.slice(0, 5)} ${m.slice(5)}` : m ?? '')
