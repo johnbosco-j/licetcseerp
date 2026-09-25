@@ -239,3 +239,10 @@ export async function loadRecentDocuments(section?: string, limit = 5): Promise<
     } catch { return [] }
   }).slice(0, limit)
 }
+
+/** Parent / guardian mobiles for a set of students (staff only; RLS hides others' numbers from students). */
+export async function loadParentMobiles(ids: string[]): Promise<Record<string, string>> {
+  if (!ids.length) return {}
+  const { data } = await supabase.from('profiles').select('id, parent_mobile').in('id', ids.slice(0, 500))
+  return Object.fromEntries((data ?? []).filter(r => r.parent_mobile).map(r => [r.id, r.parent_mobile as string]))
+}

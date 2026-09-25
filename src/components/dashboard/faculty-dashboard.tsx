@@ -10,11 +10,11 @@ import { supabase } from "@/lib/supabase"
 import { courseType } from "@/lib/regulations"
 import {
   SECTIONS, PERIODS, currentSemester, semesterStart, dayPhase, loadWeekTimetables, loadSectionAttendance,
-  loadStudentAttendance, loadUpcomingEvents, loadNotices, loadUpcomingExams, loadRecentDocuments, todayName, fmtDate, fmtTime,
+  loadStudentAttendance, loadUpcomingEvents, loadNotices, loadUpcomingExams, loadRecentDocuments, loadParentMobiles, todayName, fmtDate, fmtTime,
   type SectionAttendance, type StudentAttendance, type EventItem, type NoticeItem, type ExamItem, type DocItem, type WeekTimetable,
 } from "@/lib/dashboard"
 import { academicYear, semesterTerm } from "@/lib/utils"
-import { Hero, HeroChip, HeroPanel, Kpi, KpiSkeleton, Panel, PanelEmpty, Bar, AttPct, Pill, Initials, ListRow, Schedule, phaseLabel } from "./widgets"
+import { Hero, HeroChip, HeroPanel, Kpi, KpiSkeleton, Panel, PanelEmpty, Bar, AttPct, Pill, Initials, ListRow, Schedule, phaseLabel, CallParent } from "./widgets"
 import { NoticesPanel, EventsPanel, ExamsPanel, DocumentsPanel, TodoPanel, WeekGrid, daysUntil, type Todo } from "./panels"
 
 type Subject = { id: string; code: string; name: string; semester: number; section: string; credits: number }
@@ -33,7 +33,7 @@ interface FacultyData {
   sectionAtt: Record<string, SectionAttendance>
   lowInMyClasses: StudentAttendance[]
   attendanceRecords: number
-  advisor: null | { section: string; strength: number; low: StudentAttendance[]; alerts: number; mustChange: number }
+  advisor: null | { section: string; strength: number; low: StudentAttendance[]; alerts: number; mustChange: number; mobiles: Record<string, string> }
   hodName: string | null
   leaves: Leave[]
   notices: NoticeItem[]
@@ -72,6 +72,8 @@ async function loadFaculty(me: FacultyMe): Promise<FacultyData> {
   for (const r of studentsRes.data ?? []) if (r.section) strength[r.section] = (strength[r.section] ?? 0) + 1
   const marks = marksRes.data ?? []
   const low = allAtt.filter(s => s.sessions > 0 && s.pct < 75).sort((a, b) => a.pct - b.pct)
+  const advisees = me.advisor_section ? low.filter(s => s.section === me.advisor_section) : []
+  const mobiles = await loadParentMobiles(advisees.map(s => s.student_id))
 
   return {
     subjects: subjects.map(s => {
@@ -90,7 +92,7 @@ async function loadFaculty(me: FacultyMe): Promise<FacultyData> {
     advisor: me.advisor_section ? {
       section: me.advisor_section,
       strength: strength[me.advisor_section] ?? 0,
-      low: low.filter(s => s.section === me.advisor_section),
+      low: advisees, mobiles,
       alerts: alertsRes.count ?? 0,
       mustChange: mustRes.count ?? 0,
     } : null,
@@ -385,6 +387,7 @@ export default function FacultyDashboard({ me, name, greeting, embedded = false 
                       <span className="text-[11.5px] text-muted-foreground">{s.present}/{s.sessions}</span>
                       <Pill tone={s.pct < 65 ? 'red' : 'amber'}>{s.pct < 65 ? 'SA' : 'Condonation'}</Pill>
                       <span className="w-11 text-right"><AttPct value={s.pct} /></span>
+                      <CallParent mobile={d.advisor!.mobiles[s.student_id]} />
                     </li>
                   ))}
                 </ul>

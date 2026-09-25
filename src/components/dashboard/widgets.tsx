@@ -3,7 +3,7 @@
 import Link from "next/link"
 import type { LucideIcon } from "lucide-react"
 import type { ReactNode } from "react"
-import { ArrowRight, ArrowUpRight } from "lucide-react"
+import { ArrowRight, ArrowUpRight, Phone } from "lucide-react"
 import { PERIODS, fmtTime, type DayPhase } from "@/lib/dashboard"
 
 // ── Hero ───────────────────────────────────────────────────────────────────
@@ -249,4 +249,15 @@ export function ListRow({ href, children }: { href?: string; children: ReactNode
   return href
     ? <li><Link href={href} prefetch className={`${cls} hover:bg-licet-cream/40`}>{children}</Link></li>
     : <li className={cls}>{children}</li>
+}
+
+/** Compact "call parent" link used in at-risk student lists. */
+export function CallParent({ mobile }: { mobile?: string | null }) {
+  if (!mobile) return null
+  return (
+    <a href={`tel:+91${mobile}`} title={`Call parent / guardian: ${mobile.slice(0, 5)} ${mobile.slice(5)}`} aria-label="Call parent or guardian"
+      className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-licet-violet bg-licet-cream/60 hover:bg-licet-indigo hover:text-licet-gold transition-colors">
+      <Phone size={14} />
+    </a>
+  )
 }

@@ -3,7 +3,7 @@
 // server code; client components go through /api/send-email (send-notification.ts).
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY ?? ''
-const FROM_EMAIL     = process.env.EMAIL_FROM || 'LICET CSE ERP <onboarding@resend.dev>'
+const FROM_EMAIL     = process.env.EMAIL_FROM || 'LICET Things <onboarding@resend.dev>'
 
 export interface EmailPayload {
   to:      string | string[]
@@ -55,7 +55,7 @@ function layout(kicker: string, inner: string) {
   </div>
   <div style="padding:24px;color:#2b2540;font-size:14px;line-height:1.6">${inner}</div>
   <div style="background:#EFE6D1;padding:12px 24px;color:#6b6480;font-size:11px">
-    Automated message from the LICET CSE ERP &middot; Loyola-ICAM College of Engineering and Technology, Chennai. Please do not reply.
+    Automated message from LICET Things &middot; Loyola-ICAM College of Engineering and Technology, Chennai. Please do not reply.
   </div>
 </div>`
 }

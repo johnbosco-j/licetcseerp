@@ -12,7 +12,7 @@ import StudentDashboard from "@/components/dashboard/student-dashboard"
 type Me = {
   id: string; full_name: string; email: string; role: string; section: string | null; advisor_section: string | null
   register_number: string | null; roll_number: string | null; employee_id: string | null
-  designation: string | null; access_tier: number | null; can_reset_passwords: boolean | null
+  designation: string | null; access_tier: number | null; can_reset_passwords: boolean | null; parent_mobile: string | null
 }
 
 export default function DashboardPage() {
@@ -29,7 +29,7 @@ export default function DashboardPage() {
     const h = new Date().getHours()
     setGreeting(h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening")
     supabase.from('profiles')
-      .select('id, full_name, email, role, section, advisor_section, register_number, roll_number, employee_id, designation, access_tier, can_reset_passwords')
+      .select('id, full_name, email, role, section, advisor_section, register_number, roll_number, employee_id, designation, access_tier, can_reset_passwords, parent_mobile')
       .eq('email', au.data.email).single()
       .then(({ data }) => { if (data) setMe(data as Me) })
   }, [router])

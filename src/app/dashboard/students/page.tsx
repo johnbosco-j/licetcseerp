@@ -1,5 +1,5 @@
 "use client"
-import { toTitleCase } from "@/lib/utils"
+import { toTitleCase, normalizeMobile, formatMobile } from "@/lib/utils"
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
@@ -7,7 +7,7 @@ import { supabase } from "@/lib/supabase"
 import { isTier1 } from "@/lib/roles"
 import type { AuthUser } from "@/lib/auth"
 import type { Database } from "@/lib/supabase"
-import { Plus, X, Search, Edit2, Trash2, Loader2, Users, AlertTriangle, Check, KeyRound } from "lucide-react"
+import { Phone, Plus, X, Search, Edit2, Trash2, Loader2, Users, AlertTriangle, Check, KeyRound } from "lucide-react"
 import { addStudentAdmin, deleteStudentAdmin, resetPassword } from "@/app/actions"
 import { getAccessToken } from "@/lib/auth"
 
@@ -29,7 +29,7 @@ export default function StudentsPage() {
   const [error, setError]       = useState("")
   const [notice, setNotice]     = useState("")
   const [editId, setEditId]     = useState<string | null>(null)
-  const [form, setForm]         = useState({ full_name: '', email: '', section: 'I CSE-A', batch_year: new Date().getFullYear(), roll_number: '', register_number: '' })
+  const [form, setForm]         = useState({ full_name: '', email: '', section: 'I CSE-A', batch_year: new Date().getFullYear(), roll_number: '', register_number: '', parent_mobile: '' })
 
   const isHOD = authUser?.type === 'staff' && isTier1(authUser.data)
 
@@ -54,6 +54,8 @@ export default function StudentsPage() {
 
   const handleSave = async () => {
     if (!form.full_name || !form.email || !form.section || !form.batch_year) return
+    const parentMobile = normalizeMobile(form.parent_mobile)
+    if (parentMobile === null) { setError('Parent / guardian mobile must be a 10-digit Indian mobile number.'); return }
     setSaving(true)
     setError("")
 
@@ -64,7 +66,8 @@ export default function StudentsPage() {
         section: form.section,
         batch_year: form.batch_year,
         roll_number: form.roll_number || null,
-        register_number: form.register_number || null
+        register_number: form.register_number || null,
+        parent_mobile: parentMobile || null,
       }).eq('id', editId)
 
       if (updErr) setError(updErr.message)
@@ -73,7 +76,7 @@ export default function StudentsPage() {
         loadStudents()
       }
     } else {
-      const res = await addStudentAdmin(await getAccessToken() ?? '', form)
+      const res = await addStudentAdmin(await getAccessToken() ?? '', { ...form, parent_mobile: parentMobile || '' })
       if (res.error) setError(res.error)
       else {
         setShowForm(false)
@@ -107,14 +110,15 @@ export default function StudentsPage() {
       section: student.section ?? 'I CSE-A',
       batch_year: student.batch_year ?? new Date().getFullYear(),
       roll_number: (student as any).roll_number ?? '',
-      register_number: (student as any).register_number ?? ''
+      register_number: (student as any).register_number ?? '',
+      parent_mobile: student.parent_mobile ?? '',
     })
     setEditId(student.id)
     setShowForm(true)
   }
 
   const openAdd = () => {
-    setForm({ full_name: '', email: '', section: 'I CSE-A', batch_year: new Date().getFullYear(), roll_number: '', register_number: '' })
+    setForm({ full_name: '', email: '', section: 'I CSE-A', batch_year: new Date().getFullYear(), roll_number: '', register_number: '', parent_mobile: '' })
     setEditId(null)
     setShowForm(true)
   }
@@ -223,6 +227,12 @@ export default function StudentsPage() {
                     className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none" />
                 </div>
               </div>
+              <div className="space-y-1">
+                <label className="font-mono text-xs text-muted-foreground">Parent / Guardian Mobile</label>
+                <input value={form.parent_mobile} onChange={e => setForm({...form, parent_mobile: e.target.value})}
+                  inputMode="tel" autoComplete="off" placeholder="10-digit number, e.g. 98402 62458"
+                  className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none" />
+              </div>
               
               {error && (
                 <div className="font-mono text-xs text-red-700 bg-red-50 border border-red-200 px-3 py-2 rounded flex items-start gap-2">
@@ -255,6 +265,7 @@ export default function StudentsPage() {
               <th className="p-4 font-mono text-xs text-muted-foreground font-normal">Student Details</th>
               <th className="p-4 font-mono text-xs text-muted-foreground font-normal">Roll No</th>
               <th className="p-4 font-mono text-xs text-muted-foreground font-normal">Reg No</th>
+              <th className="p-4 font-mono text-xs text-muted-foreground font-normal">Parent / Guardian</th>
               <th className="p-4 font-mono text-xs text-muted-foreground font-normal">Section</th>
               <th className="p-4 font-mono text-xs text-muted-foreground font-normal">Year</th>
               <th className="p-4 font-mono text-xs text-muted-foreground font-normal text-right">Actions</th>
@@ -263,13 +274,13 @@ export default function StudentsPage() {
           <tbody className="divide-y divide-border">
             {loading ? (
               <tr>
-                <td colSpan={7} className="p-12 text-center">
+                <td colSpan={8} className="p-12 text-center">
                   <Loader2 className="w-6 h-6 animate-spin mx-auto text-muted-foreground" />
                 </td>
               </tr>
             ) : filtered.length === 0 ? (
               <tr>
-                <td colSpan={7} className="p-12 text-center">
+                <td colSpan={8} className="p-12 text-center">
                   <Users className="w-12 h-12 p-3 rounded-full bg-licet-cream text-licet-indigo mx-auto mb-3" />
                   <p className="font-mono text-sm text-muted-foreground">No students found matching your criteria</p>
                 </td>
@@ -283,6 +294,11 @@ export default function StudentsPage() {
                 </td>
                 <td className="p-4 font-mono text-xs">{(s as any).roll_number ?? '—'}</td>
                 <td className="p-4 font-mono text-xs text-muted-foreground">{(s as any).register_number ?? '—'}</td>
+                <td className="p-4 font-mono text-xs">
+                  {s.parent_mobile
+                    ? <a href={`tel:+91${s.parent_mobile}`} className="inline-flex items-center gap-1.5 text-licet-indigo hover:text-licet-violet hover:underline" title="Call parent / guardian"><Phone className="w-3.5 h-3.5 text-licet-violet" />{formatMobile(s.parent_mobile)}</a>
+                    : <span className="text-muted-foreground">—</span>}
+                </td>
                 <td className="p-4">
                   <span className="font-mono text-xs px-2 py-0.5 bg-accent rounded border border-border">
                     {s.section ?? 'UNASSIGNED'}

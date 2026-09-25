@@ -1,6 +1,7 @@
 "use server"
 
 import { adminClient, requireRole, AuthError } from '@/lib/server-auth'
+import { normalizeMobile } from '@/lib/utils'
 import { canResetPassword, defaultStudentPassword, MIN_PASSWORD_LENGTH } from '@/lib/passwords'
 
 const DEPT_ID = '00000000-0000-0000-0000-000000000001'
@@ -13,6 +14,7 @@ export interface NewStudent {
   batch_year: number
   roll_number?: string
   register_number?: string
+  parent_mobile?: string
 }
 
 export type ActionResult = { success?: boolean; error?: string; password?: string }
@@ -44,6 +46,7 @@ export async function addStudentAdmin(accessToken: string, data: NewStudent): Pr
       batch_year: Number(data.batch_year) || null,
       roll_number: data.roll_number?.trim() || null,
       register_number: data.register_number?.trim() || null,
+      parent_mobile: normalizeMobile(data.parent_mobile) || null,
       is_active: true,
       must_change_password: true,
     })

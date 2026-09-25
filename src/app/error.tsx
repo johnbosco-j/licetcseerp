@@ -34,7 +34,7 @@ export default function GlobalError({
               Application error
             </h2>
             <p style={{ fontSize: "13px", color: "#6b7280", margin: "0 0 24px", lineHeight: 1.6 }}>
-              LICET CSE ERP encountered an unexpected error. Please refresh the page or contact the IT department if the problem persists.
+              LICET Things encountered an unexpected error. Please refresh the page or contact the IT department if the problem persists.
             </p>
             <button onClick={reset} style={{
               padding: "9px 24px", borderRadius: "7px",
