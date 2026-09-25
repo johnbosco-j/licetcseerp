@@ -39,6 +39,7 @@ export type Database = {
           must_change_password: boolean
           designation: string | null
           access_tier: number | null
+          parent_mobile: string | null
           created_at: string
           updated_at: string
         }

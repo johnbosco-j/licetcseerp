@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import {
   ClipboardCheck, Award, BookOpen, BellRing, Heart, CalendarClock, AlertTriangle, MessageSquareWarning, Clock3,
-  UserRound, CheckCircle2, XCircle, MinusCircle, Star, CalendarRange, Briefcase, GraduationCap, IdCard, Mail, Hash,
+  Phone, UserRound, CheckCircle2, XCircle, MinusCircle, Star, CalendarRange, Briefcase, GraduationCap, IdCard, Mail, Hash,
 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { cgpaFromMarks, type CGPAResult } from "@/lib/cgpa"
@@ -17,7 +17,7 @@ import { academicYear, semesterTerm } from "@/lib/utils"
 import { Hero, HeroChip, HeroPanel, Kpi, KpiSkeleton, Panel, PanelEmpty, Ring, Bar, AttPct, Pill, ListRow, Schedule, phaseLabel, Initials } from "./widgets"
 import { NoticesPanel, EventsPanel, ExamsPanel, DocumentsPanel, TodoPanel, WeekGrid, daysUntil, type Todo } from "./panels"
 
-export type StudentMe = { id: string; full_name: string; section: string | null; register_number: string | null; roll_number: string | null; email: string }
+export type StudentMe = { id: string; full_name: string; section: string | null; register_number: string | null; roll_number: string | null; email: string; parent_mobile?: string | null }
 type Course = { id: string; code: string; name: string; credits: number; faculty: string | null; marks: MarkMap; entered: string[]; subjectAtt: { n: number; p: number }; feedbackDone: boolean }
 type Leave = { id: string; leave_type: string; from_date: string; to_date: string; status: string }
 type Grievance = { id: string; subject_line: string; category: string; status: string; created_at: string }
@@ -367,6 +367,7 @@ export default function StudentDashboard({ me, name, greeting }: { me: StudentMe
               { icon: Hash, label: 'Register no.', value: me?.register_number ?? '—' },
               { icon: IdCard, label: 'Roll no.', value: me?.roll_number ?? '—' },
               { icon: Mail, label: 'Email', value: me?.email ?? '—' },
+              { icon: Phone, label: 'Parent / guardian', value: me?.parent_mobile ? `${me.parent_mobile.slice(0, 5)} ${me.parent_mobile.slice(5)}` : 'Not on record' },
               { icon: CalendarRange, label: 'Semester', value: `${sem} · ${semesterTerm()}` },
               { icon: UserRound, label: 'Class advisor', value: d?.advisor ?? 'To be assigned' },
               { icon: GraduationCap, label: 'Head of Dept.', value: d?.hod ?? '—' },

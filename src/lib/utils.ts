@@ -36,3 +36,17 @@ export function academicYear(d = new Date(), short = false): string {
 export function semesterTerm(d = new Date()): 'Odd Semester' | 'Even Semester' {
   return d.getMonth() >= 5 ? 'Odd Semester' : 'Even Semester'
 }
+
+/**
+ * Indian mobile number → 10 digits (drops spaces, dashes and a +91 / 91 / 0 prefix).
+ * Returns '' for empty input and null when it is not a valid 10-digit mobile number.
+ */
+export function normalizeMobile(raw: string | null | undefined): string | null {
+  const d = (raw ?? '').replace(/\D/g, '')
+  if (!d) return ''
+  const ten = d.length === 12 && d.startsWith('91') ? d.slice(2) : d.length === 11 && d.startsWith('0') ? d.slice(1) : d
+  return /^[6-9]\d{9}$/.test(ten) ? ten : null
+}
+
+/** 9840262458 → "98402 62458" */
+export const formatMobile = (m: string | null | undefined) => (m && m.length === 10 ? `${m.slice(0, 5)} ${m.slice(5)}` : m ?? '')

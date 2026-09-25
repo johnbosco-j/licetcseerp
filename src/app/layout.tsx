@@ -36,13 +36,13 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
-  title: "LICET CSE ERP – Loyola-ICAM College of Engineering and Technology",
+  title: "LICET Things – Department of CSE, Loyola-ICAM College of Engineering and Technology",
   description: "Department of Computer Science & Engineering ERP — Loyola-ICAM College of Engineering and Technology (Autonomous), Chennai",
   icons: { icon: "/images.png", apple: "/images.png" },
   openGraph: {
-    title: "LICET CSE ERP",
+    title: "LICET Things",
     description: "Loyola-ICAM College of Engineering and Technology — Department of Computer Science & Engineering",
-    siteName: "LICET CSE ERP",
+    siteName: "LICET Things",
   },
 };
 

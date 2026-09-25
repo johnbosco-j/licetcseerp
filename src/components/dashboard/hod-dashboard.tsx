@@ -11,12 +11,12 @@ import { supabase } from "@/lib/supabase"
 import { loadDepartmentTotals, type DepartmentTotals } from "@/lib/cgpa"
 import {
   SECTIONS, currentSemester, isFinalYear, isoDate, semesterStart, dayPhase, loadTodaysTimetables, loadSectionAttendance,
-  loadStudentAttendance, loadUpcomingEvents, loadNotices, loadUpcomingExams, loadRecentDocuments, timeAgo, fmtDate, inr,
+  loadStudentAttendance, loadUpcomingEvents, loadNotices, loadUpcomingExams, loadRecentDocuments, loadParentMobiles, timeAgo, fmtDate, inr,
   type SectionAttendance, type StudentAttendance, type EventItem, type NoticeItem, type ExamItem, type DocItem, type Period, type Slot,
 } from "@/lib/dashboard"
 import { academicYear, semesterTerm } from "@/lib/utils"
 import {
-  Hero, HeroChip, HeroPanel, Kpi, KpiSkeleton, Panel, PanelEmpty, Bar, AttPct, Pill, Initials, ListRow, phaseLabel,
+  Hero, HeroChip, HeroPanel, Kpi, KpiSkeleton, Panel, PanelEmpty, Bar, AttPct, Pill, Initials, ListRow, phaseLabel, CallParent,
 } from "./widgets"
 import { NoticesPanel, EventsPanel, ExamsPanel, DocumentsPanel } from "./panels"
 
@@ -34,6 +34,7 @@ interface HodData {
   subjects: Subject[]
   sectionAtt: Record<string, SectionAttendance>
   lowStudents: StudentAttendance[]
+  parentMobiles: Record<string, string>
   totals: DepartmentTotals | null
   pendingLeaves: (Leave & { name: string; who: string })[]
   staffOnLeave: string[]
@@ -131,13 +132,16 @@ async function loadHod(): Promise<HodData> {
     })
   }
 
+  const lowStudents = allAtt.filter(s => s.sessions > 0 && s.pct < 75).sort((a, b) => a.pct - b.pct)
+  const parentMobiles = await loadParentMobiles(lowStudents.slice(0, 12).map(s => s.student_id))
+
   return {
     strength,
     mustChange: mustChangeRes.count ?? 0,
     staff,
     subjects: (subjectsRes.data ?? []) as Subject[],
     sectionAtt,
-    lowStudents: allAtt.filter(s => s.sessions > 0 && s.pct < 75).sort((a, b) => a.pct - b.pct),
+    lowStudents, parentMobiles,
     totals,
     pendingLeaves: leaves.map(l => ({ ...l, name: nameOf(l.applicant_id), who: whoOf(l.applicant_id) })),
     staffOnLeave: [...new Set((onLeaveRes.data ?? []).map(l => l.applicant_id))].filter(id => staffName.has(id)).map(id => staffName.get(id)!),
@@ -400,6 +404,7 @@ export default function HodDashboard({ name, greeting, designation }: { name: st
                   </div>
                   <Pill tone={s.pct < 65 ? 'red' : 'amber'}>{s.pct < 65 ? 'SA' : 'Condonation'}</Pill>
                   <span className="w-12 text-right"><AttPct value={s.pct} /></span>
+                  <CallParent mobile={d.parentMobiles[s.student_id]} />
                 </li>
               ))}
               {d.lowStudents.length > 12 && <li className="px-5 py-2.5 text-[12px] text-muted-foreground">and {d.lowStudents.length - 12} more</li>}

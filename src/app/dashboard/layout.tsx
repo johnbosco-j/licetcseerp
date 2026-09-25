@@ -14,7 +14,7 @@ import type { AuthUser } from "@/lib/auth"
 import { signOut } from "@/lib/auth"
 import { supabase } from "@/lib/supabase"
 import { getAllowedModules } from "@/lib/roles"
-import { LicetLogo } from "@/components/licet-brand"
+import { Wordmark } from "@/components/licet-brand"
 
 type NavItem = { icon: LucideIcon; label: string; id: string }
 
@@ -235,7 +235,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <span className="absolute inset-0 rounded-full ring-2 ring-licet-gold/60 animate-ping" />
             <img src="/images.png" alt="" className="relative w-16 h-16 rounded-full bg-white p-1 ring-2 ring-licet-gold" />
           </span>
-          <p className="font-brand text-[22px] tracking-[6px] text-white">CSE ERP</p>
+          <Wordmark size={24} />
           <p className="font-nav text-[11px] font-semibold tracking-[3px] uppercase text-licet-gold">Preparing your workspace</p>
         </div>
       </div>
@@ -275,11 +275,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </button>
 
         <Link href="/dashboard" className="relative flex items-center gap-4 min-w-0" aria-label="Dashboard home">
-          <LicetLogo className="h-10 w-auto" />
-          <span className="hidden sm:block h-9 w-px bg-gradient-to-b from-transparent via-licet-gold/70 to-transparent" />
-          <span className="hidden sm:flex flex-col items-start leading-none min-w-0">
-            <span className="font-brand text-[21px] tracking-[5px] text-white">CSE&nbsp;ERP</span>
-            <span className="font-nav text-[9.5px] font-semibold tracking-[2.6px] uppercase text-licet-gold mt-1.5 truncate">Computer Science &amp; Engineering</span>
+          <img src="/images.png" alt="LICET" className="w-10 h-10 rounded-full bg-white p-[2px] ring-2 ring-licet-gold/80 shrink-0" />
+          <span className="flex flex-col items-start leading-none min-w-0">
+            <Wordmark size={19} />
+            <span className="hidden sm:block font-nav text-[9.5px] font-semibold tracking-[2.6px] uppercase text-licet-cream/75 mt-1.5 truncate">Dept. of Computer Science &amp; Engineering</span>
           </span>
         </Link>
 

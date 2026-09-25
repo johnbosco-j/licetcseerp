@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { Eye, EyeOff, ArrowRight, Loader2, ShieldAlert, GraduationCap, Briefcase, HeartHandshake, Globe2 } from "lucide-react"
 import { signIn } from "@/lib/auth"
 import { supabase } from "@/lib/supabase"
-import { LicetLogo } from "@/components/licet-brand"
+import { Wordmark, LicetLogo } from "@/components/licet-brand"
 
 // Photos from the CSE department page on licet.ac.in, stored in /public/cse.
 const SLIDES = [
@@ -111,9 +111,9 @@ export default function LoginPage() {
         <div className="relative max-w-[1200px] mx-auto px-4 py-12 lg:py-20 grid lg:grid-cols-[1fr_420px] gap-10 items-center">
           <div className="text-white" style={{ animation: "licet-fade 0.8s ease-out both" }}>
             <p className="text-[12px] font-bold tracking-[3px] uppercase text-licet-gold">Department of Computer Science &amp; Engineering</p>
-            <h1 className="font-display uppercase font-extrabold tracking-[0.02em] text-[40px] sm:text-[60px] leading-[0.95] mt-4 !text-white">
-              Loyola-ICAM
-              <span className="block mt-1 text-licet-gold">CSE ERP</span>
+            <h1 className="mt-4 !text-white" aria-label="LICET Things">
+              <span className="block font-nav text-[13px] sm:text-[15px] font-semibold tracking-[0.35em] uppercase text-licet-cream/80">Loyola-ICAM presents</span>
+              <Wordmark size="clamp(42px, 6.2vw, 68px)" className="mt-3" />
             </h1>
             <div className="h-[3px] w-20 bg-licet-gold mt-5" />
             <p className="mt-5 max-w-xl text-[16px] font-light leading-relaxed text-white/85">
@@ -271,7 +271,7 @@ export default function LoginPage() {
         </div>
         <div className="border-t border-[#DCD0B4]">
           <p className="max-w-[1200px] mx-auto px-4 py-3 text-[12px] text-[#6b6480]">
-            © {new Date().getFullYear()} Loyola-ICAM College of Engineering and Technology (Autonomous) · CSE ERP maintained by the Department of CSE
+            © {new Date().getFullYear()} Loyola-ICAM College of Engineering and Technology (Autonomous) · LICET Things, maintained by the Department of CSE
           </p>
         </div>
       </footer>
