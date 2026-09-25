@@ -32,6 +32,7 @@ interface FacultyData {
   week: Record<string, WeekTimetable>
   sectionAtt: Record<string, SectionAttendance>
   lowInMyClasses: StudentAttendance[]
+  classMobiles: Record<string, string>
   attendanceRecords: number
   advisor: null | { section: string; strength: number; low: StudentAttendance[]; alerts: number; mustChange: number; mobiles: Record<string, string> }
   hodName: string | null
@@ -73,7 +74,8 @@ async function loadFaculty(me: FacultyMe): Promise<FacultyData> {
   const marks = marksRes.data ?? []
   const low = allAtt.filter(s => s.sessions > 0 && s.pct < 75).sort((a, b) => a.pct - b.pct)
   const advisees = me.advisor_section ? low.filter(s => s.section === me.advisor_section) : []
-  const mobiles = await loadParentMobiles(advisees.map(s => s.student_id))
+  const lowInMyClasses = low.filter(s => mySections.includes(s.section))
+  const mobiles = await loadParentMobiles([...new Set([...advisees, ...lowInMyClasses.slice(0, 15)].map(s => s.student_id))])
 
   return {
     subjects: subjects.map(s => {
@@ -87,7 +89,7 @@ async function loadFaculty(me: FacultyMe): Promise<FacultyData> {
       }
     }).sort((a, b) => a.section.localeCompare(b.section) || a.code.localeCompare(b.code)),
     week, sectionAtt,
-    lowInMyClasses: low.filter(s => mySections.includes(s.section)),
+    lowInMyClasses, classMobiles: mobiles,
     attendanceRecords: attRes.count ?? 0,
     advisor: me.advisor_section ? {
       section: me.advisor_section,
@@ -345,6 +347,7 @@ export default function FacultyDashboard({ me, name, greeting, embedded = false 
                   </div>
                   <Pill tone={s.pct < 65 ? 'red' : 'amber'}>{s.pct < 65 ? 'SA' : 'Condonation'}</Pill>
                   <span className="w-11 text-right"><AttPct value={s.pct} /></span>
+                  <CallParent mobile={d.classMobiles[s.student_id]} />
                 </li>
               ))}
             </ul>
