@@ -1,38 +1,48 @@
 import type { Metadata } from "next";
-import { Cormorant_Garamond, DM_Sans, Manrope, Marcellus, Outfit } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 
-const dmSans = DM_Sans({
+// Fonts are bundled from @fontsource (npm) instead of fetched from Google at build
+// time: the Google download intermittently failed on Vercel builds.
+const dmSans = localFont({
   variable: "--font-dm-sans",
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
+  src: [
+    { path: "../../node_modules/@fontsource-variable/dm-sans/files/dm-sans-latin-wght-normal.woff2", weight: "300 700", style: "normal" },
+    { path: "../../node_modules/@fontsource-variable/dm-sans/files/dm-sans-latin-wght-italic.woff2", weight: "300 700", style: "italic" },
+  ],
+  display: "swap",
 });
 
-const cormorant = Cormorant_Garamond({
+const cormorant = localFont({
   variable: "--font-cormorant",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  style: ["normal", "italic"],
+  src: [
+    { path: "../../node_modules/@fontsource-variable/cormorant-garamond/files/cormorant-garamond-latin-wght-normal.woff2", weight: "400 700", style: "normal" },
+    { path: "../../node_modules/@fontsource-variable/cormorant-garamond/files/cormorant-garamond-latin-wght-italic.woff2", weight: "400 700", style: "italic" },
+  ],
+  display: "swap",
 });
 
 // Menu typography: Marcellus (classical Roman capitals) for the brand and section
 // headings, Manrope (crisp modern sans) for navigation labels.
-const marcellus = Marcellus({
+const marcellus = localFont({
   variable: "--font-marcellus",
-  subsets: ["latin"],
-  weight: ["400"],
+  src: "../../node_modules/@fontsource/marcellus/files/marcellus-latin-400-normal.woff2",
+  weight: "400",
+  display: "swap",
 });
 
-const manrope = Manrope({
+const manrope = localFont({
   variable: "--font-manrope",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  src: "../../node_modules/@fontsource-variable/manrope/files/manrope-latin-wght-normal.woff2",
+  weight: "400 700",
+  display: "swap",
 });
 
-const outfit = Outfit({
+const outfit = localFont({
   variable: "--font-outfit",
-  subsets: ["latin"],
-  weight: ["500", "600", "700", "800"],
+  src: "../../node_modules/@fontsource-variable/outfit/files/outfit-latin-wght-normal.woff2",
+  weight: "500 800",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
