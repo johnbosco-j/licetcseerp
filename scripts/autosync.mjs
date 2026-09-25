@@ -64,8 +64,10 @@ const withoutTime = file => {
   const before = (() => { try { return git('show', `HEAD:${file}`) } catch { return '' } })()
   return strip(before) !== strip(readFileSync(file, 'utf8'))
 }
-const photosChanged = git('status', '--porcelain', '--', 'public/cse/people') !== ''
-const changed = withoutTime('src/data/cse-site.json') || withoutTime('src/data/cse-people.json') || photosChanged
+// Photos: cse-people.json carries a hash of each original image, so a changed,
+// added or removed photo always shows up there. Byte differences in the
+// re-encoded JPEGs alone (they vary slightly between machines) are ignored.
+const changed = withoutTime('src/data/cse-site.json') || withoutTime('src/data/cse-people.json')
 
 if (!changed) {
   restore('No changes on licet.ac.in since the last sync')
