@@ -16,7 +16,6 @@ import {
 import { academicYear, semesterTerm } from "@/lib/utils"
 import { Hero, HeroChip, HeroPanel, Kpi, KpiSkeleton, Panel, PanelEmpty, Ring, Bar, AttPct, Pill, ListRow, Schedule, phaseLabel, Initials } from "./widgets"
 import { NoticesPanel, EventsPanel, ExamsPanel, DocumentsPanel, TodoPanel, WeekGrid, daysUntil, type Todo } from "./panels"
-import { DepartmentPeople } from "@/components/site/people"
 
 export type StudentMe = { id: string; full_name: string; section: string | null; register_number: string | null; roll_number: string | null; email: string; parent_mobile?: string | null }
 type Course = { id: string; code: string; name: string; credits: number; faculty: string | null; marks: MarkMap; entered: string[]; subjectAtt: { n: number; p: number }; feedbackDone: boolean }
@@ -435,10 +434,6 @@ export default function StudentDashboard({ me, name, greeting }: { me: StudentMe
           )}
         </Panel>
       </section>
-      <Panel kicker="Department of Computer Science & Engineering" title="Head of Department, Faculty & Staff" bodyClass="p-5">
-        <DepartmentPeople compact />
-      </Panel>
-
     </div>
   )
 }

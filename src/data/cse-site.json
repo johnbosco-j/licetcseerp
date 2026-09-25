@@ -1,5 +1,5 @@
 {
- "syncedAt": "2026-09-25T01:28:50.199Z",
+ "syncedAt": "2026-09-25T07:51:51.095Z",
  "source": "https://licet.ac.in/computer-science-and-engineering/",
  "sections": [
   {
@@ -182,45 +182,18 @@
     },
     {
      "t": "h",
-     "text": "Now Playing"
-    },
-    {
-     "t": "h",
-     "text": "COMPUTER SCIENCE AND ENGINEERING"
-    },
-    {
-     "t": "h",
      "text": "MoU's"
     },
     {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2024/02/1-2-1024x1024.png",
-     "alt": "",
-     "caption": ""
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2024/02/4-1-1024x1024.png",
-     "alt": "",
-     "caption": ""
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2024/02/5-1-1024x1024.png",
-     "alt": "",
-     "caption": ""
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2024/02/123-1024x1024.png",
-     "alt": "",
-     "caption": ""
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2024/02/3-2-1024x1024.png",
-     "alt": "",
-     "caption": ""
+     "t": "gallery",
+     "images": [
+      "https://licet.ac.in/wp-content/uploads/2024/02/1-2-1024x1024.png",
+      "https://licet.ac.in/wp-content/uploads/2024/02/4-1-1024x1024.png",
+      "https://licet.ac.in/wp-content/uploads/2024/02/5-1-1024x1024.png",
+      "https://licet.ac.in/wp-content/uploads/2024/02/123-1024x1024.png",
+      "https://licet.ac.in/wp-content/uploads/2024/02/3-2-1024x1024.png"
+     ],
+     "variant": "logos"
     }
    ]
   },
@@ -230,22 +203,14 @@
    "url": "https://licet.ac.in/computer-science-and-engineering/obecse/",
    "blocks": [
     {
-     "t": "h",
-     "text": "Outcome Based Education"
-    },
-    {
-     "t": "h",
-     "text": "Program Education Objectives"
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2021/03/495-1024x683.jpg",
-     "alt": "",
-     "caption": ""
-    },
-    {
-     "t": "html",
-     "html": "<ul><li>Graduates will have successful careers in computer engineering fields.</li><li>Graduates will be able to pursue higher education in reputed institutions.</li><li>Graduates will adapt to rapidly changing work environment through effective communication, collaborative work and professionalism.</li><li>Graduates will engage in lifelong learning and prioritize ethical values for addressing the<br>needs of the society.</li></ul>"
+     "t": "cards",
+     "items": [
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2021/03/495-1024x683.jpg",
+       "title": "Outcome Based Education",
+       "html": "<ul><li>Graduates will have successful careers in computer engineering fields.</li><li>Graduates will be able to pursue higher education in reputed institutions.</li><li>Graduates will adapt to rapidly changing work environment through effective communication, collaborative work and professionalism.</li><li>Graduates will engage in lifelong learning and prioritize ethical values for addressing the<br>needs of the society.</li></ul>"
+      }
+     ]
     },
     {
      "t": "h",
@@ -411,74 +376,34 @@
      "text": "Lab Facility"
     },
     {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2022/05/2_e.jpg",
-     "alt": "",
-     "caption": ""
-    },
-    {
-     "t": "h",
-     "text": "Software Development Laboratory"
-    },
-    {
-     "t": "html",
-     "html": "<table> <tbody> <tr> <td>System Configuration:</td> <td>Lenovo Thinkcentre Workstations(i5), 8GB DDR3 Memory, 500GB HDD</td> </tr> <tr> <td>Academic Courses and Softwares:</td> <td>Internet Programming, JDK, Visual code, MySQL Workbench, Apache Server, XAMPP, Operating Systems, Putty, Object Oriented Programming, Object Oriented Analysis and Design, Security Lab, ArgoUML, Selenium, Junit, Windows 8.1, MS Office 2016.</td> </tr> </tbody> </table>"
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2022/05/Screenshot_2022_0526_145909.jpg",
-     "alt": "",
-     "caption": ""
-    },
-    {
-     "t": "h",
-     "text": "Centre of Excellence in Machine Learning"
-    },
-    {
-     "t": "html",
-     "html": "<table> <tbody> <tr> <td>System Configuration:</td> <td>Lenovo Thinkcentre Workstations(i5), 8GB DDR3 Memory &amp; 16GB DDR3 Memory, 500GB HDD</td> </tr> <tr> <td>Academic Courses and Softwares:</td> <td>Project Work, Mini Project, Placement Activities, Google Training Programs, Red Hat Training, Training Programs, Online Exams, Windows 8.1, MS Office 2016.</td> </tr> </tbody> </table>"
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2021/03/487-scaled.jpg",
-     "alt": "",
-     "caption": ""
-    },
-    {
-     "t": "h",
-     "text": "Networks Laboratory"
-    },
-    {
-     "t": "html",
-     "html": "<table> <tbody> <tr> <td>System Configuration:</td> <td>Lenovo Thinkcentre Workstations (i7), 16GB DDR3 Memory, 500GB HDD (Newly Upgraded to meet the computational Needs)</td> </tr> <tr> <td>Academic Courses and Softwares:</td> <td>Data Structures, Database Management Systems, Networks, Mobile Application Development, Cloud Computing, Skill Rack Training, Android Studio, C, JDK, Python, NS2, UBUNTU 19.4, Windows 10, SQL Plus, GCC, Yacc.</td> </tr> </tbody> </table>"
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2021/04/482-scaled.jpg",
-     "alt": "",
-     "caption": ""
-    },
-    {
-     "t": "h",
-     "text": "Open Source Laboratory"
-    },
-    {
-     "t": "html",
-     "html": "<table> <tbody> <tr> <td>System Configuration</td> <td>Lenovo Thinkcentre Workstations(i3), 16GB DDR3 Memory, 500GB HDD</td> </tr> <tr> <td>Academic Courses and Softwares</td> <td>Advanced Data Structures and Algorithms, Database practices, Research Mentoring, English for Research Paper Writing, MySQL, Python, MongoDB, UBUNTU 16.4, Windows 7, GCC, JDK.</td> </tr> </tbody> </table>"
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2021/04/494-scaled.jpg",
-     "alt": "",
-     "caption": ""
-    },
-    {
-     "t": "h",
-     "text": "Research Laboratory"
-    },
-    {
-     "t": "html",
-     "html": "<table> <tbody> <tr> <td><strong>System Configuration: </strong></td> <td>HP Z2 G8 Tower Workstation – 700W Xeon W1350 / 64GB (4×16) ECC RAM/512GB NVME+1TB SATA HDD/NVIDIA A4000 16GB Graphics / 27” Monitor FHD (1920×1080) IPS Display</td> </tr> <tr> <td>Courses and Softwares:</td> <td>Machine learning and Data Analytics, Cloud Computing, Block Chain, Mendeley, Python, Java.</td> </tr> </tbody> </table>"
+     "t": "cards",
+     "items": [
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2022/05/2_e.jpg",
+       "title": "Software Development Laboratory",
+       "html": "<table> <tbody> <tr> <td>System Configuration:</td> <td>Lenovo Thinkcentre Workstations(i5), 8GB DDR3 Memory, 500GB HDD</td> </tr> <tr> <td>Academic Courses and Softwares:</td> <td>Internet Programming, JDK, Visual code, MySQL Workbench, Apache Server, XAMPP, Operating Systems, Putty, Object Oriented Programming, Object Oriented Analysis and Design, Security Lab, ArgoUML, Selenium, Junit, Windows 8.1, MS Office 2016.</td> </tr> </tbody> </table>"
+      },
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2022/05/Screenshot_2022_0526_145909.jpg",
+       "title": "Centre of Excellence in Machine Learning",
+       "html": "<table> <tbody> <tr> <td>System Configuration:</td> <td>Lenovo Thinkcentre Workstations(i5), 8GB DDR3 Memory &amp; 16GB DDR3 Memory, 500GB HDD</td> </tr> <tr> <td>Academic Courses and Softwares:</td> <td>Project Work, Mini Project, Placement Activities, Google Training Programs, Red Hat Training, Training Programs, Online Exams, Windows 8.1, MS Office 2016.</td> </tr> </tbody> </table>"
+      },
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2021/03/487-scaled.jpg",
+       "title": "Networks Laboratory",
+       "html": "<table> <tbody> <tr> <td>System Configuration:</td> <td>Lenovo Thinkcentre Workstations (i7), 16GB DDR3 Memory, 500GB HDD (Newly Upgraded to meet the computational Needs)</td> </tr> <tr> <td>Academic Courses and Softwares:</td> <td>Data Structures, Database Management Systems, Networks, Mobile Application Development, Cloud Computing, Skill Rack Training, Android Studio, C, JDK, Python, NS2, UBUNTU 19.4, Windows 10, SQL Plus, GCC, Yacc.</td> </tr> </tbody> </table>"
+      },
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2021/04/482-scaled.jpg",
+       "title": "Open Source Laboratory",
+       "html": "<table> <tbody> <tr> <td>System Configuration</td> <td>Lenovo Thinkcentre Workstations(i3), 16GB DDR3 Memory, 500GB HDD</td> </tr> <tr> <td>Academic Courses and Softwares</td> <td>Advanced Data Structures and Algorithms, Database practices, Research Mentoring, English for Research Paper Writing, MySQL, Python, MongoDB, UBUNTU 16.4, Windows 7, GCC, JDK.</td> </tr> </tbody> </table>"
+      },
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2021/04/494-scaled.jpg",
+       "title": "Research Laboratory",
+       "html": "<table> <tbody> <tr> <td><strong>System Configuration: </strong></td> <td>HP Z2 G8 Tower Workstation – 700W Xeon W1350 / 64GB (4×16) ECC RAM/512GB NVME+1TB SATA HDD/NVIDIA A4000 16GB Graphics / 27” Monitor FHD (1920×1080) IPS Display</td> </tr> <tr> <td>Courses and Softwares:</td> <td>Machine learning and Data Analytics, Cloud Computing, Block Chain, Mendeley, Python, Java.</td> </tr> </tbody> </table>"
+      }
+     ]
     },
     {
      "t": "h",
@@ -511,22 +436,12 @@
      "html": "<h4>IOT KITS FOR HARDWARE PROJECTS:</h4> To support hardware projects, a facility has been created with three Arduino based IoT kits inclusive of 32 different dynamic sensors and display units."
     },
     {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2022/05/2_b-300x300.jpg",
-     "alt": "",
-     "caption": ""
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2022/05/2_c.jpg",
-     "alt": "",
-     "caption": ""
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2022/05/2_c-2.jpg",
-     "alt": "",
-     "caption": ""
+     "t": "gallery",
+     "images": [
+      "https://licet.ac.in/wp-content/uploads/2022/05/2_b-300x300.jpg",
+      "https://licet.ac.in/wp-content/uploads/2022/05/2_c.jpg",
+      "https://licet.ac.in/wp-content/uploads/2022/05/2_c-2.jpg"
+     ]
     }
    ]
   },
@@ -762,7 +677,8 @@
       "https://licet.ac.in/wp-content/uploads/2024/02/3-4-300x225.png",
       "https://licet.ac.in/wp-content/uploads/2024/02/1-5-300x225.png",
       "https://licet.ac.in/wp-content/uploads/2024/02/2-4-300x225.png"
-     ]
+     ],
+     "variant": "logos"
     },
     {
      "t": "h",
@@ -912,152 +828,97 @@
      "text": "Student Achievements"
     },
     {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2025/03/NIral_Top50_Nirmala-mam.jpeg",
-     "alt": "NIral_Top50_Nirmala mam",
-     "caption": ""
-    },
-    {
-     "t": "html",
-     "html": "<p>The team comprising Aaliya N, Pavithra SV, Samyuktha S, Triesha Kenneth and under the mentorship of Prof. S. Nirmala was selected and ranked 12th among the top 50 teams all over Tamilnadu.The team presented their project “Reducing patient wait times in public hospital emergency departments”, to our Honourable Minister of Youth Welfare, Sports Development, and Special Programme Implementation, Mr. Udhayanidhi Stalin.</p>"
-    },
-    {
-     "t": "html",
-     "html": "<p>Shaun Eliot Nicholas,Leo William G,Naveneshvar,Alvin Roy,Anto Abisheik J participated in the Socio-Tech Hackathon-2024, KPR College Of Arts Science and Research</p>"
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2025/03/Alvin-scaled.jpg",
-     "alt": "Alvin",
-     "caption": ""
+     "t": "cards",
+     "items": [
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2025/03/NIral_Top50_Nirmala-mam.jpeg",
+       "title": "",
+       "html": "<p>The team comprising Aaliya N, Pavithra SV, Samyuktha S, Triesha Kenneth and under the mentorship of Prof. S. Nirmala was selected and ranked 12th among the top 50 teams all over Tamilnadu.The team presented their project “Reducing patient wait times in public hospital emergency departments”, to our Honourable Minister of Youth Welfare, Sports Development, and Special Programme Implementation, Mr. Udhayanidhi Stalin.</p>"
+      },
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2025/03/Alvin-scaled.jpg",
+       "title": "",
+       "html": "<p>Shaun Eliot Nicholas,Leo William G,Naveneshvar,Alvin Roy,Anto Abisheik J participated in the Socio-Tech Hackathon-2024, KPR College Of Arts Science and Research</p>"
+      }
+     ]
     },
     {
      "t": "html",
      "html": "<p>Philo Sanjay Chamberline P and Sairam M R of third CSE participated in an online Build On Hackathon under the project titled Thoonga Nagaram,a Platform to provide Transparent Government Behaviour and allows anonymous and ZK based citizen data management and Grievences Management,organized by Quicknode from 19th October 2024 to 2nd November 2024 and won places in Track 1 :Third best use of Covalent GoldRush Add-ons with a prize amount of $500: credits and Track 2 : Third best use of QuickNode Functions with a prize amount of $1,500 cash,$1,500 QuickNode Functions credits,$2,000 Limestone Networks credits,$5,000 AWS credits.</p>"
     },
     {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2024/10/WhatsApp-Image-2024-10-22-at-21.08.58_df942e3a-1.jpg",
-     "alt": "Adaikal Susan - CSE",
-     "caption": ""
-    },
-    {
-     "t": "html",
-     "html": "<p>Adaikal Susan Beschi J I, Agil Fabian Romano R and Alfred Reijo Philomin of third CSE A particpated in the prestigious Google GenAI Exchange Hackathon 2024, competing under the RateGain track focusing project on hotel booking optimization, designed to detect low occupancy rates and automatically generate campaigns using generative AI and secured first place in the track winning cash award of 2000 USD on the Demo day at Gurgeon Google Office.</p>"
-    },
-    {
-     "t": "html",
-     "html": "<p>Jashua of II CSE won GOLD medal in 50 mts freestyle and SILVER medal in 50 mts butterfly style and won a cash award of Rs. 1.75 lakhs in the CM TROPHY COMPETITION.</p>"
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2024/10/WhatsApp-Image-2024-10-25-at-11.28.48-AM-1-scaled.webp",
-     "alt": "Jashua - CSE",
-     "caption": ""
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2024/10/WhatsApp-Image-2024-10-24-at-6.23.09-PM.jpeg",
-     "alt": "Romario - CSE",
-     "caption": ""
-    },
-    {
-     "t": "html",
-     "html": "<p>Romario Kavin J R of final CSE participated in the ETHGlobal Singapore Hackathon and won cash award of 4000USD for the project Grand Nouns Auto(GNA)</p>"
-    },
-    {
-     "t": "html",
-     "html": "<p> Leo Franklin John A of final CSE participated in the ETHGlobal Singapore Hackathon and won cash award of 2050USD for best use of chain abstraction using Near. The project titled “OnlyGrants” where they developed a wallet service in Near Blockchain for chain signature in September 2024.<br>Teammates : Fabian Ferno : IT (2019-2023), Dhivya : IT (2019-2023), Subiksha Victoria : IT (2019-2023)</p>"
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2024/10/WhatsApp-Image-2024-10-30-at-11.45.11-AM-scaled.jpeg",
-     "alt": "Leo - hackathon",
-     "caption": ""
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2024/10/WhatsApp-Image-2024-10-30-at-11.52.45-AM.jpeg",
-     "alt": "WhatsApp Image 2024-10-30 at 11.52.45 AM",
-     "caption": ""
-    },
-    {
-     "t": "html",
-     "html": "<p>Leo &amp; Romario Kavin of IV CSE created a NFC wallet through which users can connect with each other to duel. They developed the whole flow of the game and Won $ 2300 /- in the Hackathon : EthGlobal Brussels during July 12th to 14th 2024.</p>"
-    },
-    {
-     "t": "html",
-     "html": "<p>Babu Viswa B L, Dennyson A and Immanuel M of I year CSE won third place in Quiz and Coding events in the SIT-Scihum’2023 held by the Department of Science and Humanities in the14th National Level Technical Symposium at Sai Ram Institute of Technology,Chennai.</p>"
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2024/09/WhatsApp-Image-2024-02-15-at-10.37.21-PM.webp",
-     "alt": "SIT_SCIHUM_23",
-     "caption": ""
+     "t": "cards",
+     "items": [
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2024/10/WhatsApp-Image-2024-10-22-at-21.08.58_df942e3a-1.jpg",
+       "title": "",
+       "html": "<p>Adaikal Susan Beschi J I, Agil Fabian Romano R and Alfred Reijo Philomin of third CSE A particpated in the prestigious Google GenAI Exchange Hackathon 2024, competing under the RateGain track focusing project on hotel booking optimization, designed to detect low occupancy rates and automatically generate campaigns using generative AI and secured first place in the track winning cash award of 2000 USD on the Demo day at Gurgeon Google Office.</p>"
+      },
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2024/10/WhatsApp-Image-2024-10-25-at-11.28.48-AM-1-scaled.webp",
+       "title": "",
+       "html": "<p>Jashua of II CSE won GOLD medal in 50 mts freestyle and SILVER medal in 50 mts butterfly style and won a cash award of Rs. 1.75 lakhs in the CM TROPHY COMPETITION.</p>"
+      },
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2024/10/WhatsApp-Image-2024-10-24-at-6.23.09-PM.jpeg",
+       "title": "",
+       "html": "<p>Romario Kavin J R of final CSE participated in the ETHGlobal Singapore Hackathon and won cash award of 4000USD for the project Grand Nouns Auto(GNA)</p>"
+      },
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2024/10/WhatsApp-Image-2024-10-30-at-11.45.11-AM-scaled.jpeg",
+       "title": "",
+       "html": "<p> Leo Franklin John A of final CSE participated in the ETHGlobal Singapore Hackathon and won cash award of 2050USD for best use of chain abstraction using Near. The project titled “OnlyGrants” where they developed a wallet service in Near Blockchain for chain signature in September 2024.<br>Teammates : Fabian Ferno : IT (2019-2023), Dhivya : IT (2019-2023), Subiksha Victoria : IT (2019-2023)</p>"
+      },
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2024/10/WhatsApp-Image-2024-10-30-at-11.52.45-AM.jpeg",
+       "title": "",
+       "html": "<p>Leo &amp; Romario Kavin of IV CSE created a NFC wallet through which users can connect with each other to duel. They developed the whole flow of the game and Won $ 2300 /- in the Hackathon : EthGlobal Brussels during July 12th to 14th 2024.</p>"
+      },
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2024/09/WhatsApp-Image-2024-02-15-at-10.37.21-PM.webp",
+       "title": "",
+       "html": "<p>Babu Viswa B L, Dennyson A and Immanuel M of I year CSE won third place in Quiz and Coding events in the SIT-Scihum’2023 held by the Department of Science and Humanities in the14th National Level Technical Symposium at Sai Ram Institute of Technology,Chennai.</p>"
+      }
+     ]
     },
     {
      "t": "html",
      "html": "<p>Himani Chandra of I year CSE – A participated in the Finance Accelerator Simulation Experience, a simulation event to gain experience in investment bank trading and asset management roles organized by AmplifyME in partnership with Morgan Stanley and UBS ON 14th May 2024.</p>"
     },
     {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2024/08/DAIO-BLINKTEAM.webp",
-     "alt": "DAIO-BLINKTEAM",
-     "caption": ""
-    },
-    {
-     "t": "html",
-     "html": "<p>Gautham S, Saam Wesley and Vibu Roshin of Final year CSE were awarded with the appreciation certificate fromDoctor Agarwal Institute of Optometry for the project Blink App under the mentorship of Ms. A. Jeevitha, AP/CSE.</p>"
-    },
-    {
-     "t": "html",
-     "html": "<p>Abishek Joshua C, Deanna Nancy E, Gokul Sami P and Neulah Miraclin B of II CSE A participated as Team Pawsitive and won third place in Carpedium 2.0, an event organized by LICET Pattarai on 8th April 2024.</p>"
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2024/08/SA_Pattarai-1024x624.webp",
-     "alt": "",
-     "caption": ""
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2024/02/Jashua_achievement_18_OCT-scaled.jpg",
-     "alt": "Jashua_achievement_18_OCT",
-     "caption": ""
-    },
-    {
-     "t": "html",
-     "html": "<p>A. Jashua Thomas of first year participated in the International BRICS games held in Durban, South Africa and won 2 bronze medals in 4×100 freestyle relay and 4×50 freestyle relay.</p>"
-    },
-    {
-     "t": "html",
-     "html": "<p><strong>Lancey A of CSE-B 2nd year. She was an EXHIBITOR of FRENCH PAVILION in Tamilnadu Global Investors Meet-2024 which took place on the 7th and 8th of January and I was delighted to work with the INDO-french Chamber of Commerce and Industry(IFCCI)</strong></p>"
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2024/02/Untitled-design-5.png",
-     "alt": "",
-     "caption": ""
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2024/02/Romario_06Dec2023-1024x661.jpeg",
-     "alt": "",
-     "caption": ""
-    },
-    {
-     "t": "html",
-     "html": "<p>J. R. Romario Kavin of III year participated in the EthIndia a 3-day Hackathon in Bangalore KTPO centre and won two prizes of worth 1000$ each.</p>"
-    },
-    {
-     "t": "html",
-     "html": "<p><strong>Aaron Saji Alexander, Lavanya Pidikiti and Vibu Roshin E V of IV year CSE secured the 2nd place in PECAN Capture The Flag (CTF) competition conducted by PALS and Edith Cowan University, Australia.</strong></p>"
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2024/03/CTF_IIT_second-place-1024x683.jpg",
-     "alt": "",
-     "caption": ""
+     "t": "cards",
+     "items": [
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2024/08/DAIO-BLINKTEAM.webp",
+       "title": "",
+       "html": "<p>Gautham S, Saam Wesley and Vibu Roshin of Final year CSE were awarded with the appreciation certificate fromDoctor Agarwal Institute of Optometry for the project Blink App under the mentorship of Ms. A. Jeevitha, AP/CSE.</p>"
+      },
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2024/08/SA_Pattarai-1024x624.webp",
+       "title": "",
+       "html": "<p>Abishek Joshua C, Deanna Nancy E, Gokul Sami P and Neulah Miraclin B of II CSE A participated as Team Pawsitive and won third place in Carpedium 2.0, an event organized by LICET Pattarai on 8th April 2024.</p>"
+      },
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2024/02/Jashua_achievement_18_OCT-scaled.jpg",
+       "title": "",
+       "html": "<p>A. Jashua Thomas of first year participated in the International BRICS games held in Durban, South Africa and won 2 bronze medals in 4×100 freestyle relay and 4×50 freestyle relay.</p>"
+      },
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2024/02/Untitled-design-5.png",
+       "title": "",
+       "html": "<p><strong>Lancey A of CSE-B 2nd year. She was an EXHIBITOR of FRENCH PAVILION in Tamilnadu Global Investors Meet-2024 which took place on the 7th and 8th of January and I was delighted to work with the INDO-french Chamber of Commerce and Industry(IFCCI)</strong></p>"
+      },
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2024/02/Romario_06Dec2023-1024x661.jpeg",
+       "title": "",
+       "html": "<p>J. R. Romario Kavin of III year participated in the EthIndia a 3-day Hackathon in Bangalore KTPO centre and won two prizes of worth 1000$ each.</p>"
+      },
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2024/03/CTF_IIT_second-place-1024x683.jpg",
+       "title": "",
+       "html": "<p><strong>Aaron Saji Alexander, Lavanya Pidikiti and Vibu Roshin E V of IV year CSE secured the 2nd place in PECAN Capture The Flag (CTF) competition conducted by PALS and Edith Cowan University, Australia.</strong></p>"
+      }
+     ]
     },
     {
      "t": "html",
@@ -1068,124 +929,69 @@
      "text": "UNIVERSITY RANK HOLDERS ​"
     },
     {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2026/06/Mr-NAVENESVAR-K.jpg",
-     "alt": "",
-     "caption": ""
-    },
-    {
-     "t": "html",
-     "html": "<p>Mr. Navanesvar K<br>(Rank: 3)<br>Batch 2021-2025<br>(Autonomous)</p>"
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2026/06/Ms-DAYITA-JERALD.jpg",
-     "alt": "",
-     "caption": ""
-    },
-    {
-     "t": "html",
-     "html": "<p>Ms. Dayita Jerald<br>(Rank: 2)<br>Batch 2021-2025<br>(Autonomous)</p>"
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2026/06/Ms-SUBA-SHREE-K-B.png",
-     "alt": "",
-     "caption": ""
-    },
-    {
-     "t": "html",
-     "html": "<p>Ms Suba Shree K B<br>(Rank: 1)<br>Batch 2021-2025<br>(Autonomous)</p>"
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2026/06/Mr.ASHIK-SHARON-M.jpg",
-     "alt": "",
-     "caption": ""
-    },
-    {
-     "t": "html",
-     "html": "<p>Mr. Ashik Sharon M<br>(Rank : 23)<br>Batch 2020-2024<br><br></p>"
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2026/06/Mr.GAUTHAM-S.jpg",
-     "alt": "",
-     "caption": ""
-    },
-    {
-     "t": "html",
-     "html": "<p>Mr. Gautham S<br>(Rank: 16) <br>Batch 2020-2024</p>"
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2026/06/Ms.-TRIESHA-KENNETH.jpg",
-     "alt": "",
-     "caption": ""
-    },
-    {
-     "t": "html",
-     "html": "<p>Ms. Triesha Kenneth<br>(Rank: 13) <br>Batch 2020-2024</p>"
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2026/06/Ms.LAVANYA-PIDIKITI.jpg",
-     "alt": "",
-     "caption": ""
-    },
-    {
-     "t": "html",
-     "html": "<p>Ms. Lavanya Pidikiti<br>(Rank: 7)<br>B2020-2024</p>"
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2026/06/Ms-HEPHZIBAH-DELFIA-E.png",
-     "alt": "",
-     "caption": ""
-    },
-    {
-     "t": "html",
-     "html": "<p>Ms. Hephzibah Delfia E<br>(Rank : 23)<br>Batch 2018-2022</p>"
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2024/02/3.png",
-     "alt": "",
-     "caption": ""
-    },
-    {
-     "t": "html",
-     "html": "<p>Hancy Jose of B2018, Gold Medalist,<br>Anna University Examinations.</p>"
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2024/02/1.png",
-     "alt": "",
-     "caption": ""
-    },
-    {
-     "t": "html",
-     "html": "<p>Priya M of B2015,28th rank,<br>Anna University Examinations.</p>"
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2025/03/Evelin-1024x622.jpeg",
-     "alt": "",
-     "caption": ""
-    },
-    {
-     "t": "html",
-     "html": "<p>Evelin F Justus of B2017,<br>41st Rank, Anna University Examinations</p>"
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2024/02/2.png",
-     "alt": "",
-     "caption": ""
-    },
-    {
-     "t": "html",
-     "html": "<p>Hannah Andrew of B2017,40th Rank,<br>Anna University Examinations.</p>"
+     "t": "cards",
+     "items": [
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2026/06/Mr-NAVENESVAR-K.jpg",
+       "title": "",
+       "html": "<p>Mr. Navanesvar K<br>(Rank: 3)<br>Batch 2021-2025<br>(Autonomous)</p>"
+      },
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2026/06/Ms-DAYITA-JERALD.jpg",
+       "title": "",
+       "html": "<p>Ms. Dayita Jerald<br>(Rank: 2)<br>Batch 2021-2025<br>(Autonomous)</p>"
+      },
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2026/06/Ms-SUBA-SHREE-K-B.png",
+       "title": "",
+       "html": "<p>Ms Suba Shree K B<br>(Rank: 1)<br>Batch 2021-2025<br>(Autonomous)</p>"
+      },
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2026/06/Mr.ASHIK-SHARON-M.jpg",
+       "title": "",
+       "html": "<p>Mr. Ashik Sharon M<br>(Rank : 23)<br>Batch 2020-2024<br><br></p>"
+      },
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2026/06/Mr.GAUTHAM-S.jpg",
+       "title": "",
+       "html": "<p>Mr. Gautham S<br>(Rank: 16) <br>Batch 2020-2024</p>"
+      },
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2026/06/Ms.-TRIESHA-KENNETH.jpg",
+       "title": "",
+       "html": "<p>Ms. Triesha Kenneth<br>(Rank: 13) <br>Batch 2020-2024</p>"
+      },
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2026/06/Ms.LAVANYA-PIDIKITI.jpg",
+       "title": "",
+       "html": "<p>Ms. Lavanya Pidikiti<br>(Rank: 7)<br>B2020-2024</p>"
+      },
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2026/06/Ms-HEPHZIBAH-DELFIA-E.png",
+       "title": "",
+       "html": "<p>Ms. Hephzibah Delfia E<br>(Rank : 23)<br>Batch 2018-2022</p>"
+      },
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2024/02/3.png",
+       "title": "",
+       "html": "<p>Hancy Jose of B2018, Gold Medalist,<br>Anna University Examinations.</p>"
+      },
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2024/02/1.png",
+       "title": "",
+       "html": "<p>Priya M of B2015,28th rank,<br>Anna University Examinations.</p>"
+      },
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2025/03/Evelin-1024x622.jpeg",
+       "title": "",
+       "html": "<p>Evelin F Justus of B2017,<br>41st Rank, Anna University Examinations</p>"
+      },
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2024/02/2.png",
+       "title": "",
+       "html": "<p>Hannah Andrew of B2017,40th Rank,<br>Anna University Examinations.</p>"
+      }
+     ]
     },
     {
      "t": "toggle",
@@ -1233,186 +1039,74 @@
      "text": "Renowned Alumni"
     },
     {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2022/05/5_d.png",
-     "alt": "",
-     "caption": ""
-    },
-    {
-     "t": "html",
-     "html": "<p>Deepak John (B2014)</p>"
-    },
-    {
-     "t": "html",
-     "html": "<p>“Pupa Clic”, Research &amp; Development</p>"
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2022/05/5_e-225x300.png",
-     "alt": "",
-     "caption": ""
-    },
-    {
-     "t": "html",
-     "html": "Poornima J (B2014)"
-    },
-    {
-     "t": "html",
-     "html": "<p>Business Analyst, Microsoft, Ireland, 24K Euro</p>"
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2022/05/5_f-269x300.jpg",
-     "alt": "",
-     "caption": ""
-    },
-    {
-     "t": "html",
-     "html": "Cheran E (B2015)"
-    },
-    {
-     "t": "html",
-     "html": "<p>Chen Auto (IOCL), Entrepreneur</p>"
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2022/05/5_g-282x300.png",
-     "alt": "",
-     "caption": ""
-    },
-    {
-     "t": "html",
-     "html": "Revathy D L (B2015)"
-    },
-    {
-     "t": "html",
-     "html": "<p>Software Engineer III, CISCO, San Francisco, 18L</p>"
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2022/05/5_h.jpg",
-     "alt": "",
-     "caption": ""
-    },
-    {
-     "t": "html",
-     "html": "Solomon Christy (B2016)"
-    },
-    {
-     "t": "html",
-     "html": "<p>Data Visualization Engineer Apple, Ireland</p>"
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2022/05/5_i.jpg",
-     "alt": "",
-     "caption": ""
-    },
-    {
-     "t": "html",
-     "html": "Shyam Sundar K (B2016)"
-    },
-    {
-     "t": "html",
-     "html": "<p>Graduate Research Assistant,<br>Purdue university, US</p>"
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2022/05/5_j.jpg",
-     "alt": "",
-     "caption": ""
-    },
-    {
-     "t": "html",
-     "html": "Arokia Richard R (B2016)"
-    },
-    {
-     "t": "html",
-     "html": "<p>Software Development Engineer 2, Amazon, Seattle, US.</p>"
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2022/05/5_k-181x300.jpg",
-     "alt": "",
-     "caption": ""
-    },
-    {
-     "t": "html",
-     "html": "Andrew Nigel (B2017)"
-    },
-    {
-     "t": "html",
-     "html": "<p>Project Manager, Metavrse, Canada</p>"
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2022/05/5_l-e1780412484116.png",
-     "alt": "",
-     "caption": ""
-    },
-    {
-     "t": "html",
-     "html": "Vignesh R (B2018)"
-    },
-    {
-     "t": "html",
-     "html": "<p>SAP Labs India, Bangalore</p>"
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2022/05/5_m-200x300.png",
-     "alt": "",
-     "caption": ""
-    },
-    {
-     "t": "html",
-     "html": "Kabilesh (B2019)"
-    },
-    {
-     "t": "html",
-     "html": "<p>SAP Labs India, Bangalore </p>"
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2024/02/Alex-200x300.jpeg",
-     "alt": "",
-     "caption": ""
-    },
-    {
-     "t": "html",
-     "html": "Alex Ezhil Arasu (B2021)"
-    },
-    {
-     "t": "html",
-     "html": "<p>Associate Developer, Content Writer for SAP newsletter.</p>"
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2026/06/SteffiArockya-262x300.jpeg",
-     "alt": "",
-     "caption": ""
-    },
-    {
-     "t": "html",
-     "html": "<p>Steffi Arockia S (B2022)</p>"
-    },
-    {
-     "t": "html",
-     "html": "<p>Consultant, Thoughtworks</p>"
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2026/06/image1-225x300.jpg",
-     "alt": "",
-     "caption": ""
-    },
-    {
-     "t": "html",
-     "html": "<p>Ashwin Balasubramanian (B2023)</p>"
-    },
-    {
-     "t": "html",
-     "html": "<p>Google</p>"
+     "t": "cards",
+     "items": [
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2022/05/5_d.png",
+       "title": "",
+       "html": "<p>Deepak John (B2014)</p><p>“Pupa Clic”, Research &amp; Development</p>"
+      },
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2022/05/5_e-225x300.png",
+       "title": "",
+       "html": "Poornima J (B2014)<p>Business Analyst, Microsoft, Ireland, 24K Euro</p>"
+      },
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2022/05/5_f-269x300.jpg",
+       "title": "",
+       "html": "Cheran E (B2015)<p>Chen Auto (IOCL), Entrepreneur</p>"
+      },
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2022/05/5_g-282x300.png",
+       "title": "",
+       "html": "Revathy D L (B2015)<p>Software Engineer III, CISCO, San Francisco, 18L</p>"
+      },
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2022/05/5_h.jpg",
+       "title": "",
+       "html": "Solomon Christy (B2016)<p>Data Visualization Engineer Apple, Ireland</p>"
+      },
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2022/05/5_i.jpg",
+       "title": "",
+       "html": "Shyam Sundar K (B2016)<p>Graduate Research Assistant,<br>Purdue university, US</p>"
+      },
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2022/05/5_j.jpg",
+       "title": "",
+       "html": "Arokia Richard R (B2016)<p>Software Development Engineer 2, Amazon, Seattle, US.</p>"
+      },
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2022/05/5_k-181x300.jpg",
+       "title": "",
+       "html": "Andrew Nigel (B2017)<p>Project Manager, Metavrse, Canada</p>"
+      },
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2022/05/5_l-e1780412484116.png",
+       "title": "",
+       "html": "Vignesh R (B2018)<p>SAP Labs India, Bangalore</p>"
+      },
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2022/05/5_m-200x300.png",
+       "title": "",
+       "html": "Kabilesh (B2019)<p>SAP Labs India, Bangalore </p>"
+      },
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2024/02/Alex-200x300.jpeg",
+       "title": "",
+       "html": "Alex Ezhil Arasu (B2021)<p>Associate Developer, Content Writer for SAP newsletter.</p>"
+      },
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2026/06/SteffiArockya-262x300.jpeg",
+       "title": "",
+       "html": "<p>Steffi Arockia S (B2022)</p><p>Consultant, Thoughtworks</p>"
+      },
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2026/06/image1-225x300.jpg",
+       "title": "",
+       "html": "<p>Ashwin Balasubramanian (B2023)</p><p>Google</p>"
+      }
+     ]
     },
     {
      "t": "h",
@@ -1458,84 +1152,49 @@
      "text": "Entrepreneurs"
     },
     {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2022/05/WhatsApp-Image-2022-05-27-at-4.59.10-PM.jpeg",
-     "alt": "",
-     "caption": ""
-    },
-    {
-     "t": "html",
-     "html": "Batch: 2016-2020<br><br> Name: Mr S Nitin<br><br> Designation &amp; Company: Managing Partner, Ambalal Shares and Stocks Private Ltd"
-    },
-    {
-     "t": "html",
-     "html": "Batch: 2015-2019<br><br> Name: Mr Garwin Lawrence<br><br> Designation &amp; Company: Founder &amp; CEO Coding Space Technosoft"
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2022/05/Picture2.png",
-     "alt": "",
-     "caption": ""
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2022/05/Picture1.png",
-     "alt": "",
-     "caption": ""
-    },
-    {
-     "t": "html",
-     "html": "<p>Batch: 2014-2018</p><p><a href=\"https://www.linkedin.com/in/thedanieldeepak/\">Name: Mr Daniel Deepak</a></p><p><a href=\"https://thesynaesthesia.com\">Designation &amp; Company: Creative Director, Synesthesia</a></p>"
-    },
-    {
-     "t": "html",
-     "html": "Batch: 2014-2018<br><br> Name: Mr Gideon Jayaraj<br><br> Designation &amp; Company: CEO, Everest Stabilizers Private Ltd"
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2022/05/Gideon.png",
-     "alt": "",
-     "caption": ""
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2022/05/Picture3.png",
-     "alt": "",
-     "caption": ""
-    },
-    {
-     "t": "html",
-     "html": "Batch: 2014-2018<br><br> Name: Mr Akash Amalraj<br><br> Designation &amp; Company: Business Development Lammaali Impex Tech Enthusiast"
-    },
-    {
-     "t": "html",
-     "html": "Batch: 2013-2017<br><br> Name: Ms Divya Patnam<br><br> Designation &amp; Company: Founder &amp; CEO, The Sugar Cracks"
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2022/05/WhatsApp-Image-2022-05-27-at-11.15.38-PM.jpeg",
-     "alt": "",
-     "caption": ""
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2023/10/1594808390161.jpg",
-     "alt": "",
-     "caption": ""
-    },
-    {
-     "t": "html",
-     "html": "Batch: 2011-2015<br><br>Name: Mr Joseph Gerald<br><br>Designation &amp; Company: Managing Partner, LSG&amp;Co"
-    },
-    {
-     "t": "html",
-     "html": "Batch: 2010-2014<br><br> Name: Mr Deepak John<br><br> Designation &amp; Company: CEO, Pupa Clic"
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2022/05/5_d.png",
-     "alt": "",
-     "caption": ""
+     "t": "cards",
+     "items": [
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2022/05/WhatsApp-Image-2022-05-27-at-4.59.10-PM.jpeg",
+       "title": "",
+       "html": "Batch: 2016-2020<br><br> Name: Mr S Nitin<br><br> Designation &amp; Company: Managing Partner, Ambalal Shares and Stocks Private Ltd"
+      },
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2022/05/Picture2.png",
+       "title": "",
+       "html": "Batch: 2015-2019<br><br> Name: Mr Garwin Lawrence<br><br> Designation &amp; Company: Founder &amp; CEO Coding Space Technosoft"
+      },
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2022/05/Picture1.png",
+       "title": "",
+       "html": "<p>Batch: 2014-2018</p><p><a href=\"https://www.linkedin.com/in/thedanieldeepak/\">Name: Mr Daniel Deepak</a></p><p><a href=\"https://thesynaesthesia.com\">Designation &amp; Company: Creative Director, Synesthesia</a></p>"
+      },
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2022/05/Gideon.png",
+       "title": "",
+       "html": "Batch: 2014-2018<br><br> Name: Mr Gideon Jayaraj<br><br> Designation &amp; Company: CEO, Everest Stabilizers Private Ltd"
+      },
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2022/05/Picture3.png",
+       "title": "",
+       "html": "Batch: 2014-2018<br><br> Name: Mr Akash Amalraj<br><br> Designation &amp; Company: Business Development Lammaali Impex Tech Enthusiast"
+      },
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2022/05/WhatsApp-Image-2022-05-27-at-11.15.38-PM.jpeg",
+       "title": "",
+       "html": "Batch: 2013-2017<br><br> Name: Ms Divya Patnam<br><br> Designation &amp; Company: Founder &amp; CEO, The Sugar Cracks"
+      },
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2023/10/1594808390161.jpg",
+       "title": "",
+       "html": "Batch: 2011-2015<br><br>Name: Mr Joseph Gerald<br><br>Designation &amp; Company: Managing Partner, LSG&amp;Co"
+      },
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2022/05/5_d.png",
+       "title": "",
+       "html": "Batch: 2010-2014<br><br> Name: Mr Deepak John<br><br> Designation &amp; Company: CEO, Pupa Clic"
+      }
+     ]
     }
    ]
   },
@@ -1572,10 +1231,6 @@
     },
     {
      "t": "h",
-     "text": "Now Playing"
-    },
-    {
-     "t": "h",
      "text": "REWIND OF EICON 2013-2023"
     },
     {
@@ -1584,7 +1239,7 @@
     },
     {
      "t": "h",
-     "text": "Symosium Details"
+     "text": "Symposium Details"
     },
     {
      "t": "stats",
@@ -1612,34 +1267,24 @@
      "text": "Office Bearers"
     },
     {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2024/02/paul.jpg",
-     "alt": "",
-     "caption": "President"
-    },
-    {
-     "t": "html",
-     "html": "<p><strong>Paul M Kallarackal</strong><br><strong>4th Year CSE</strong></p>"
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2024/02/GIBSON.png",
-     "alt": "",
-     "caption": "Vice-President"
-    },
-    {
-     "t": "html",
-     "html": "<p><strong>Gibson J </strong><br><strong>3rd Year CSE</strong></p>"
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2024/02/ama.jpg",
-     "alt": "",
-     "caption": "Secretary"
-    },
-    {
-     "t": "html",
-     "html": "<p><strong>Amala Shwetah Louis Kishore</strong><br><strong>3rd Year CSE</strong></p>"
+     "t": "cards",
+     "items": [
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2024/02/paul.jpg",
+       "title": "",
+       "html": "<p><strong>Paul M Kallarackal</strong><br><strong>4th Year CSE</strong></p>"
+      },
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2024/02/GIBSON.png",
+       "title": "",
+       "html": "<p><strong>Gibson J </strong><br><strong>3rd Year CSE</strong></p>"
+      },
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2024/02/ama.jpg",
+       "title": "",
+       "html": "<p><strong>Amala Shwetah Louis Kishore</strong><br><strong>3rd Year CSE</strong></p>"
+      }
+     ]
     },
     {
      "t": "h",
@@ -1701,62 +1346,47 @@
      "html": "<ul><li>The Department of Computer Science and Engineering organized student orientation programme for Third year students on 13th August 2024 on Mastering Time Management for a Balanced Life Style by Ms Kavitha Anbarasu, Entrepreneur and a session on A Complementary Approach to Mental Health by the Wellness Trainer Dr Nandha.</li></ul>"
     },
     {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2025/03/Copy-of-S2_III-Year-2024-08-13-at-8.08.39-PM-1024x771.jpeg",
-     "alt": "",
-     "caption": ""
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2025/03/Copy-of-III-Year-2024-08-13-at-8.08.40-PM-1024x771.jpeg",
-     "alt": "",
-     "caption": ""
+     "t": "gallery",
+     "images": [
+      "https://licet.ac.in/wp-content/uploads/2025/03/Copy-of-S2_III-Year-2024-08-13-at-8.08.39-PM-1024x771.jpeg",
+      "https://licet.ac.in/wp-content/uploads/2025/03/Copy-of-III-Year-2024-08-13-at-8.08.40-PM-1024x771.jpeg"
+     ]
     },
     {
      "t": "html",
      "html": "<ul><li>The Department of Computer Science and Engineering organized student orientation programme for Final year students on 16th August 2024 Alumni Experiences and Placement guidance by Ms Steffi Arockia, Consultant Application Developer, Thoughtworks and session on Career @ GCCs :Strategies and Insights by Mr Alex Ezil Arasu,Developer,SAP Labs.</li></ul>"
     },
     {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2025/03/Copy-of-IV-yr1-1024x768.jpeg",
-     "alt": "",
-     "caption": ""
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2025/03/Copy-of-IV-yr-2024-08-16-at-12.31.39-AM-1024x768.jpeg",
-     "alt": "",
-     "caption": ""
+     "t": "gallery",
+     "images": [
+      "https://licet.ac.in/wp-content/uploads/2025/03/Copy-of-IV-yr1-1024x768.jpeg",
+      "https://licet.ac.in/wp-content/uploads/2025/03/Copy-of-IV-yr-2024-08-16-at-12.31.39-AM-1024x768.jpeg"
+     ]
     },
     {
      "t": "html",
      "html": "<ul><li>The Department of Computer Science and Engineering organized student orientation programme for the first years under varied categories like IoT,Visual Editing and Graphic Design and Essentials of HTML,CSS and Javascript handled by Sairam,PhiloSanjay,Babu Viswa,Melvin Salvius,Merlyn,Juanita,Madhan Kumar,Hariharan,Afshann,Solaimuthu,Kabilan of second and third year .</li></ul>"
     },
     {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2025/03/Student-Orientation-1024x768.jpeg",
-     "alt": "",
-     "caption": ""
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2025/03/Stu-Orienta_2-1024x576.jpeg",
-     "alt": "",
-     "caption": ""
+     "t": "gallery",
+     "images": [
+      "https://licet.ac.in/wp-content/uploads/2025/03/Student-Orientation-1024x768.jpeg",
+      "https://licet.ac.in/wp-content/uploads/2025/03/Stu-Orienta_2-1024x576.jpeg"
+     ]
     },
     {
      "t": "h",
      "text": "Guest Lectures & Workshops"
     },
     {
-     "t": "html",
-     "html": "<ul><li>The Department of Computer Science and Engineering inaugurated the ISTE Student Chapter for the Academic Year 2024-2025,Mr Sivaraman Arumugam,Associate Director,Digital Workplace(DWP)Analytics,Verizon presided over the ceremony and presented on the title Fostering Innovation and Creativity through Technical Education.ISTE members and other students participated in the event.</li><li>The Department of Computer Science and Engineering organised a guest lecture on awareness of cyber security for the second CSE. Mr. Mavavannan Megavannan, Senior Principal Consultant, CyberFort was the session speaker.</li></ul><ul><li>The Department of Computer Science and Engineering organised a guest lecture on Navigating Success in Studies and Placement Management for the second year CSE students. Mr. Justin Jocob Arunothoyam, HR Manager at Indium was the speaker of the session.</li></ul>"
-    },
-    {
-     "t": "img",
-     "src": "https://licet.ac.in/wp-content/uploads/2025/03/Placement_10_Jan-1024x768.jpeg",
-     "alt": "",
-     "caption": ""
+     "t": "cards",
+     "items": [
+      {
+       "img": "https://licet.ac.in/wp-content/uploads/2025/03/Placement_10_Jan-1024x768.jpeg",
+       "title": "",
+       "html": "<ul><li>The Department of Computer Science and Engineering inaugurated the ISTE Student Chapter for the Academic Year 2024-2025,Mr Sivaraman Arumugam,Associate Director,Digital Workplace(DWP)Analytics,Verizon presided over the ceremony and presented on the title Fostering Innovation and Creativity through Technical Education.ISTE members and other students participated in the event.</li><li>The Department of Computer Science and Engineering organised a guest lecture on awareness of cyber security for the second CSE. Mr. Mavavannan Megavannan, Senior Principal Consultant, CyberFort was the session speaker.</li></ul><ul><li>The Department of Computer Science and Engineering organised a guest lecture on Navigating Success in Studies and Placement Management for the second year CSE students. Mr. Justin Jocob Arunothoyam, HR Manager at Indium was the speaker of the session.</li></ul>"
+      }
+     ]
     },
     {
      "t": "html",

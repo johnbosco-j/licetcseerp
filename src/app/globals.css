@@ -309,3 +309,7 @@
 .site-prose table { width: 100%; border-collapse: collapse; margin: 0.5rem 0 1rem; font-size: 13px; display: block; overflow-x: auto; }
 .site-prose th, .site-prose td { border: 1px solid var(--border); padding: 0.5rem 0.65rem; text-align: left; vertical-align: top; }
 .site-prose th, .site-prose tr:first-child td { background: var(--licet-paper); color: var(--licet-indigo); font-weight: 600; }
+.site-prose-card p { margin: 0; }
+.site-prose-card strong { display: block; font-size: 14.5px; }
+.site-prose-dark, .site-prose-dark p { color: rgb(243 229 196 / 0.9); }
+.site-prose-dark strong { color: #F8D88D; }

@@ -13,7 +13,7 @@ const ORDER = ["Professor", "Associate Professor", "Assistant Professor"]
 
 function Portrait({ p, className = "" }: { p: Person; className?: string }) {
   return p.photo
-    ? <img src={p.photo} alt={p.name} loading="lazy" className={`object-cover bg-licet-cream ${className}`} />
+    ? <img src={p.photo} alt={p.name} loading="lazy" className={`object-cover object-top bg-licet-cream ${className}`} />
     : <span className={`flex items-center justify-center bg-licet-cream text-licet-indigo/60 ${className}`}><UserRound className="w-1/3 h-1/3" /></span>
 }
 
@@ -105,11 +105,11 @@ export function DepartmentPeople({ compact = false }: { compact?: boolean }) {
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
             {staff.map(s => (
-              <div key={s.name} className="flex items-center gap-3 bg-white border border-border rounded-xl p-3">
-                <Portrait p={s} className="w-14 h-14 rounded-full shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-[14px] font-semibold text-licet-indigo leading-tight">{s.name}</p>
-                  <p className="text-[12px] text-muted-foreground">{s.role}</p>
+              <div key={s.name} className="bg-white border border-border rounded-xl overflow-hidden">
+                <Portrait p={s} className="w-full aspect-[4/5]" />
+                <div className="p-3.5">
+                  <p className="font-serif text-[17px] font-semibold text-licet-indigo leading-tight">{s.name}</p>
+                  <p className="text-[11px] font-semibold tracking-wider uppercase text-licet-violet mt-1">{s.role}</p>
                 </div>
               </div>
             ))}
