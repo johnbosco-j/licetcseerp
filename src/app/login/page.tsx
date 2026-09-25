@@ -6,6 +6,7 @@ import { Eye, EyeOff, ArrowRight, Loader2, ShieldAlert, GraduationCap, Briefcase
 import { signIn } from "@/lib/auth"
 import { supabase } from "@/lib/supabase"
 import { Wordmark, LicetLogo } from "@/components/licet-brand"
+import { DepartmentCharter } from "@/components/department-charter"
 
 // Photos from the CSE department page on licet.ac.in, stored in /public/cse.
 const SLIDES = [
@@ -198,6 +199,9 @@ export default function LoginPage() {
           </div>
         </div>
       </section>
+
+      {/* Department vision, mission, PEOs, POs and PSOs */}
+      <DepartmentCharter />
 
       {/* CSE in action */}
       <section className="bg-background">
