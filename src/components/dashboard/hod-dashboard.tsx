@@ -19,7 +19,6 @@ import {
   Hero, HeroChip, HeroPanel, Kpi, KpiSkeleton, Panel, PanelEmpty, Bar, AttPct, Pill, Initials, ListRow, phaseLabel, CallParent,
 } from "./widgets"
 import { NoticesPanel, EventsPanel, ExamsPanel, DocumentsPanel } from "./panels"
-import { DepartmentPeople } from "@/components/site/people"
 
 type Staff = { id: string; full_name: string; role: string; advisor_section: string | null; designation: string | null }
 type Subject = { id: string; code: string; name: string; semester: number; section: string; faculty_id: string | null; credits: number }
@@ -552,9 +551,6 @@ export default function HodDashboard({ name, greeting, designation }: { name: st
         )}
       </Panel>
 
-      <Panel kicker="Department of Computer Science & Engineering" title="Head of Department, Faculty & Staff" bodyClass="p-5">
-        <DepartmentPeople compact />
-      </Panel>
 
       <p className="text-[11px] text-muted-foreground text-center">
         Semester figures count attendance from {fmtDate(semesterStart(), true)} · eligibility bands follow LICET Regulations 2024

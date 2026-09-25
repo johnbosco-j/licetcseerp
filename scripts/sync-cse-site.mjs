@@ -71,53 +71,118 @@ const imgSrc = ($, img) => {
   return /^https?:/.test(s) ? s : ''
 }
 const text = ($, el) => $(el).text().replace(/ /g, ' ').replace(/\s+/g, ' ').trim()
-const SKIP_HEADINGS = new Set(['Computer Science and Engineering', 'About us'])
+const SKIP_HEADINGS = new Set(['Computer Science and Engineering', 'About us', 'Now Playing'])
+// Obvious typos on the source pages, corrected for display.
+const FIX_TEXT = [[/\bSymosium\b/g, 'Symposium']]
+const fixText = t => FIX_TEXT.reduce((s, [re, to]) => s.replace(re, to), t)
 
+// People listed on the website who are not part of the department's staff.
+const EXCLUDE_PEOPLE = [/justine\s+yasappan/i]
+const excluded = name => EXCLUDE_PEOPLE.some(re => re.test(name))
+
+function widgetBlock($, w) {
+  const $w = $(w), type = $w.attr('data-widget_type').split('.')[0]
+  if (type === 'heading' || type === 'animated-headline') {
+    const t = fixText(text($, type === 'heading' ? $w.find('.elementor-heading-title') : $w.find('.elementor-headline')))
+    return t && !SKIP_HEADINGS.has(t) && ![...SKIP_HEADINGS].some(k => k.toLowerCase() === t.toLowerCase()) ? { t: 'h', text: t } : null
+  }
+  if (type === 'text-editor') {
+    const html = fixText(clean($, $w.find('.elementor-widget-container').get(0) ?? w))
+    return html.replace(/<[^>]+>/g, '').trim() ? { t: 'html', html } : null
+  }
+  if (type === 'image') {
+    const src = imgSrc($, $w.find('img').get(0))
+    return src ? { t: 'img', src, alt: ($w.find('img').attr('alt') || '').trim(), caption: text($, $w.find('figcaption')) } : null
+  }
+  if (['gallery', 'image-carousel', 'media-carousel'].includes(type)) {
+    const imgs = []
+    $w.find('a[href]').each((_, a) => { const h = $(a).attr('href'); if (/\.(jpe?g|png|webp)$/i.test(h)) imgs.push(h) })
+    $w.find('img').each((_, i) => imgs.push(imgSrc($, i)))
+    $w.find('[style*="background-image"]').each((_, e) => { const m = ($(e).attr('style') || '').match(/url\(['"]?([^'")]+)/); if (m) imgs.push(m[1]) })
+    const images = [...new Set(imgs.filter(u => /^https?:/.test(u)))]
+    return images.length ? { t: 'gallery', images } : null
+  }
+  if (type === 'toggle' || type === 'accordion') {
+    const items = []
+    $w.find('.elementor-toggle-item, .elementor-accordion-item').each((_, it) => {
+      const c = $(it).find('.elementor-tab-content').get(0)
+      const html = c ? fixText(clean($, c)) : ''
+      if (html.replace(/<[^>]+>/g, '').trim()) items.push({ title: text($, $(it).find('.elementor-toggle-title, .elementor-accordion-title')), html })
+    })
+    return items.length ? { t: 'toggle', items } : null
+  }
+  if (type === 'counter') {
+    const n = $w.find('.elementor-counter-number')
+    return { t: 'counter', label: text($, $w.find('.elementor-counter-title')), value: `${$w.find('.elementor-counter-number-prefix').text().trim()}${n.attr('data-to-value') || text($, n)}${$w.find('.elementor-counter-number-suffix').text().trim()}` }
+  }
+  if (type === 'video') {
+    try { const st = JSON.parse($w.attr('data-settings') || '{}'); const url = st.youtube_url || st.vimeo_url; return url ? { t: 'video', url } : null } catch { return null }
+  }
+  if (type === 'posts') {
+    const items = []
+    $w.find('article').each((_, a) => {
+      const link = $(a).find('.elementor-post__title a').attr('href') || $(a).find('a').attr('href')
+      items.push({ title: text($, $(a).find('.elementor-post__title')), href: /^https?:/.test(link || '') ? link : null, img: imgSrc($, $(a).find('img').get(0)), date: text($, $(a).find('.elementor-post-date')), excerpt: text($, $(a).find('.elementor-post__excerpt')) })
+    })
+    return items.length ? { t: 'posts', items } : null
+  }
+  return null
+}
+
+const isContainer = el => /\b(e-con|elementor-section|elementor-column)\b/.test(el.attribs?.class || '')
+const ownWidgets = ($, el) => $(el).find('[data-widget_type]').toArray().filter(w => !$(w).parents('[data-widget_type]').length)
+  .filter(w => !/^(divider|spacer|nav-menu)\./.test($(w).attr('data-widget_type')))
+
+// Walks the page layout. A layout block holding exactly one photo and a little
+// text (a person, a lab, an achievement) becomes a card, so the photo stays with
+// its own text even when the website alternates photo/text sides.
 function extractBlocks($, main) {
   const blocks = []
-  main.find('[data-widget_type]').each((_, w) => {
-    const $w = $(w), type = $w.attr('data-widget_type').split('.')[0]
-    if ($w.parents('[data-widget_type]').length) return
-    if (type === 'heading' || type === 'animated-headline') {
-      const t = text($, type === 'heading' ? $w.find('.elementor-heading-title') : $w.find('.elementor-headline'))
-      if (t && !SKIP_HEADINGS.has(t)) blocks.push({ t: 'h', text: t })
-    } else if (type === 'text-editor') {
-      const c = $w.find('.elementor-widget-container').get(0) ?? w
-      const html = clean($, c)
-      if (html.replace(/<[^>]+>/g, '').trim()) blocks.push({ t: 'html', html })
-    } else if (type === 'image') {
-      const src = imgSrc($, $w.find('img').get(0))
-      if (src) blocks.push({ t: 'img', src, alt: ($w.find('img').attr('alt') || '').trim(), caption: text($, $w.find('figcaption')) })
-    } else if (['gallery', 'image-carousel', 'media-carousel'].includes(type)) {
-      const imgs = []
-      $w.find('a[href]').each((_, a) => { const h = $(a).attr('href'); if (/\.(jpe?g|png|webp)$/i.test(h)) imgs.push(h) })
-      $w.find('img').each((_, i) => imgs.push(imgSrc($, i)))
-      $w.find('[style*="background-image"]').each((_, e) => { const m = ($(e).attr('style') || '').match(/url\(['"]?([^'")]+)/); if (m) imgs.push(m[1]) })
-      const images = [...new Set(imgs.filter(u => /^https?:/.test(u)))]
-      if (images.length) blocks.push({ t: 'gallery', images })
-    } else if (type === 'toggle' || type === 'accordion') {
-      const items = []
-      $w.find('.elementor-toggle-item, .elementor-accordion-item').each((_, it) => {
-        const c = $(it).find('.elementor-tab-content').get(0)
-        const html = c ? clean($, c) : ''
-        if (html.replace(/<[^>]+>/g, '').trim()) items.push({ title: text($, $(it).find('.elementor-toggle-title, .elementor-accordion-title')), html })
-      })
-      if (items.length) blocks.push({ t: 'toggle', items })
-    } else if (type === 'counter') {
-      const n = $w.find('.elementor-counter-number')
-      blocks.push({ t: 'counter', label: text($, $w.find('.elementor-counter-title')), value: `${$w.find('.elementor-counter-number-prefix').text().trim()}${n.attr('data-to-value') || text($, n)}${$w.find('.elementor-counter-number-suffix').text().trim()}` })
-    } else if (type === 'video') {
-      try { const s = JSON.parse($w.attr('data-settings') || '{}'); const url = s.youtube_url || s.vimeo_url; if (url) blocks.push({ t: 'video', url }) } catch { /* ignore */ }
-    } else if (type === 'posts') {
-      const items = []
-      $w.find('article').each((_, a) => {
-        const link = $(a).find('.elementor-post__title a').attr('href') || $(a).find('a').attr('href')
-        items.push({ title: text($, $(a).find('.elementor-post__title')), href: /^https?:/.test(link || '') ? link : null, img: imgSrc($, $(a).find('img').get(0)), date: text($, $(a).find('.elementor-post-date')), excerpt: text($, $(a).find('.elementor-post__excerpt')) })
-      })
-      if (items.length) blocks.push({ t: 'posts', items })
+  const walk = el => {
+    if (el.type !== 'tag') return
+    if ($(el).attr('data-widget_type')) { const b = widgetBlock($, el); if (b) blocks.push(b); return }
+    if (isContainer(el)) {
+      const ws = ownWidgets($, el)
+      const types = ws.map(w => $(w).attr('data-widget_type').split('.')[0])
+      const images = types.filter(t => t === 'image').length
+      const textual = types.filter(t => t === 'text-editor' || t === 'heading' || t === 'animated-headline').length
+      const other = types.length - images - textual
+      const textLen = ws.reduce((a, w) => a + ($(w).attr('data-widget_type').startsWith('image') ? 0 : text($, w).length), 0)
+      if (images === 1 && textual >= 1 && textual <= 4 && other === 0 && textLen <= 1200) {
+        const parts = ws.map(w => widgetBlock($, w)).filter(Boolean)
+        const img = parts.find(p => p.t === 'img')
+        // Icon + figure + label ("16 · Well Qualified Faculty") is a statistic, not a card.
+        const heads = parts.filter(p => p.t === 'h')
+        if (img && /-150x150\./.test(img.src) && heads.length >= 2 && FIGURE.test(heads[0].text)) {
+          blocks.push({ t: 'counter', value: heads[0].text, label: heads[1].text }); return
+        }
+        const title = parts.find(p => p.t === 'h')?.text ?? ''
+        const html = parts.filter(p => p.t === 'html').map(p => p.html).join('')
+        if (img && (title || html)) { blocks.push({ t: 'card', img: img.src, title, html }); return }
+      }
     }
+    for (const c of el.children || []) walk(c)
+  }
+  walk(main.get(0))
+  // Consecutive cards form one grid; runs of single photos form one gallery.
+  const grouped = []
+  for (const b of blocks) {
+    const last = grouped[grouped.length - 1]
+    if (b.t === 'card' && last?.t === 'cards') last.items.push({ img: b.img, title: b.title, html: b.html })
+    else if (b.t === 'card') grouped.push({ t: 'cards', items: [{ img: b.img, title: b.title, html: b.html }] })
+    else if (b.t === 'img' && !b.caption && last?.t === 'img' && !last.caption) grouped[grouped.length - 1] = { t: 'gallery', images: [last.src, b.src] }
+    else if (b.t === 'img' && !b.caption && last?.t === 'gallery' && last.fromImages) last.images.push(b.src)
+    else grouped.push(b)
+    const now = grouped[grouped.length - 1]
+    if (now.t === 'gallery' && b.t === 'img') now.fromImages = true
+  }
+  for (const g of grouped) delete g.fromImages
+  // A gallery right after an MoU / recruiters / partners heading is a set of logos.
+  grouped.forEach((g, i) => {
+    const prev = grouped[i - 1]
+    if (g.t === 'gallery' && prev?.t === 'h' && /\b(mou|recruiters?|partners?|collaborat)/i.test(prev.text)) g.variant = 'logos'
   })
-  return toStats(blocks)
+  return toStats(grouped)
 }
 
 // Figures on the site come as counters or as "icon + number heading + label
@@ -158,6 +223,7 @@ function extractPeople($, main) {
     const photo = imgSrc($, $(ws.find(w => w.type === 'image')?.el).find('img').get(0))
     if (heads.some(h => /^Head of the department$/i.test(h))) {
       const all = texts.join(' ')
+      if (excluded(heads[0])) continue
       hod = { name: heads[0], role: 'Head of the Department', designation: (all.match(/Associate Professor|Assistant Professor|Professor/) || ['Professor'])[0], email: (all.match(/[\w.]+@licet\.ac\.in/) || [''])[0], bio: texts.filter(t => !/^Email/i.test(t)).join('\n\n'), photo }
       continue
     }
@@ -165,12 +231,12 @@ function extractPeople($, main) {
       const cols = $(c).children().children().toArray().filter(x => /e-con|elementor-column/.test(x.attribs?.class || ''))
       for (const col of cols.length ? cols : [c]) {
         const cw = widgets(col); const h = cw.filter(w => w.type === 'heading').map(w => text($, w.el))
-        if (h.length >= 2) staff.push({ name: h[0], role: h[1].charAt(0) + h[1].slice(1).toLowerCase(), photo: imgSrc($, $(cw.find(w => w.type === 'image')?.el).find('img').get(0)) })
+        if (h.length >= 2 && !excluded(h[0])) staff.push({ name: h[0], role: h[1].charAt(0) + h[1].slice(1).toLowerCase(), photo: imgSrc($, $(cw.find(w => w.type === 'image')?.el).find('img').get(0)) })
       }
       continue
     }
     const at = heads.findIndex(h => /@licet\.ac\.in/.test(h))
-    if (at > 0 && category) {
+    if (at > 0 && category && !excluded(heads[at - 1])) {
       const emails = heads[at].split(',').map(s => s.trim())
       faculty.push({ name: heads[at - 1], designation: category.replace(/s$/, ''), email: emails[0], otherEmails: emails.slice(1), bio: texts.join('\n\n'), photo })
     }
@@ -180,14 +246,15 @@ function extractPeople($, main) {
 
 const slug = s => s.toLowerCase().replace(/^(dr|mr|ms|mrs|rev)\.?\s+/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 
-// Portraits are resized to 480 px squares (JPEG) so the pages stay light.
+// Portraits are resized to 480 px squares (JPEG) so the pages stay light;
+// cropped from the top so faces are never cut off.
 async function savePhoto(url, name) {
   if (!url || /NoPhoto/i.test(url)) return null
   const file = `public/cse/people/${slug(name)}.jpg`
   const r = await fetch(url, { headers: UA })
   if (!r.ok) return url                       // fall back to the website copy
   await sharp(Buffer.from(await r.arrayBuffer()))
-    .resize(480, 480, { fit: 'cover', position: 'attention' })
+    .resize(480, 480, { fit: 'cover', position: 'north' })   // keep the head in frame
     .flatten({ background: '#F3E5C4' })       // transparent PNG cut-outs get the LICET cream
     .jpeg({ quality: 82, mozjpeg: true })
     .toFile(file)
@@ -207,9 +274,10 @@ for (const s of SECTIONS) {
   let blocks = extractBlocks($, main)
   if (s.id === 'faculty') {
     out.people = extractPeople($, main)
-    // The people themselves are shown as cards; keep the intro and accomplishments.
-    const firstPerson = blocks.findIndex(b => b.t === 'h' && out.people.hod && b.text === out.people.hod.name)
-    if (firstPerson > 0) blocks = blocks.slice(0, firstPerson)
+    // The people are shown from out.people; keep only the intro and accomplishments.
+    const acc = blocks.findIndex(b => b.t === 'h' && /accomplishments/i.test(b.text))
+    const end = acc >= 0 ? blocks.findIndex((b, i) => i > acc && b.t === 'toggle') : -1
+    blocks = end > 0 ? blocks.slice(0, end + 1) : blocks.filter(b => b.t === 'h' || b.t === 'html').slice(0, 3)
   }
   out.sections.push({ id: s.id, title: s.title, url, blocks })
   console.log(`${blocks.length} blocks`)

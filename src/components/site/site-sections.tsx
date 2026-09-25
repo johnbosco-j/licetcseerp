@@ -38,6 +38,36 @@ function SectionShell({ id, title, url, tone = "light", children }: { id: string
   )
 }
 
+/** EICON: the association's introduction (from the department overview), then its own page minus the repeated department vision / mission. */
+function EiconSection({ section }: { section: Section }) {
+  const intro = byId("overview")?.blocks.find(b => b.t === "html" && /EICON/.test(b.html))
+  const logo = section.blocks.find(b => b.t === "img")
+  const blocks: Block[] = []
+  for (let i = 0; i < section.blocks.length; i++) {
+    const b = section.blocks[i]
+    if (b === logo || (b.t === "h" && /^EICON$/i.test(b.text))) continue
+    if (b.t === "h" && /^(vision|mission)$/i.test(b.text)) { if (section.blocks[i + 1]?.t === "html") i++; continue }
+    blocks.push(b)
+  }
+  return (
+    <div className="space-y-8">
+      <div className="grid md:grid-cols-[220px_1fr] gap-6 items-center rounded-2xl bg-licet-indigo text-white p-6 sm:p-8">
+        {logo?.t === "img" && (
+          <div className="bg-white rounded-xl p-4 flex items-center justify-center">
+            <img src={logo.src} alt="EICON logo" referrerPolicy="no-referrer" className="max-h-36 object-contain" />
+          </div>
+        )}
+        <div>
+          <p className="text-[11px] font-bold tracking-[3px] uppercase text-licet-gold">Departmental Association</p>
+          <h3 className="font-serif text-[30px] font-semibold !text-white leading-tight mt-1">EICON — Engineers Integrated for Computing Needs</h3>
+          {intro?.t === "html" && <div className="site-prose site-prose-dark text-[14.5px] leading-relaxed mt-3" dangerouslySetInnerHTML={{ __html: intro.html }} />}
+        </div>
+      </div>
+      <Blocks blocks={blocks} />
+    </div>
+  )
+}
+
 /** Everything from the CSE department pages on licet.ac.in, one section per page. */
 export function SiteSections() {
   const obe = byId("obe")
@@ -94,7 +124,9 @@ export function SiteSections() {
 
       {rest.filter(s => s.id !== "overview").map((s, i) => (
         <SectionShell key={s.id} id={s.id} title={s.title} url={s.url} tone={i % 2 === 0 ? "light" : "paper"}>
-          <Blocks blocks={s.blocks.filter((b, j) => !(j === 0 && b.t === "h" && b.text.toLowerCase().replace(/[^a-z]/g, "") === s.title.toLowerCase().replace(/[^a-z]/g, "")))} />
+          {s.id === "eicon" ? <EiconSection section={s} /> : (
+            <Blocks blocks={s.blocks.filter((b, j) => !(j === 0 && b.t === "h" && b.text.toLowerCase().replace(/[^a-z]/g, "") === s.title.toLowerCase().replace(/[^a-z]/g, "")))} />
+          )}
         </SectionShell>
       ))}
 

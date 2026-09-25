@@ -10,7 +10,8 @@ export type Block =
   | { t: "h"; text: string }
   | { t: "html"; html: string }
   | { t: "img"; src: string; alt?: string; caption?: string }
-  | { t: "gallery"; images: string[] }
+  | { t: "gallery"; images: string[]; variant?: "logos" }
+  | { t: "cards"; items: { img: string; title: string; html: string }[] }
   | { t: "toggle"; items: { title: string; html: string }[] }
   | { t: "stats"; items: { value: string; label: string }[] }
   | { t: "video"; url: string }
@@ -54,7 +55,7 @@ function Gallery({ images }: { images: string[] }) {
         {shown.map((src, i) => (
           <button key={src} onClick={() => setOpen(i)} className={`group relative overflow-hidden rounded-lg bg-licet-parchment ${single ? "w-full max-h-[460px]" : "aspect-[4/3]"}`} aria-label="Open photo">
             <img src={src} alt="" loading="lazy" referrerPolicy="no-referrer"
-              className={`w-full h-full ${single ? "object-contain max-h-[460px]" : "object-cover"} transition-transform duration-500 group-hover:scale-105`} />
+              className={`w-full h-full ${single ? "object-contain max-h-[460px]" : "object-cover object-[50%_30%]"} transition-transform duration-500 group-hover:scale-105`} />
           </button>
         ))}
       </div>
@@ -64,6 +65,56 @@ function Gallery({ images }: { images: string[] }) {
         </button>
       )}
       {open !== null && <Lightbox images={images} index={open} onClose={() => setOpen(null)} />}
+    </div>
+  )
+}
+
+/** Partner / recruiter logos: uniform white tiles, logos scaled to fit. */
+function Logos({ images }: { images: string[] }) {
+  return (
+    <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+      {images.map(src => (
+        <div key={src} className="h-24 rounded-xl border border-border bg-white flex items-center justify-center p-2 hover:border-licet-gold transition-colors">
+          <img src={src} alt="" loading="lazy" referrerPolicy="no-referrer" className="h-full w-full object-contain" />
+        </div>
+      ))}
+    </div>
+  )
+}
+
+const plain = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()
+
+/** People, labs and achievements: each photo stays with its own text. */
+function Cards({ items }: { items: { img: string; title: string; html: string }[] }) {
+  const avg = items.reduce((a, c) => a + plain(c.html).length, 0) / items.length
+  if (avg > 260) {
+    return (
+      <div className="grid md:grid-cols-2 gap-4">
+        {items.map(c => (
+          <article key={c.img + c.title} className="flex flex-col sm:flex-row gap-4 bg-white border border-border rounded-xl p-4 hover:border-licet-gold transition-colors">
+            <img src={c.img} alt={c.title} loading="lazy" referrerPolicy="no-referrer"
+              className="w-full sm:w-44 h-44 rounded-lg object-cover object-top bg-licet-parchment shrink-0" />
+            <div className="min-w-0">
+              {c.title && <h4 className="font-serif text-[19px] font-semibold text-licet-indigo leading-snug mb-1.5">{c.title}</h4>}
+              <div className="site-prose text-[13.5px] leading-relaxed text-[#3c3852]" dangerouslySetInnerHTML={{ __html: c.html }} />
+            </div>
+          </article>
+        ))}
+      </div>
+    )
+  }
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+      {items.map(c => (
+        <article key={c.img + c.title} className="bg-white border border-border rounded-xl overflow-hidden hover:border-licet-gold hover:shadow-md transition">
+          <img src={c.img} alt={c.title || plain(c.html).slice(0, 60)} loading="lazy" referrerPolicy="no-referrer"
+            className="w-full aspect-square object-cover object-top bg-licet-parchment" />
+          <div className="p-3.5 text-center">
+            {c.title && <h4 className="font-serif text-[17px] font-semibold text-licet-indigo leading-snug">{c.title}</h4>}
+            <div className="site-prose site-prose-card text-[13px] leading-snug text-[#3c3852]" dangerouslySetInnerHTML={{ __html: c.html }} />
+          </div>
+        </article>
+      ))}
     </div>
   )
 }
@@ -101,7 +152,9 @@ export function Blocks({ blocks }: { blocks: Block[] }) {
               </figure>
             )
           case "gallery":
-            return <Gallery key={i} images={b.images} />
+            return b.variant === "logos" ? <Logos key={i} images={b.images} /> : <Gallery key={i} images={b.images} />
+          case "cards":
+            return <Cards key={i} items={b.items} />
           case "toggle":
             return <Toggle key={i} items={b.items} />
           case "stats":
@@ -120,7 +173,7 @@ export function Blocks({ blocks }: { blocks: Block[] }) {
               <a key={i} href={b.url} target="_blank" rel="noopener noreferrer"
                 className="inline-flex items-center gap-3 rounded-xl border border-border bg-white px-5 py-3.5 hover:border-licet-gold hover:bg-licet-cream/40">
                 <PlayCircle className="w-7 h-7 text-licet-violet" />
-                <span><span className="block text-[14px] font-semibold text-licet-indigo">Watch the department video</span><span className="block text-[12px] text-muted-foreground">Opens on YouTube</span></span>
+                <span><span className="block text-[14px] font-semibold text-licet-indigo">Watch the video</span><span className="block text-[12px] text-muted-foreground">Opens on YouTube</span></span>
               </a>
             )
           case "posts":
