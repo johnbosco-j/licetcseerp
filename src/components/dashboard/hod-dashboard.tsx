@@ -236,7 +236,7 @@ export default function HodDashboard({ name, greeting, designation }: { name: st
                   { v: String(openItems), l: 'Items to act on' },
                 ].map(x => (
                   <div key={x.l}>
-                    <p className="font-serif text-[30px] font-semibold leading-none text-white">{x.v}</p>
+                    <p className="font-display text-[28px] font-bold tracking-[-0.03em] leading-none text-white">{x.v}</p>
                     <p className="text-[10.5px] text-licet-cream/75 mt-1.5 leading-tight">{x.l}</p>
                   </div>
                 ))}
@@ -461,7 +461,7 @@ export default function HodDashboard({ name, greeting, designation }: { name: st
               <div className="grid grid-cols-4 divide-x divide-border border-b border-border">
                 {[['OPEN', 'Open'], ['IN_PROGRESS', 'In progress'], ['RESOLVED', 'Resolved'], ['CLOSED', 'Closed']].map(([k, l]) => (
                   <div key={k} className="px-3 py-3 text-center">
-                    <p className={`font-serif text-[24px] font-semibold leading-none ${k === 'OPEN' && d.grievanceCounts[k] ? 'text-amber-800' : 'text-licet-indigo'}`}>{d.grievanceCounts[k] ?? 0}</p>
+                    <p className={`font-display text-[22px] font-bold tracking-[-0.03em] leading-none ${k === 'OPEN' && d.grievanceCounts[k] ? 'text-amber-800' : 'text-licet-indigo'}`}>{d.grievanceCounts[k] ?? 0}</p>
                     <p className="text-[10.5px] font-semibold tracking-wider uppercase text-muted-foreground mt-1">{l}</p>
                   </div>
                 ))}

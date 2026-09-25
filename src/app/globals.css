@@ -79,13 +79,13 @@
   --radius-sm: calc(var(--radius) - 2px);
   --radius-md: var(--radius);
   --radius-lg: calc(var(--radius) + 2px);
-  --font-sans: var(--font-dm-sans), "DM Sans", system-ui, sans-serif;
+  --font-sans: var(--font-jakarta), "Plus Jakarta Sans", system-ui, sans-serif;
   /* The app used monospace for labels and figures; LICET's site has no mono face. */
-  --font-mono: var(--font-dm-sans), "DM Sans", system-ui, sans-serif;
-  --font-serif: var(--font-cormorant), "Cormorant Garamond", Georgia, serif;
-  --font-display: var(--font-outfit), "Outfit", system-ui, sans-serif;
+  --font-mono: var(--font-jakarta), "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-serif: var(--font-playfair), "Playfair Display", Georgia, serif;
+  --font-display: var(--font-jakarta), "Plus Jakarta Sans", system-ui, sans-serif;
   --font-brand: var(--font-marcellus), "Marcellus", Georgia, serif;
-  --font-nav: var(--font-manrope), "Manrope", system-ui, sans-serif;
+  --font-nav: var(--font-jakarta), "Plus Jakarta Sans", system-ui, sans-serif;
 }
 
 @layer base {
@@ -95,7 +95,7 @@
     font-variant-numeric: tabular-nums;
   }
   h1, h2 {
-    font-family: var(--font-cormorant), "Cormorant Garamond", Georgia, serif;
+    font-family: var(--font-playfair), "Playfair Display", Georgia, serif;
     color: var(--licet-indigo);
     letter-spacing: 0;
   }
@@ -112,7 +112,7 @@
   width: fit-content;
   align-items: center;
   gap: 10px;
-  font-family: var(--font-dm-sans), "DM Sans", sans-serif;
+  font-family: var(--font-jakarta), "Plus Jakarta Sans", sans-serif;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 3px;
@@ -280,7 +280,7 @@
 #scroll-container .grid > .bg-card.border.p-4:hover {
   box-shadow: inset 0 3px 0 var(--licet-gold), 0 10px 24px -16px rgb(26 12 78 / 0.35);
 }
-#scroll-container .grid > .bg-card.border.p-4 > p.text-2xl { font-family: var(--font-cormorant), "Cormorant Garamond", Georgia, serif; font-size: 1.9rem; font-weight: 600; line-height: 1.1; }
+#scroll-container .grid > .bg-card.border.p-4 > p.text-2xl { font-family: var(--font-jakarta), "Plus Jakarta Sans", sans-serif; font-size: 1.65rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; }
 
 /* Modal overlays: indigo-tinted glass instead of flat black. */
 .fixed.inset-0[class*="bg-black"] { background-color: rgb(26 12 78 / 0.45) !important; backdrop-filter: blur(3px); }
@@ -305,7 +305,7 @@
 .site-prose ul > li::before { content: ""; position: absolute; left: 0.1rem; top: 0.62em; width: 6px; height: 6px; transform: rotate(45deg); background: var(--licet-gold); }
 .site-prose ol { list-style: decimal; }
 .site-prose ol > li { margin: 0.35rem 0; }
-.site-prose h4 { font-family: var(--font-cormorant), Georgia, serif; font-size: 1.25rem; font-weight: 600; color: var(--licet-indigo); margin: 1rem 0 0.4rem; }
+.site-prose h4 { font-family: var(--font-playfair), Georgia, serif; font-size: 1.1rem; font-weight: 600; color: var(--licet-indigo); margin: 1rem 0 0.4rem; }
 .site-prose table { width: 100%; border-collapse: collapse; margin: 0.5rem 0 1rem; font-size: 13px; display: block; overflow-x: auto; }
 .site-prose th, .site-prose td { border: 1px solid var(--border); padding: 0.5rem 0.65rem; text-align: left; vertical-align: top; }
 .site-prose th, .site-prose tr:first-child td { background: var(--licet-paper); color: var(--licet-indigo); font-weight: 600; }
@@ -313,3 +313,19 @@
 .site-prose-card strong { display: block; font-size: 14.5px; }
 .site-prose-dark, .site-prose-dark p { color: rgb(243 229 196 / 0.9); }
 .site-prose-dark strong { color: #F8D88D; }
+
+/* ── Type system ──
+   Playfair Display has a much taller x-height than the old Cormorant, so the
+   serif is normalised to a fixed x-height: existing heading sizes keep their
+   proportions and stay readable. Sans text inside a heading is not affected. */
+.font-serif, h1, h2 { font-size-adjust: 0.46; font-variant-numeric: lining-nums tabular-nums; }
+.font-sans, .font-nav, .font-display, .font-mono, .font-brand, .eyebrow { font-size-adjust: none; }
+h1, h2, h3 { text-wrap: balance; }
+p { text-wrap: pretty; }
+body { font-feature-settings: "cv11", "ss01"; letter-spacing: -0.003em; }
+
+/* Logo strip: many recruiter logos scroll gently in one row; pauses on hover. */
+@keyframes licet-strip { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.logo-strip { mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent); }
+.logo-strip > div { animation: licet-strip 45s linear infinite; width: max-content; }
+.logo-strip:hover > div { animation-play-state: paused; }

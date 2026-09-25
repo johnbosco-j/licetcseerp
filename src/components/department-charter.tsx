@@ -40,7 +40,7 @@ export function DepartmentCharter() {
       <div className="relative max-w-[1200px] mx-auto px-4 py-16">
         <div className="text-center">
           <p className="text-[12px] font-semibold tracking-[3px] uppercase text-licet-violet">Department of Computer Science &amp; Engineering</p>
-          <h2 id="charter-title" className="font-serif italic font-medium text-[38px] sm:text-[48px] leading-tight mt-2">Vision, Mission &amp; Outcomes</h2>
+          <h2 id="charter-title" className="font-serif font-semibold text-[36px] sm:text-[46px] leading-tight mt-2">Vision, Mission &amp; Outcomes</h2>
           <p className="text-[13px] text-muted-foreground mt-1">B.E. Computer Science and Engineering · Regulations 2024</p>
           <div className="h-[2px] w-16 bg-licet-gold mx-auto mt-4" />
         </div>

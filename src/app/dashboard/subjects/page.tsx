@@ -617,7 +617,7 @@ export default function SubjectsPage() {
             ].map(({ label, value }) => (
               <div key={label} className="bg-card border border-border rounded-lg p-4">
                 <p className="text-[10.5px] font-bold tracking-[1.5px] uppercase text-muted-foreground mb-1">{label}</p>
-                <p className="font-serif text-[30px] font-semibold leading-none text-licet-indigo">{value}</p>
+                <p className="font-display text-[28px] font-bold tracking-[-0.03em] leading-none text-licet-indigo">{value}</p>
               </div>
             ))}
           </div>

@@ -4,44 +4,30 @@ import "./globals.css";
 
 // Fonts are bundled from @fontsource (npm) instead of fetched from Google at build
 // time: the Google download intermittently failed on Vercel builds.
-const dmSans = localFont({
-  variable: "--font-dm-sans",
+// Type system: Plus Jakarta Sans for all interface and body text, Playfair Display
+// for headings and figures of note, Marcellus only for the "LICET Things" wordmark.
+const jakarta = localFont({
+  variable: "--font-jakarta",
   src: [
-    { path: "../../node_modules/@fontsource-variable/dm-sans/files/dm-sans-latin-wght-normal.woff2", weight: "300 700", style: "normal" },
-    { path: "../../node_modules/@fontsource-variable/dm-sans/files/dm-sans-latin-wght-italic.woff2", weight: "300 700", style: "italic" },
+    { path: "../../node_modules/@fontsource-variable/plus-jakarta-sans/files/plus-jakarta-sans-latin-wght-normal.woff2", weight: "200 800", style: "normal" },
+    { path: "../../node_modules/@fontsource-variable/plus-jakarta-sans/files/plus-jakarta-sans-latin-wght-italic.woff2", weight: "200 800", style: "italic" },
   ],
   display: "swap",
 });
 
-const cormorant = localFont({
-  variable: "--font-cormorant",
+const playfair = localFont({
+  variable: "--font-playfair",
   src: [
-    { path: "../../node_modules/@fontsource-variable/cormorant-garamond/files/cormorant-garamond-latin-wght-normal.woff2", weight: "400 700", style: "normal" },
-    { path: "../../node_modules/@fontsource-variable/cormorant-garamond/files/cormorant-garamond-latin-wght-italic.woff2", weight: "400 700", style: "italic" },
+    { path: "../../node_modules/@fontsource-variable/playfair-display/files/playfair-display-latin-wght-normal.woff2", weight: "400 900", style: "normal" },
+    { path: "../../node_modules/@fontsource-variable/playfair-display/files/playfair-display-latin-wght-italic.woff2", weight: "400 900", style: "italic" },
   ],
   display: "swap",
 });
 
-// Menu typography: Marcellus (classical Roman capitals) for the brand and section
-// headings, Manrope (crisp modern sans) for navigation labels.
 const marcellus = localFont({
   variable: "--font-marcellus",
   src: "../../node_modules/@fontsource/marcellus/files/marcellus-latin-400-normal.woff2",
   weight: "400",
-  display: "swap",
-});
-
-const manrope = localFont({
-  variable: "--font-manrope",
-  src: "../../node_modules/@fontsource-variable/manrope/files/manrope-latin-wght-normal.woff2",
-  weight: "400 700",
-  display: "swap",
-});
-
-const outfit = localFont({
-  variable: "--font-outfit",
-  src: "../../node_modules/@fontsource-variable/outfit/files/outfit-latin-wght-normal.woff2",
-  weight: "500 800",
   display: "swap",
 });
 
@@ -63,7 +49,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en-IN">
-      <body className={`${dmSans.variable} ${cormorant.variable} ${outfit.variable} ${marcellus.variable} ${manrope.variable} antialiased`}>
+      <body className={`${jakarta.variable} ${playfair.variable} ${marcellus.variable} antialiased`}>
         {children}
       </body>
     </html>

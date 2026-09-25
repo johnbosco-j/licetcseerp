@@ -39,7 +39,7 @@ export function Stat({ label, value, sub, icon: Icon }: { label: string; value: 
         <span className="text-[10.5px] font-bold tracking-[2px] uppercase text-muted-foreground">{label}</span>
         {Icon && <span className="w-8 h-8 rounded-md flex items-center justify-center bg-licet-cream text-licet-indigo"><Icon size={15} /></span>}
       </div>
-      <p className="font-serif text-[30px] font-semibold leading-none text-licet-indigo mt-2">{value}</p>
+      <p className="font-display text-[28px] font-bold tracking-[-0.03em] leading-none text-licet-indigo mt-2">{value}</p>
       {sub && <p className="text-[12px] text-muted-foreground mt-1">{sub}</p>}
     </div>
   )

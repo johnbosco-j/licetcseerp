@@ -80,7 +80,7 @@ export function Kpi({ label, value, sub, icon: Icon, tone = "default", href, met
           <Icon size={16} />
         </span>
       </div>
-      <p className={`font-serif text-[34px] font-semibold leading-none mt-2 ${TONE_TEXT[tone]}`}>{value}</p>
+      <p className={`font-display text-[30px] font-bold tracking-[-0.03em] leading-none mt-2.5 ${TONE_TEXT[tone]}`}>{value}</p>
       {meter != null && (
         <div className="mt-3 h-1.5 rounded-full bg-muted overflow-hidden">
           <div className={`h-full rounded-full ${meter >= 75 ? 'bg-green-700' : meter >= 65 ? 'bg-amber-600' : 'bg-red-700'}`} style={{ width: `${Math.min(100, Math.max(0, meter))}%` }} />
@@ -160,7 +160,7 @@ export function Ring({ value, size = 112, stroke = 10, label, sub }: { value: nu
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#1A0C4E" strokeWidth={stroke + 4} strokeDasharray={`1.5 ${c}`} strokeDashoffset={-(0.75 * c)} opacity={0.5} />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-        <span className="font-serif text-[26px] font-semibold leading-none text-licet-indigo">{label ?? (value == null ? '—' : `${Math.round(pct)}%`)}</span>
+        <span className="font-display text-[24px] font-bold tracking-[-0.03em] leading-none text-licet-indigo">{label ?? (value == null ? '—' : `${Math.round(pct)}%`)}</span>
         {sub && <span className="text-[10px] font-semibold tracking-wider uppercase text-muted-foreground mt-1">{sub}</span>}
       </div>
     </div>

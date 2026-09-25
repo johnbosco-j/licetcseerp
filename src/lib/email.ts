@@ -48,9 +48,9 @@ function esc(value: unknown): string {
 
 function layout(kicker: string, inner: string) {
   return `
-<div style="font-family:'DM Sans',Arial,sans-serif;max-width:600px;margin:0 auto;border:1px solid #e8e0cc;background:#ffffff">
+<div style="font-family:'Plus Jakarta Sans',Arial,sans-serif;max-width:600px;margin:0 auto;border:1px solid #e8e0cc;background:#ffffff">
   <div style="background:${INDIGO};padding:18px 24px;border-bottom:3px solid ${GOLD}">
-    <h1 style="color:#ffffff;margin:0;font-family:'Cormorant Garamond',Georgia,serif;font-size:22px;font-weight:600">LICET &mdash; Department of CSE</h1>
+    <h1 style="color:#ffffff;margin:0;font-family:'Playfair Display',Georgia,serif;font-size:22px;font-weight:600">LICET &mdash; Department of CSE</h1>
     <p style="color:${GOLD};margin:4px 0 0;font-size:11px;letter-spacing:2px;text-transform:uppercase">${esc(kicker)}</p>
   </div>
   <div style="padding:24px;color:#2b2540;font-size:14px;line-height:1.6">${inner}</div>

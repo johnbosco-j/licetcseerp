@@ -24,7 +24,7 @@ function SectionShell({ id, title, url, tone = "light", children }: { id: string
         <div className="flex flex-wrap items-end justify-between gap-3 mb-8">
           <div>
             <p className="eyebrow">Department of CSE</p>
-            <h2 className="font-serif italic font-medium text-[36px] sm:text-[44px] leading-tight mt-2">{title}</h2>
+            <h2 className="font-serif font-semibold text-[32px] sm:text-[42px] leading-tight mt-2">{title}</h2>
           </div>
           {url && (
             <a href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-licet-violet hover:text-licet-indigo">

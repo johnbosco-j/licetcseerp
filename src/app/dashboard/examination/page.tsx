@@ -262,7 +262,7 @@ export default function ExaminationPage() {
                 {(['DRAFT','SUBMITTED','APPROVED','REJECTED'] as QPStatus[]).map(s => (
                   <div key={s} className="bg-card border border-border rounded-lg p-4">
                     <p className="text-[10.5px] font-bold tracking-[1.5px] uppercase text-muted-foreground mb-1">{s}</p>
-                    <p className="font-serif text-[30px] font-semibold leading-none text-licet-indigo">{papers.filter(p => p.status === s).length}</p>
+                    <p className="font-display text-[28px] font-bold tracking-[-0.03em] leading-none text-licet-indigo">{papers.filter(p => p.status === s).length}</p>
                   </div>
                 ))}
               </div>
