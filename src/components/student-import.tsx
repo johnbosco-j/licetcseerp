@@ -181,7 +181,7 @@ export function StudentImport({ onClose, onDone, existingEmails }: { onClose: ()
 
         <div className="px-6 py-4 border-t border-border flex flex-wrap items-center justify-between gap-3">
           <p className="text-[12.5px] text-muted-foreground">
-            {running ? `Creating accounts… ${progress} of ${ready.length}` : results ? `${results.filter(r => r.status === "created").length} created · ${results.filter(r => r.status !== "created").length} not created` : "New students sign in with the default password and must change it at first login."}
+            {running ? `Creating accounts… ${progress} of ${ready.length}` : results ? `${results.filter(r => r.status === "created").length} created · ${rows.length - results.filter(r => r.status === "created").length} not created (reasons shown in each row)` : "New students sign in with the default password and must change it at first login."}
           </p>
           <div className="flex gap-2">
             <button onClick={onClose} disabled={running} className="px-4 py-2 border border-border rounded-md text-[13px] font-semibold hover:bg-muted disabled:opacity-40">{results ? "Close" : "Cancel"}</button>

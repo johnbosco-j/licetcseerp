@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase"
 import { isTier1 } from "@/lib/roles"
 import { attendanceStatus } from "@/lib/regulations"
 import { computeRisk, loadStudentStats, type RiskScore, type CGPAResult } from "@/lib/cgpa"
+import { semesterStart } from "@/lib/dashboard"
 import type { AuthUser } from "@/lib/auth"
 import type { Database } from "@/lib/supabase"
 import {
@@ -129,7 +130,7 @@ export default function AnalyticsPage() {
       if (error) throw error
       if (!students?.length) { setLoading(false); return }
       setStudents(students)
-      const stats = await loadStudentStats(students.map(s => s.id))
+      const stats = await loadStudentStats(students.map(s => s.id), semesterStart())
       for (const student of students) {
         const st = stats[student.id]
         const risk = await computeRisk(student.id, st.attendancePct, st.avgMarksPct, st.cgpa.cgpa)
@@ -146,7 +147,7 @@ export default function AnalyticsPage() {
     if (!isStudent || !profile) return
     const run = async () => {
       setLoading(true)
-      const st = (await loadStudentStats([profile.id]))[profile.id]
+      const st = (await loadStudentStats([profile.id], semesterStart()))[profile.id]
       const { attendancePct, avgMarksPct } = st
       const cgpaResult = st.cgpa
       const risk = await computeRisk(profile.id, attendancePct, avgMarksPct, cgpaResult.cgpa)

@@ -22,6 +22,7 @@ const TABLE_LABEL: Record<string, string> = {
   marks: 'Marks', attendance: 'Subject attendance', day_attendance: 'Day attendance', subject_locks: 'Locks',
   subjects: 'Subjects', profiles: 'Profiles', finance_ledger: 'Finance', leaves: 'Leaves', grievances: 'Grievances',
   attendance_alerts: 'Attendance alerts', promotion_log: 'Promotion', inventory: 'Inventory', placements: 'Placements',
+  placement_offers: 'Placement offers',
 }
 const PAGE = 200
 

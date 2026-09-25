@@ -168,12 +168,14 @@ export interface StudentStats {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function fetchForStudents(table: string, select: string, column: string, ids: string[]): Promise<any[]> {
+async function fetchForStudents(table: string, select: string, column: string, ids: string[], since?: { column: string; from: string }): Promise<any[]> {
   const rows: unknown[] = []
   for (let i = 0; i < ids.length; i += 100) {
     const chunk = ids.slice(i, i + 100)
     for (let from = 0; ; from += 1000) {
-      const { data, error } = await supabase.from(table as never).select(select).in(column, chunk).range(from, from + 999)
+      let q = supabase.from(table as never).select(select).in(column, chunk)
+      if (since) q = q.gte(since.column, since.from)
+      const { data, error } = await q.range(from, from + 999)
       if (error) throw new Error(error.message)
       rows.push(...(data ?? []))
       if (!data || data.length < 1000) break
@@ -183,10 +185,13 @@ async function fetchForStudents(table: string, select: string, column: string, i
   return rows as any[]
 }
 
-/** Attendance (session-wise), marks and CGPA for many students in a handful of requests. */
-export async function loadStudentStats(studentIds: string[]): Promise<Record<string, StudentStats>> {
+/**
+ * Attendance (session-wise), marks and CGPA for many students in a handful of requests.
+ * `attendanceFrom` (ISO date) limits attendance to a period, normally the current semester.
+ */
+export async function loadStudentStats(studentIds: string[], attendanceFrom?: string): Promise<Record<string, StudentStats>> {
   const [att, marks] = await Promise.all([
-    fetchForStudents('day_attendance', 'student_id, status', 'student_id', studentIds),
+    fetchForStudents('day_attendance', 'student_id, status', 'student_id', studentIds, attendanceFrom ? { column: 'date', from: attendanceFrom } : undefined),
     fetchForStudents('marks', '*, subjects(id, code, name, credits, semester, section)', 'student_id', studentIds),
   ])
   const out: Record<string, StudentStats> = {}

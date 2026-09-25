@@ -8,6 +8,7 @@ import { supabase } from "@/lib/supabase"
 import { isTier1 } from "@/lib/roles"
 import { attendanceStatus } from "@/lib/regulations"
 import { loadDepartmentTotals, loadStudentStats } from "@/lib/cgpa"
+import { semesterStart } from "@/lib/dashboard"
 import { academicYear } from "@/lib/utils"
 import type { AuthUser } from "@/lib/auth"
 import type { Database } from "@/lib/supabase"
@@ -47,7 +48,7 @@ export default function ReportsPage() {
 
       if (!students) { setLoading(false); return }
 
-      const stats = await loadStudentStats(students.map(s => s.id))
+      const stats = await loadStudentStats(students.map(s => s.id), semesterStart())
       const results = students.map(s => ({
         name: s.full_name, email: s.email, section: s.section,
         attendance: stats[s.id].attendancePct, cgpa: stats[s.id].cgpa.totalCredits ? stats[s.id].cgpa.cgpa.toFixed(2) : '—',

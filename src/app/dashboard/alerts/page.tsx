@@ -34,6 +34,9 @@ const SECTIONS = ['I CSE-A','I CSE-B','II CSE-A','II CSE-B','III CSE-A','III CSE
 const ALERT_LABELS: Record<string, { label: string; color: string }> = {
   ABSENT_ON_NO_INFO: { label: 'Absent (No Info)',   color: 'text-red-700 bg-red-50 border-red-200' },
   LATE_THRESHOLD:    { label: '3× Late This Month', color: 'text-amber-700 bg-amber-50 border-amber-200' },
+  PARTIAL_ABSENT:    { label: 'Partly Absent',      color: 'text-amber-700 bg-amber-50 border-amber-200' },
+  FULL_ABSENT:       { label: 'Absent Full Day',    color: 'text-red-700 bg-red-50 border-red-200' },
+  LATE:              { label: 'Late',               color: 'text-amber-700 bg-amber-50 border-amber-200' },
 }
 
 export default function AlertsPage() {
@@ -204,7 +207,7 @@ export default function AlertsPage() {
           {visibleAlerts.map(alert => {
             const isResolved = !!alert.cleared_at
             const hasMet     = !!alert.met_hod
-            const alertInfo  = ALERT_LABELS[alert.alert_type] ?? { label: alert.alert_type, color: 'text-muted-foreground bg-accent border-border' }
+            const alertInfo  = ALERT_LABELS[alert.alert_type] ?? { label: alert.alert_type.replace(/_/g, ' ').toLowerCase().replace(/^./, (c: string) => c.toUpperCase()), color: 'text-muted-foreground bg-accent border-border' }
             const partsLabel = alert.missed_parts?.length ? `Part ${alert.missed_parts.join(', ')}` : ''
 
             return (
