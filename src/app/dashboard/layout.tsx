@@ -277,7 +277,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </div>
 
       {/* Brand bar */}
-      <header className="h-16 shrink-0 flex items-center gap-4 px-4 md:px-6 z-40 relative text-white
+      <header className="h-16 shrink-0 flex items-center gap-2 sm:gap-4 px-3 sm:px-4 md:px-6 z-40 relative text-white
         bg-[linear-gradient(100deg,#1A0C4E_0%,#2A1A63_55%,#41317E_100%)] shadow-[0_6px_20px_-10px_rgba(26,12,78,0.6)]">
         <span aria-hidden className="absolute inset-x-0 bottom-0 h-[2px] bg-gradient-to-r from-licet-gold via-[#F8D88D] to-licet-gold opacity-90" />
         <div aria-hidden className="pointer-events-none absolute inset-0 overflow-clip">
@@ -289,10 +289,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {mobileOpen ? <X size={20} /> : <Menu size={20} />}
         </button>
 
-        <Link href="/dashboard" className="relative flex items-center gap-4 min-w-0" aria-label="Dashboard home">
-          <img src="/images.png" alt="LICET" className="w-10 h-10 rounded-full bg-white p-[2px] ring-2 ring-licet-gold/80 shrink-0" />
-          <span className="flex flex-col items-start leading-none min-w-0">
-            <Wordmark size={19} />
+        <Link href="/dashboard" className="relative flex items-center gap-2.5 sm:gap-4 min-w-0" aria-label="Dashboard home">
+          <img src="/images.png" alt="LICET" className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white p-[2px] ring-2 ring-licet-gold/80 shrink-0" />
+          <span className="hidden min-[360px]:flex flex-col items-start leading-none min-w-0">
+            <Wordmark size="clamp(14px, 4.4vw, 19px)" />
             <span className="hidden sm:block font-nav text-[9.5px] font-semibold tracking-[2.6px] uppercase text-licet-cream/75 mt-1.5 truncate">Dept. of Computer Science &amp; Engineering</span>
           </span>
         </Link>
@@ -305,8 +305,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <kbd className="ml-auto text-[10.5px] font-semibold text-licet-cream/60 border border-white/20 rounded-md px-1.5 py-0.5">Ctrl K</kbd>
         </button>
 
-        <div className="relative ml-auto lg:ml-0 flex items-center gap-3">
-          <button onClick={() => setPalette(true)} aria-label="Search" className="lg:hidden w-10 h-10 flex items-center justify-center rounded-full text-licet-cream hover:bg-white/10"><Search size={18} /></button>
+        <div className="relative ml-auto lg:ml-0 flex items-center gap-1.5 sm:gap-3 shrink-0">
+          <button onClick={() => setPalette(true)} aria-label="Search" className="hidden sm:flex lg:hidden w-10 h-10 items-center justify-center rounded-full text-licet-cream hover:bg-white/10"><Search size={18} /></button>
           {bellUser && !mustChange && <AttentionBell user={bellUser} />}
           <span className="hidden xl:flex flex-col items-end leading-tight font-nav pr-3 border-r border-white/15">
             <span className="text-[13px] font-semibold text-white tabular-nums">{time}</span>

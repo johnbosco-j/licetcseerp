@@ -228,13 +228,14 @@ export interface DocItem { id: string; title: string; category: string; section?
 
 /** Latest shared documents (DOCUMENT:* records), optionally for one section plus department-wide ones. */
 export async function loadRecentDocuments(section?: string, limit = 5): Promise<DocItem[]> {
+  const since = new Date(Date.now() - 60 * 86_400_000).toISOString()   // recent only: older files stay in the repository
   const { data } = await supabase.from('announcements').select('id, title, body, audience, created_at')
-    .like('audience', 'DOCUMENT:%').order('created_at', { ascending: false }).limit(60)
+    .like('audience', 'DOCUMENT:%').gte('created_at', since).order('created_at', { ascending: false }).limit(60)
   return (data ?? []).flatMap(r => {
     try {
       const d = JSON.parse(r.body)
       if (section && d.section && d.section !== 'ALL' && d.section !== section) return []
-      return [{ id: r.id, title: d.title || r.title || d.category, category: d.category ?? r.audience.slice(9), section: d.section, created_at: r.created_at }]
+      return [{ id: r.id, title: (d.title || r.title || d.category || '').replace(/^DOC:\s*/, ''), category: d.category ?? r.audience.slice(9), section: d.section, created_at: r.created_at }]
     } catch { return [] }
   }).slice(0, limit)
 }

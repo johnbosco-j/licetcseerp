@@ -4,13 +4,13 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import {
   Users, GraduationCap, BookOpen, ClipboardCheck, ShieldAlert, Award, Heart, MessageSquareWarning,
-  BellRing, UserCog, KeyRound, Briefcase, Wallet, Boxes, History, CheckCircle2,
+  BellRing, UserCog, KeyRound, Briefcase, Wallet, Boxes, CheckCircle2,
   AlertTriangle, CalendarCheck,
 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { loadDepartmentTotals, type DepartmentTotals } from "@/lib/cgpa"
 import {
-  SECTIONS, currentSemester, isFinalYear, isoDate, semesterStart, dayPhase, loadTodaysTimetables, loadSectionAttendance,
+  SECTIONS, currentSemester, isFinalYear, isoDate, dayPhase, loadTodaysTimetables, loadSectionAttendance,
   loadStudentAttendance, loadUpcomingEvents, loadNotices, loadUpcomingExams, loadRecentDocuments, loadParentMobiles, timeAgo, fmtDate, inr,
   type SectionAttendance, type StudentAttendance, type EventItem, type NoticeItem, type ExamItem, type DocItem, type Period, type Slot,
 } from "@/lib/dashboard"
@@ -25,7 +25,6 @@ type Subject = { id: string; code: string; name: string; semester: number; secti
 type Leave = { id: string; leave_type: string; from_date: string; to_date: string; created_at: string; applicant_id: string; status: string }
 type Grievance = { id: string; subject_line: string; category: string; status: string; created_at: string; student_id: string }
 type Placement = { id: string; company_name: string; role_title: string; package_lpa: number | null; visit_date: string | null }
-type Activity = { key: string; actor: string; text: string; at: string; count: number }
 
 interface HodData {
   strength: Record<string, number>
@@ -48,24 +47,15 @@ interface HodData {
   placements: Placement[]
   finance: { credit: number; debit: number; entries: number }
   inventory: { total: number; maintenance: number; serviceDue: number }
-  activity: Activity[]
   today: Record<string, { period: Period; slot: Slot }[]>
 }
-
-const TABLE_LABEL: Record<string, string> = {
-  marks: 'marks', day_attendance: 'attendance', attendance: 'subject attendance', profiles: 'profiles',
-  subjects: 'courses', leaves: 'leave applications', grievances: 'grievances', subject_locks: 'locks',
-  finance_ledger: 'finance entries', announcements: 'notices / documents', attendance_alerts: 'attendance alerts',
-  inventory: 'inventory', placements: 'placement drives', promotion_log: 'promotion',
-}
-const ACTION_LABEL: Record<string, string> = { INSERT: 'added', UPDATE: 'updated', DELETE: 'removed' }
 
 async function loadHod(): Promise<HodData> {
   const today = isoDate()
   const head = { count: 'exact' as const, head: true }
   const [
     studentsRes, mustChangeRes, staffRes, subjectsRes, sectionAtt, allAtt, totals, leavesRes, onLeaveRes,
-    grievRes, alertsRes, events, notices, placementsRes, financeRes, inventoryRes, auditRes, todayTT, exams, docs,
+    grievRes, alertsRes, events, notices, placementsRes, financeRes, inventoryRes, todayTT, exams, docs,
   ] = await Promise.all([
     supabase.from('profiles').select('section').eq('role', 'STUDENT').eq('is_active', true).range(0, 4999),
     supabase.from('profiles').select('id', head).eq('role', 'STUDENT').eq('must_change_password', true),
@@ -83,7 +73,6 @@ async function loadHod(): Promise<HodData> {
     supabase.from('placements').select('id, company_name, role_title, package_lpa, visit_date').eq('is_active', true).order('visit_date', { ascending: true, nullsFirst: false }).limit(4),
     supabase.from('finance_ledger').select('txn_type, amount').range(0, 9999),
     supabase.from('inventory').select('status, next_service_date').range(0, 9999),
-    supabase.from('audit_log').select('at, actor, action, table_name').order('at', { ascending: false }).limit(300),
     loadTodaysTimetables(SECTIONS),
     loadUpcomingExams(undefined, 6),
     loadRecentDocuments(undefined, 5),
@@ -118,20 +107,6 @@ async function loadHod(): Promise<HodData> {
   const soon = new Date(); soon.setDate(soon.getDate() + 30)
   const inv = inventoryRes.data ?? []
 
-  // Group bulk edits (e.g. a whole class's marks) into one line per actor/table/minute.
-  const activity: Activity[] = []
-  for (const a of auditRes.data ?? []) {
-    const key = `${a.actor}|${a.table_name}|${a.action}|${a.at.slice(0, 16)}`
-    const last = activity[activity.length - 1]
-    if (last?.key === key) { last.count++; continue }
-    if (activity.length >= 8) break
-    activity.push({
-      key, at: a.at, count: 1,
-      actor: a.actor ? (staffName.get(a.actor) ?? people.get(a.actor)?.name ?? 'A user') : 'System',
-      text: `${ACTION_LABEL[a.action] ?? a.action.toLowerCase()} ${TABLE_LABEL[a.table_name] ?? a.table_name.replace(/_/g, ' ')}`,
-    })
-  }
-
   const lowStudents = allAtt.filter(s => s.sessions > 0 && s.pct < 75).sort((a, b) => a.pct - b.pct)
   const parentMobiles = await loadParentMobiles(lowStudents.slice(0, 12).map(s => s.student_id))
 
@@ -156,7 +131,6 @@ async function loadHod(): Promise<HodData> {
       maintenance: inv.filter(i => i.status === 'MAINTENANCE').length,
       serviceDue: inv.filter(i => i.next_service_date && i.next_service_date <= isoDate(soon) && i.status !== 'RETIRED').length,
     },
-    activity,
     today: todayTT,
   }
 }
@@ -265,7 +239,7 @@ export default function HodDashboard({ name, greeting, designation }: { name: st
           <Kpi label="Semester attendance" value={semAttPct == null ? '—' : `${semAttPct}%`} icon={ClipboardCheck} href="/dashboard/attendance-analysis"
             meter={semAttPct} sub={semAtt.n ? `${semAtt.n.toLocaleString('en-IN')} session records since semester start` : 'No attendance marked this semester'} />
           <Kpi label="Below 75%" value={d.lowStudents.length} icon={ShieldAlert} href="/dashboard/analytics"
-            tone={d.lowStudents.length ? 'bad' : 'good'} sub={below65 ? `${below65} below 65% (SA, not eligible)` : 'Eligibility per Regulations 2024 cl. 7'} />
+            tone={d.lowStudents.length ? 'bad' : 'good'} sub={below65 ? `${below65} below 65% (not eligible)` : 'All eligible for exams'} />
           <Kpi label="Assessment pass rate" value={d.totals?.passRate == null ? '—' : `${d.totals.passRate}%`} icon={Award} href="/dashboard/marks"
             sub={d.totals?.markEntries ? `Share of ${d.totals.markEntries.toLocaleString('en-IN')} mark entries scoring ≥ 45%` : 'No marks entered yet'} />
         </>}
@@ -390,7 +364,7 @@ export default function HodDashboard({ name, greeting, designation }: { name: st
 
       {/* Students at risk + faculty workload */}
       <section className="grid gap-6 xl:grid-cols-2">
-        <Panel kicker="Regulations 2024 · clause 7" title="Students below 75% attendance" href="/dashboard/analytics" hrefLabel="Analytics">
+        <Panel kicker="This semester" title="Students below 75% attendance" href="/dashboard/analytics" hrefLabel="Analytics">
           {!d ? <div className="h-48 animate-pulse" /> : d.lowStudents.length === 0 ? (
             <PanelEmpty icon={ShieldAlert}>Every student with recorded attendance is at or above 75% this semester.</PanelEmpty>
           ) : (
@@ -493,8 +467,8 @@ export default function HodDashboard({ name, greeting, designation }: { name: st
       </section>
 
       {/* Placements, resources, documents */}
-      <section className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
-        <Panel kicker="Department" title="Placements & resources">
+      <section className={`grid gap-6 ${d && !(d.finance.entries || d.inventory.total || d.placements.length) ? '' : 'xl:grid-cols-[1.4fr_1fr]'}`}>
+        {d && !(d.finance.entries || d.inventory.total || d.placements.length) ? null : <Panel kicker="Department" title="Placements & resources">
           {!d ? <div className="h-40 animate-pulse" /> : (
             <div className="divide-y divide-border">
               <div className="grid grid-cols-3 divide-x divide-border">
@@ -530,31 +504,10 @@ export default function HodDashboard({ name, greeting, designation }: { name: st
               )}
             </div>
           )}
-        </Panel>
+        </Panel>}
         <DocumentsPanel items={d?.docs ?? []} loading={!d} />
       </section>
 
-      {/* Audit trail */}
-      <Panel kicker="Examination Policy §16 · audit trail" title="Recent activity" href="/dashboard/audit" hrefLabel="Audit log">
-        {!d ? <div className="h-32 animate-pulse" /> : d.activity.length === 0 ? <PanelEmpty icon={History}>No recorded changes yet.</PanelEmpty> : (
-          <ul className="grid md:grid-cols-2 divide-y md:divide-y-0 divide-border">
-            {d.activity.map((a, i) => (
-              <li key={`${a.key}-${i}`} className={`flex items-center gap-3 px-5 py-2.5 ${i >= 2 ? 'md:border-t md:border-border' : ''} ${i % 2 === 1 ? 'md:border-l md:border-border' : ''}`}>
-                <span className="w-2 h-2 rounded-full bg-licet-gold shrink-0" />
-                <p className="flex-1 min-w-0 text-[13px] text-licet-indigo truncate">
-                  <span className="font-semibold">{a.actor}</span> {a.text}{a.count > 1 ? ` (${a.count} entries)` : ''}
-                </p>
-                <span className="text-[11px] text-muted-foreground whitespace-nowrap">{timeAgo(a.at)}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Panel>
-
-
-      <p className="text-[11px] text-muted-foreground text-center">
-        Semester figures count attendance from {fmtDate(semesterStart(), true)} · eligibility bands follow LICET Regulations 2024
-      </p>
     </div>
   )
 }

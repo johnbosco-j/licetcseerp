@@ -147,7 +147,7 @@ export default function StudentDashboard({ me, name, greeting }: { me: StudentMe
     pct == null
       ? { label: 'No attendance recorded yet this semester', href: '/dashboard/attendance', icon: ClipboardCheck, tone: 'done' }
       : pct < 75
-        ? { label: `Attendance below 75% — attend the next ${head.mustAttend} session${head.mustAttend === 1 ? '' : 's'}`, detail: pct < 65 ? 'Below 65%: shortage of attendance (SA) under clause 7' : '65–74%: condonation needed for the semester-end examination', count: Math.round(pct), href: '/dashboard/attendance', icon: ClipboardCheck, tone: pct < 65 ? 'bad' : 'warn' }
+        ? { label: `Attendance below 75% — attend the next ${head.mustAttend} session${head.mustAttend === 1 ? '' : 's'}`, detail: pct < 65 ? 'Below 65%: not eligible for the semester-end exam' : '65–74%: condonation needed for the semester-end examination', count: Math.round(pct), href: '/dashboard/attendance', icon: ClipboardCheck, tone: pct < 65 ? 'bad' : 'warn' }
         : { label: 'Attendance is at or above 75%', detail: `You can miss up to ${head.canMiss} more session${head.canMiss === 1 ? '' : 's'}`, href: '/dashboard/attendance', icon: ClipboardCheck, tone: 'done' },
     d.alerts
       ? { label: 'Attendance alerts to clear with your HOD', count: d.alerts, href: '/dashboard/alerts', icon: BellRing, tone: 'warn' }
@@ -227,7 +227,7 @@ export default function StudentDashboard({ me, name, greeting }: { me: StudentMe
 
       <section className="grid gap-6 xl:grid-cols-[1.1fr_1fr]">
         <TodoPanel items={todos} loading={!d} title="What needs your attention" />
-        <Panel kicker="Regulations 2024 · clause 7" title="Attendance eligibility" href="/dashboard/attendance" hrefLabel="Details">
+        <Panel kicker="This semester" title="Attendance eligibility" href="/dashboard/attendance" hrefLabel="Details">
           {!d ? <div className="h-48 animate-pulse" /> : (
             <div className="p-5 flex flex-col sm:flex-row items-center gap-6">
               <Ring value={pct} size={132} sub={status?.code === 'SA' ? 'Shortage' : status ? 'This semester' : 'No records'} />
@@ -303,7 +303,7 @@ export default function StudentDashboard({ me, name, greeting }: { me: StudentMe
         )}
       </Panel>
 
-      <Panel kicker={`Semester ${sem} · R2024`} title="My courses" href="/dashboard/marks" hrefLabel="All marks">
+      <Panel kicker={`Semester ${sem}`} title="My courses" href="/dashboard/marks" hrefLabel="All marks">
         {!d ? <div className="h-48 animate-pulse" /> : final ? (
           <PanelEmpty icon={BookOpen}>Your batch follows the pre-autonomy curriculum. Your courses will be added by the department.</PanelEmpty>
         ) : d.courses.length === 0 ? (

@@ -333,7 +333,7 @@ export default function FacultyDashboard({ me, name, greeting, embedded = false 
             </div>
           )}
         </Panel>
-        <Panel kicker="Regulations 2024 · clause 7" title="Students below 75% in my classes" href="/dashboard/analytics" hrefLabel="Analytics">
+        <Panel kicker="This semester" title="Students below 75% in my classes" href="/dashboard/analytics" hrefLabel="Analytics">
           {!d ? <div className="h-48 animate-pulse" /> : d.lowInMyClasses.length === 0 ? (
             <PanelEmpty icon={ShieldAlert}>No student in your sections is below 75% this semester.</PanelEmpty>
           ) : (
