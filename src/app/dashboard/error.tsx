@@ -15,7 +15,7 @@ export default function DashboardError({
 
   useEffect(() => {
     // Log to console in dev — don't expose to user
-    console.error("[Excelsior Error]", error)
+    console.error("[LICET Things error]", error)
   }, [error])
 
   // Derive a friendly message from the error type
@@ -119,7 +119,7 @@ export default function DashboardError({
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
             <img src="/images.png" alt="LICET" style={{ width: "16px", opacity: 0.4 }} />
             <span style={{ fontSize: "11px", color: "#DCD0B4", letterSpacing: "0.06em" }}>
-              LICET · EXCELSIOR ERP
+              LICET Things · Department of CSE
             </span>
           </div>
         </div>
