@@ -79,9 +79,23 @@ export default function ReportsPage() {
     }
 
     else if (reportType === 'placement_stats') {
-      const { data: placements } = await supabase.from('placements')
-        .select('*').eq('department_id', '00000000-0000-0000-0000-000000000001')
-      setStats({ type: 'placement_stats', data: placements ?? [] })
+      // Company-wise: drives held, offers made (declined ones excluded), students placed, best package.
+      const [{ data: placements }, { data: offers }] = await Promise.all([
+        supabase.from('placements').select('*').eq('department_id', '00000000-0000-0000-0000-000000000001'),
+        supabase.from('placement_offers').select('*'),
+      ])
+      const byCompany = new Map<string, { company_name: string; drives: number; offers: number; students: Set<string>; best: number | null; active: boolean }>()
+      const entry = (name: string) => {
+        const key = name.trim().toLowerCase()
+        if (!byCompany.has(key)) byCompany.set(key, { company_name: name.trim(), drives: 0, offers: 0, students: new Set(), best: null, active: false })
+        return byCompany.get(key)!
+      }
+      for (const p of placements ?? []) { const e = entry(p.company_name); e.drives++; e.active ||= p.is_active; if (p.package_lpa != null) e.best = Math.max(e.best ?? 0, Number(p.package_lpa)) }
+      for (const o of (offers ?? []).filter(o => o.status !== 'DECLINED')) {
+        const e = entry(o.company_name); e.offers++; e.students.add(o.student_id ?? o.student_name)
+        if (o.package_lpa != null) e.best = Math.max(e.best ?? 0, Number(o.package_lpa))
+      }
+      setStats({ type: 'placement_stats', data: [...byCompany.values()].map(e => ({ ...e, students: e.students.size })).sort((a, b) => b.offers - a.offers || a.company_name.localeCompare(b.company_name)) })
     }
 
     else if (reportType === 'naac_data') {
@@ -139,10 +153,9 @@ export default function ReportsPage() {
       sheetName = 'Faculty Workload'
     } else if (stats.type === 'placement_stats') {
       rows = stats.data.map((p: any, i: number) => ({
-        'S.No': i+1, 'Company': p.company_name, 'Role': p.role_title,
-        'Package (LPA)': p.package_lpa ?? '—',
-        'Visit Date': p.visit_date ?? '—',
-        'Status': p.is_active ? 'Active' : 'Closed'
+        'S.No': i+1, 'Company': p.company_name, 'Drives': p.drives, 'Offers': p.offers,
+        'Students placed': p.students, 'Highest package (LPA)': p.best ?? '—',
+        'Drive status': p.drives ? (p.active ? 'Active' : 'Closed') : 'Off-campus'
       }))
       sheetName = 'Placements'
     } else if (stats.type === 'naac_data') {
@@ -283,7 +296,7 @@ export default function ReportsPage() {
                     {stats.type === 'faculty_workload' && ['#','Name','Email','Subjects','Sessions','Marks Entries'].map(h => (
                       <th key={h} className="text-left px-4 py-3 font-mono text-xs text-muted-foreground">{h}</th>
                     ))}
-                    {stats.type === 'placement_stats' && ['#','Company','Role','Package','Visit Date','Status'].map(h => (
+                    {stats.type === 'placement_stats' && ['#','Company','Drives','Offers','Students placed','Highest package','Status'].map(h => (
                       <th key={h} className="text-left px-4 py-3 font-mono text-xs text-muted-foreground">{h}</th>
                     ))}
                   </tr>
@@ -315,12 +328,13 @@ export default function ReportsPage() {
                         <>
                           <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{i+1}</td>
                           <td className="px-4 py-3 text-sm font-medium">{row.company_name}</td>
-                          <td className="px-4 py-3 font-mono text-xs">{row.role_title}</td>
-                          <td className="px-4 py-3 font-mono text-xs">{row.package_lpa ? `₹${row.package_lpa} LPA` : '—'}</td>
-                          <td className="px-4 py-3 font-mono text-xs">{row.visit_date ?? '—'}</td>
+                          <td className="px-4 py-3 font-mono text-xs">{row.drives}</td>
+                          <td className="px-4 py-3 font-mono text-xs">{row.offers}</td>
+                          <td className="px-4 py-3 font-mono text-xs">{row.students}</td>
+                          <td className="px-4 py-3 font-mono text-xs">{row.best != null ? `₹${row.best} LPA` : '—'}</td>
                           <td className="px-4 py-3">
-                            <span className={`font-mono text-xs px-2 py-0.5 rounded border ${row.is_active ? 'text-green-700 bg-green-50 border-green-200' : 'text-muted-foreground bg-accent border-border'}`}>
-                              {row.is_active ? 'Active' : 'Closed'}
+                            <span className={`font-mono text-xs px-2 py-0.5 rounded border ${row.active ? 'text-green-700 bg-green-50 border-green-200' : 'text-muted-foreground bg-accent border-border'}`}>
+                              {row.drives ? (row.active ? 'Active' : 'Closed') : 'Off-campus'}
                             </span>
                           </td>
                         </>

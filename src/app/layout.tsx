@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 
@@ -34,12 +34,17 @@ const marcellus = localFont({
 export const metadata: Metadata = {
   title: "LICET Things – Department of CSE, Loyola-ICAM College of Engineering and Technology",
   description: "Department of Computer Science & Engineering ERP — Loyola-ICAM College of Engineering and Technology (Autonomous), Chennai",
-  icons: { icon: "/images.png", apple: "/images.png" },
+  icons: { icon: "/images.png", apple: "/icons/apple-touch-icon.png" },
+  appleWebApp: { capable: true, title: "LICET Things", statusBarStyle: "black-translucent" },
   openGraph: {
     title: "LICET Things",
     description: "Loyola-ICAM College of Engineering and Technology — Department of Computer Science & Engineering",
     siteName: "LICET Things",
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#1A0C4E",
 };
 
 export default function RootLayout({

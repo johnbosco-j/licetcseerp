@@ -594,7 +594,7 @@ export default function SubjectsPage() {
       )}
 
       {isHOD && activeTab === 'manage' ? (
-        <CurriculumModule />
+        <CurriculumModule initialSection={selectedSection} />
       ) : (
         <>
           {!isStudent && (

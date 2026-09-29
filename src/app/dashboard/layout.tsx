@@ -17,6 +17,9 @@ import { getAllowedModules } from "@/lib/roles"
 import { setAcademicState } from "@/lib/semester"
 import { Wordmark } from "@/components/licet-brand"
 import { Toaster } from "@/components/toaster"
+import { AttentionBell, type BellUser } from "@/components/attention-bell"
+import { CommandPalette } from "@/components/command-palette"
+import { isTier1 } from "@/lib/roles"
 
 type NavItem = { icon: LucideIcon; label: string; id: string }
 
@@ -98,6 +101,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [query, setQuery]         = useState("")
   const [menuOpen, setMenuOpen]   = useState(false)
   const [offline, setOffline]     = useState(false)
+  const [bellUser, setBellUser]   = useState<BellUser | null>(null)
+  const [paletteOpen, setPalette] = useState(false)
   const [toast, setToast]         = useState('')
   const searchRef = useRef<HTMLInputElement>(null)
 
@@ -142,6 +147,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       setRole(profile.role)
       setSection(profile.section ?? null)
       setMustChange(!!profile.must_change_password)
+      setBellUser({ id: profile.id, role: profile.role, tier1: isTier1(profile), advisorSection: profile.advisor_section ?? null, section: profile.section ?? null })
       setReady(true)
     }
     init()
@@ -174,7 +180,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     window.addEventListener("offline", off)
     const onKey = (e: KeyboardEvent) => {
       const typing = (e.target as HTMLElement)?.closest("input, textarea, select, [contenteditable]")
-      if (e.key === "/" && !typing) { e.preventDefault(); setExpanded(true); searchRef.current?.focus() }
+      if ((e.key === "/" && !typing) || (e.key.toLowerCase() === "k" && (e.metaKey || e.ctrlKey))) { e.preventDefault(); setPalette(true) }
       if (e.key === "Escape") { setMobile(false); setMenuOpen(false) }
     }
     window.addEventListener("keydown", onKey)
@@ -292,14 +298,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </Link>
 
         {/* Command-style module search */}
-        <button onClick={openSearch}
+        <button onClick={() => setPalette(true)}
           className="relative hidden lg:flex items-center gap-2.5 mx-auto w-[340px] h-10 px-4 rounded-full bg-white/[0.07] border border-white/15 text-licet-cream/60 font-nav text-[13px] hover:bg-white/[0.11] hover:border-licet-gold/50 transition-colors">
           <Search size={15} className="text-licet-gold" />
-          <span>Search modules…</span>
-          <kbd className="ml-auto text-[10.5px] font-semibold text-licet-cream/60 border border-white/20 rounded-md px-1.5 py-0.5">/</kbd>
+          <span>{role && role !== "STUDENT" ? "Search modules or students…" : "Search modules…"}</span>
+          <kbd className="ml-auto text-[10.5px] font-semibold text-licet-cream/60 border border-white/20 rounded-md px-1.5 py-0.5">Ctrl K</kbd>
         </button>
 
         <div className="relative ml-auto lg:ml-0 flex items-center gap-3">
+          <button onClick={() => setPalette(true)} aria-label="Search" className="lg:hidden w-10 h-10 flex items-center justify-center rounded-full text-licet-cream hover:bg-white/10"><Search size={18} /></button>
+          {bellUser && !mustChange && <AttentionBell user={bellUser} />}
           <span className="hidden xl:flex flex-col items-end leading-tight font-nav pr-3 border-r border-white/15">
             <span className="text-[13px] font-semibold text-white tabular-nums">{time}</span>
             <span className="text-[10.5px] text-licet-cream/70">{date}</span>
@@ -518,6 +526,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </main>
       </div>
       <Toaster />
+      <CommandPalette open={paletteOpen} onClose={() => setPalette(false)} searchStudents={!!role && role !== "STUDENT" && !mustChange}
+        modules={mustChange ? [] : NAV_GROUPS.flatMap(g => g.items.filter(i => allowed.includes(i.id)).map(i => ({ id: i.id, label: i.label, href: hrefFor(i.id), icon: i.icon, group: g.title })))} />
     </div>
   )
 }

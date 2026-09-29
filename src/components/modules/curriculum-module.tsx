@@ -92,11 +92,11 @@ const CO_HINTS: Record<number, string> = {
 
 // ── Component ────────────────────────────────────────────
 
-export default function CurriculumModule() {
+export default function CurriculumModule({ initialSection = "II CSE-A" }: { initialSection?: string } = {}) {
   const router = useRouter()
 
   const [authUser, setAuthUser]         = useState<AuthUser | null>(null)
-  const [section, setSection]           = useState("II CSE-A")
+  const [section, setSection]           = useState(initialSection)
   const [semParity, setSemParity] = useState<0 | 1>(
     () => (getCurrentSemParity() === "odd" ? 0 : 1)
   ) // 0=odd(Jul-Nov), 1=even(Jan-May)
