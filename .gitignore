@@ -45,3 +45,6 @@ scripts/data/
 
 # Local developer helpers (test sessions, SQL runner)
 scripts/.dev/
+
+# Internal documentation exports (not for the public repository)
+docs/*.pdf
