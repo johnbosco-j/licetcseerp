@@ -203,7 +203,7 @@ export function Landing({ openLogin = false, children }: { openLogin?: boolean; 
       {loginOpen && !signedIn && (
         <div className="fixed inset-0 z-[90] bg-[#0d0628]/70 backdrop-blur-md flex items-center justify-center p-4" onClick={() => setLoginOpen(false)}>
           <div role="dialog" aria-modal="true" aria-labelledby="signin-title" onClick={e => e.stopPropagation()}
-            className="relative w-full max-w-[860px] grid md:grid-cols-[1fr_1.1fr] overflow-hidden rounded-3xl bg-white shadow-2xl shadow-black/50 ring-1 ring-white/10"
+            className="relative w-full max-w-[860px] max-h-[calc(100dvh-2rem)] overflow-y-auto grid md:grid-cols-[1fr_1.1fr] rounded-3xl bg-white shadow-2xl shadow-black/50 ring-1 ring-white/10"
             style={{ animation: "licet-fade 0.35s ease-out both" }}>
 
             {/* Brand panel */}

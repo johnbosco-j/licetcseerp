@@ -42,3 +42,6 @@ scripts/data/
 
 # Local tool settings
 .claude/
+
+# Local developer helpers (test sessions, SQL runner)
+scripts/.dev/

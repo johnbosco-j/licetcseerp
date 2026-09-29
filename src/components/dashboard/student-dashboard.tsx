@@ -171,7 +171,7 @@ export default function StudentDashboard({ me, name, greeting }: { me: StudentMe
           <HeroChip tone="gold">Semester {sem} · {semesterTerm()} {academicYear(new Date(), true)}</HeroChip>
           <HeroChip tone={phase.kind === 'period' ? 'live' : 'plain'}>{phaseLabel(phase)}</HeroChip>
           {d?.advisor && <HeroChip><UserRound size={12} />Class advisor: {d.advisor}</HeroChip>}
-          {d && <HeroChip>{openTodos ? `${openTodos} item${openTodos === 1 ? '' : 's'} need attention` : 'You are all caught up'}</HeroChip>}
+          {d && <HeroChip>{openTodos ? `${openTodos} thing${openTodos === 1 ? '' : 's'} to do` : 'You are all caught up'}</HeroChip>}
         </>}
         actions={[
           { href: '/dashboard/attendance', label: 'My attendance' },
