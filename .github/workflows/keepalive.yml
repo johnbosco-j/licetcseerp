@@ -1,0 +1,26 @@
+# Backup for the daily Vercel cron in vercel.json: keeps the free-plan Supabase
+# project from pausing after 7 idle days. Calls the app's /api/keepalive route,
+# which runs one small database query. Fails (and GitHub emails the owner) if
+# the database does not answer.
+name: Keep database awake
+
+on:
+  schedule:
+    - cron: "0 14 */2 * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ping the database through the app
+        run: |
+          for attempt in 1 2 3; do
+            body=$(curl -fsS --max-time 30 https://cseerp.vercel.app/api/keepalive) && echo "$body" | grep -q '"ok":true' && { echo "Database awake: $body"; exit 0; }
+            echo "Attempt $attempt failed, retrying in 60 s"; sleep 60
+          done
+          echo "The database did not answer. Check the Supabase dashboard; the project may be paused." >&2
+          exit 1
