@@ -1,5 +1,5 @@
 {
- "syncedAt": "2026-09-25T13:53:18.248Z",
+ "syncedAt": "2026-10-15T05:24:46.440Z",
  "source": "https://licet.ac.in/computer-science-and-engineering/computer-science-and-engineering-faculty/",
  "hod": {
   "name": "Dr Sharmila V J",
@@ -144,15 +144,16 @@
    "otherEmails": [],
    "bio": "Ms Princess Benita completed Undergraduate in Information Technology (B.Tech IT) and Masters in Embedded Systems (M.E) both with First class. She has academic teaching experience as an Assistant Professor and has published a research paper in an International Journal. Her areas of interest include Artificial intelligence, Networking and Database.",
    "photo": "/cse/people/princess-benita-l.jpg",
-   "photoHash": "6e020a12b486"
+   "photoHash": "98abec1bafac"
   },
   {
    "name": "Mr Sureshkumar C",
    "designation": "Assistant Professor",
    "email": "sureshkumar.c@licet.ac.in",
    "otherEmails": [],
-   "bio": "",
-   "photo": null
+   "bio": "Mr. Sureshkumar.C holds a Bachelor’s degree in Computer Science and M.C.A., M.Phil., and M. Tech. in Computer Science and Engineering. He is currently pursuing his Ph.D. in Computer Science and Engineering at Anna University, Chennai. He has more than 13 years of teaching experience in higher education. And also he is having additional experience in Industry arealike H/W Networking fields. He completed MCP (Microsoft Certified Professional). He is having experience in AVIATION concern also. He worked as an Assistant professor in MH Cognition concern. His academic interests include Artificial Intelligence, Machine Learning, Cloud Computing and Data Science. He actively participates in research and has published research papers in national and international conferences and journals.",
+   "photo": "/cse/people/sureshkumar-c.jpg",
+   "photoHash": "f1ac0dd828b1"
   },
   {
    "name": "Ms Minna Fathima",

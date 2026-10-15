@@ -1,5 +1,5 @@
 {
- "syncedAt": "2026-09-25T13:53:18.248Z",
+ "syncedAt": "2026-10-15T05:24:46.440Z",
  "source": "https://licet.ac.in/computer-science-and-engineering/",
  "sections": [
   {
@@ -129,13 +129,13 @@
     {
      "t": "gallery",
      "images": [
-      "https://licet.ac.in/wp-content/uploads/2026/05/image5.png"
+      "https://licet.ac.in/wp-content/uploads/2026/10/CSE_LabFc2-1.jpeg"
      ]
     },
     {
      "t": "gallery",
      "images": [
-      "https://licet.ac.in/wp-content/uploads/2026/05/image7.png"
+      "https://licet.ac.in/wp-content/uploads/2026/10/CSE_LabFc1.jpeg"
      ]
     },
     {
@@ -395,7 +395,7 @@
       },
       {
        "img": "https://licet.ac.in/wp-content/uploads/2021/04/482-scaled.jpg",
-       "title": "Open Source Laboratory",
+       "title": "Software Systems Laboratory",
        "html": "<table> <tbody> <tr> <td>System Configuration</td> <td>Lenovo Thinkcentre Workstations(i3), 16GB DDR3 Memory, 500GB HDD</td> </tr> <tr> <td>Academic Courses and Softwares</td> <td>Advanced Data Structures and Algorithms, Database practices, Research Mentoring, English for Research Paper Writing, MySQL, Python, MongoDB, UBUNTU 16.4, Windows 7, GCC, JDK.</td> </tr> </tbody> </table>"
       },
       {
