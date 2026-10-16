@@ -1,5 +1,5 @@
 "use client"
-import { toTitleCase, normalizeMobile, formatMobile, graduationYear } from "@/lib/utils"
+import { toTitleCase, normalizeMobile, formatMobile, graduationYear, needsVertical } from "@/lib/utils"
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
@@ -32,7 +32,7 @@ export default function StudentsPage() {
   const [notice, setNotice]     = useState("")
   const [editId, setEditId]     = useState<string | null>(null)
   const [importing, setImporting] = useState(false)
-  const [form, setForm]         = useState({ full_name: '', email: '', section: 'I CSE-A', batch_year: graduationYear('I CSE-A'), roll_number: '', register_number: '', parent_mobile: '' })
+  const [form, setForm]         = useState({ full_name: '', email: '', section: 'I CSE-A', batch_year: graduationYear('I CSE-A'), roll_number: '', register_number: '', parent_mobile: '', lab_batch: 1, vertical: '' })
 
   const isHOD = authUser?.type === 'staff' && isTier1(authUser.data)
 
@@ -57,6 +57,7 @@ export default function StudentsPage() {
 
   const handleSave = async () => {
     if (!form.full_name || !form.email || !form.section || !form.batch_year) return
+    if (needsVertical(form.section, form.batch_year) && !form.vertical) { setError('Choose the vertical (AI & ML or Full Stack) for this III / IV year student.'); return }
     const parentMobile = normalizeMobile(form.parent_mobile)
     if (parentMobile === null) { setError('Parent / guardian mobile must be a 10-digit Indian mobile number.'); return }
     setSaving(true)
@@ -71,6 +72,8 @@ export default function StudentsPage() {
         roll_number: form.roll_number || null,
         register_number: form.register_number || null,
         parent_mobile: parentMobile || null,
+        lab_batch: form.lab_batch || null,
+        vertical: form.vertical || null,
       }).eq('id', editId)
 
       if (updErr) setError(updErr.message)
@@ -115,13 +118,15 @@ export default function StudentsPage() {
       roll_number: (student as any).roll_number ?? '',
       register_number: (student as any).register_number ?? '',
       parent_mobile: student.parent_mobile ?? '',
+      lab_batch: student.lab_batch ?? 1,
+      vertical: student.vertical ?? '',
     })
     setEditId(student.id)
     setShowForm(true)
   }
 
   const openAdd = () => {
-    setForm({ full_name: '', email: '', section: 'I CSE-A', batch_year: graduationYear('I CSE-A'), roll_number: '', register_number: '', parent_mobile: '' })
+    setForm({ full_name: '', email: '', section: 'I CSE-A', batch_year: graduationYear('I CSE-A'), roll_number: '', register_number: '', parent_mobile: '', lab_batch: 1, vertical: '' })
     setEditId(null)
     setShowForm(true)
   }
@@ -234,6 +239,24 @@ export default function StudentsPage() {
                   <input value={form.register_number} onChange={e => setForm({...form, register_number: e.target.value})}
                     placeholder="e.g. 311124104001"
                     className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-mono text-xs text-muted-foreground">Lab batch *</label>
+                  <select value={form.lab_batch} onChange={e => setForm({...form, lab_batch: Number(e.target.value)})}
+                    className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none">
+                    {[1, 2, 3].map(b => <option key={b} value={b}>Batch {b}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="font-mono text-xs text-muted-foreground">Vertical{needsVertical(form.section, form.batch_year) ? ' *' : ''}</label>
+                  <select value={form.vertical} onChange={e => setForm({...form, vertical: e.target.value})}
+                    className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none">
+                    <option value="">{needsVertical(form.section, form.batch_year) ? 'Choose…' : '— not yet —'}</option>
+                    <option value="AIML">AI & ML</option>
+                    <option value="FSD">Full Stack Development</option>
+                  </select>
                 </div>
               </div>
               <div className="space-y-1">

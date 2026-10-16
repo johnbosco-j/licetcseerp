@@ -8,7 +8,7 @@ import {
   PenTool, CalendarDays, BookOpen, MessageSquare, Wallet, AlertTriangle,
   Package, Award, ShieldCheck, Bell, Briefcase, TrendingUp,
   FileBarChart, Users, Library, Clock, LogOut, LayoutDashboard, ChevronLeft, Menu, X,
-  BarChart3, Search, UserCog, History, WifiOff, ChevronDown, GraduationCap, ExternalLink, CalendarMinus, UserCheck, Scale, FileSpreadsheet, type LucideIcon
+  BarChart3, Search, UserCog, History, WifiOff, ChevronDown, GraduationCap, ExternalLink, CalendarMinus, UserCheck, Scale, FileSpreadsheet, Settings2, type LucideIcon
 } from "lucide-react"
 import type { AuthUser } from "@/lib/auth"
 import { signOut } from "@/lib/auth"
@@ -70,6 +70,7 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
       { icon: ShieldCheck,     label: "NAAC & NBA",            id: "naac" },
       { icon: TrendingUp,      label: "Year Promotion",        id: "promotion" },
       { icon: FileBarChart,    label: "Departmental Reports",  id: "reports" },
+      { icon: Settings2,       label: "Configuration",         id: "config" },
     ]
   },
 ]
@@ -141,7 +142,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       const fresh = { type, data: { ...user.data, ...profile, name: profile.full_name } } as AuthUser
       localStorage.setItem("licet_user", JSON.stringify(fresh))
 
-      setAllowed(getAllowedModules({ type, role: profile.role, advisor_section: profile.advisor_section, can_reset_passwords: profile.can_reset_passwords, access_tier: profile.access_tier }))
+      const { data: navSetting } = await supabase.from("app_settings").select("value").eq("key", "nav.hidden").maybeSingle()
+      if (!active) return
+      setAllowed(getAllowedModules({ type, role: profile.role, advisor_section: profile.advisor_section, can_reset_passwords: profile.can_reset_passwords, access_tier: profile.access_tier },
+        (navSetting?.value ?? null) as Record<string, string[]> | null))
       setDesignation(profile.designation ?? null)
       setName(profile.full_name || "")
       setRole(profile.role)

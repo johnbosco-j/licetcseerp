@@ -1,7 +1,7 @@
 "use server"
 
 import { adminClient, requireRole, AuthError } from '@/lib/server-auth'
-import { normalizeMobile } from '@/lib/utils'
+import { normalizeMobile, needsVertical } from '@/lib/utils'
 import { canResetPassword, defaultStudentPassword, MIN_PASSWORD_LENGTH } from '@/lib/passwords'
 
 const DEPT_ID = '00000000-0000-0000-0000-000000000001'
@@ -15,6 +15,10 @@ export interface NewStudent {
   roll_number?: string
   register_number?: string
   parent_mobile?: string
+  /** lab batch (1, 2 …) — decides which half of a split lab hour the student attends */
+  lab_batch?: number | null
+  /** vertical code (e.g. AIML, FSD) for III/IV-year students of R2024 batches */
+  vertical?: string | null
 }
 
 export type ActionResult = { success?: boolean; error?: string; password?: string }
@@ -28,6 +32,10 @@ async function createStudent(db: ReturnType<typeof adminClient>, data: NewStuden
   const full_name = data.full_name?.trim()
   if (!full_name || !email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: 'Enter a valid name and email' }
   if (!SECTIONS.includes(data.section)) return { error: 'Choose a valid section' }
+  const lab_batch = Number(data.lab_batch)
+  if (!(lab_batch >= 1 && lab_batch <= 4)) return { error: 'Choose the lab batch (1 or 2)' }
+  const vertical = data.vertical?.trim().toUpperCase() || null
+  if (needsVertical(data.section, data.batch_year) && !vertical) return { error: 'Choose the vertical (e.g. AI & ML or Full Stack)' }
 
   const password = defaultStudentPassword(email)
   const { data: authData, error: authErr } = await db.auth.admin.createUser({ email, password, email_confirm: true })
@@ -44,6 +52,8 @@ async function createStudent(db: ReturnType<typeof adminClient>, data: NewStuden
     roll_number: data.roll_number?.trim() || null,
     register_number: data.register_number?.trim() || null,
     parent_mobile: normalizeMobile(data.parent_mobile) || null,
+    lab_batch,
+    vertical,
     is_active: true,
     must_change_password: true,
   })

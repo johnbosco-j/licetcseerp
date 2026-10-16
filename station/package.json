@@ -1,0 +1,14 @@
+{
+  "name": "licet-attendance-station",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Staff laptop app for QR self check-in over the laptop's own Wi-Fi (LICET Things ERP).",
+  "type": "module",
+  "bin": "server.mjs",
+  "scripts": { "start": "node server.mjs" },
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.108.1",
+    "qrcode": "^1.5.4"
+  }
+}

@@ -40,6 +40,8 @@ export type Database = {
           designation: string | null
           access_tier: number | null
           parent_mobile: string | null
+          lab_batch: number | null
+          vertical: string | null
           created_at: string
           updated_at: string
         }

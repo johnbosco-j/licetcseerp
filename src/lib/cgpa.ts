@@ -191,19 +191,18 @@ async function fetchForStudents(table: string, select: string, column: string, i
  */
 export async function loadStudentStats(studentIds: string[], attendanceFrom?: string): Promise<Record<string, StudentStats>> {
   const [att, marks] = await Promise.all([
-    fetchForStudents('day_attendance', 'student_id, status', 'student_id', studentIds, attendanceFrom ? { column: 'date', from: attendanceFrom } : undefined),
+    loadAttendanceTotals(studentIds, attendanceFrom),
     fetchForStudents('marks', '*, subjects(id, code, name, credits, semester, section)', 'student_id', studentIds),
   ])
   const out: Record<string, StudentStats> = {}
   for (const id of studentIds) {
-    const a = att.filter(r => r.student_id === id)
-    const present = a.filter(r => r.status === 'PRESENT' || r.status === 'LATE').length
+    const a = att[id] ?? { hours: 0, present: 0 }
     const m = marks.filter(r => r.student_id === id)
     const obtained = m.reduce((s, r) => s + Number(r.marks_obtained), 0)
     const max = m.reduce((s, r) => s + Number(r.max_marks), 0)
     out[id] = {
-      attendancePct: a.length ? Math.round(present / a.length * 100) : null,
-      attendanceSessions: a.length,
+      attendancePct: a.hours ? Math.round(a.present / a.hours * 100) : null,
+      attendanceSessions: a.hours,
       avgMarksPct: max ? Math.round(obtained / max * 100) : null,
       cgpa: cgpaFromMarks(m),
     }
@@ -211,8 +210,21 @@ export async function loadStudentStats(studentIds: string[], attendanceFrom?: st
   return out
 }
 
+/** Class hours conducted and attended per student (hour-wise register), in chunks of 200 ids. */
+async function loadAttendanceTotals(ids: string[], from?: string): Promise<Record<string, { hours: number; present: number }>> {
+  const out: Record<string, { hours: number; present: number }> = {}
+  for (let i = 0; i < ids.length; i += 200) {
+    const { data, error } = await supabase.rpc('att_student_totals' as never, { p_ids: ids.slice(i, i + 200), p_from: from ?? null } as never)
+    if (error) throw new Error(error.message)
+    for (const r of (data ?? []) as unknown as { student_id: string; hours: number; present: number }[]) {
+      out[r.student_id] = { hours: Number(r.hours), present: Number(r.present) }
+    }
+  }
+  return out
+}
+
 export interface DepartmentTotals {
-  /** session-wise attendance (day_attendance), null when none recorded */
+  /** hour-wise attendance (attendance register), null when none recorded */
   attendancePct: number | null
   attendanceRecords: number
   /** average of all entered marks, null when none entered */
@@ -224,10 +236,9 @@ export interface DepartmentTotals {
 
 /** Department-wide attendance and marks, counted exactly (no 1000-row cap). */
 export async function loadDepartmentTotals(): Promise<DepartmentTotals> {
-  const [total, present] = await Promise.all([
-    supabase.from('day_attendance').select('id', { count: 'exact', head: true }),
-    supabase.from('day_attendance').select('id', { count: 'exact', head: true }).in('status', ['PRESENT', 'LATE']),
-  ])
+  const { data: att } = await supabase.rpc('att_department_totals' as never, { p_from: null } as never)
+  const totals = ((att ?? []) as unknown as { hours: number; present: number }[])[0] ?? { hours: 0, present: 0 }
+  const total = { count: Number(totals.hours) }, present = { count: Number(totals.present) }
   const marks: { marks_obtained: number; max_marks: number }[] = []
   for (let from = 0; ; from += 1000) {
     const { data, error } = await supabase.from('marks').select('marks_obtained, max_marks').range(from, from + 999)

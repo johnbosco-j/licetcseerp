@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Attendance Station</title>
+<style>
+  :root { --indigo:#1A0C4E; --violet:#41317E; --gold:#DCCAA0; --cream:#F3E5C4; --paper:#F9F7F5; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--paper); color:#1f1b2e; }
+  header { background: var(--indigo); color:#fff; padding: 14px 24px; display:flex; align-items:center; gap: 14px; border-bottom: 3px solid var(--gold); }
+  header b { font-size: 18px; letter-spacing: .02em; }
+  header span { opacity: .75; font-size: 13px; margin-left:auto; }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px; }
+  .card { background:#fff; border:1px solid #e5e0ec; border-radius: 12px; padding: 20px; margin-bottom: 18px; }
+  h2 { color: var(--indigo); margin: 0 0 12px; font-size: 20px; }
+  input, select { height: 42px; padding: 0 12px; border:1px solid #cfc8db; border-radius: 8px; font-size: 15px; }
+  button { height: 42px; padding: 0 18px; border:0; border-radius: 8px; background: var(--indigo); color:#fff; font-weight: 700; font-size: 14px; cursor: pointer; }
+  button.ghost { background:#fff; color: var(--indigo); border:1px solid #cfc8db; }
+  .row { display:flex; flex-wrap:wrap; gap: 10px; align-items:center; }
+  .cls { display:flex; gap: 10px; align-items:center; padding: 10px 0; border-bottom: 1px solid #eee; font-size: 15px; }
+  .muted { color:#6b6680; font-size: 13px; }
+  #live { display:none; }
+  .qrwrap { display:grid; grid-template-columns: minmax(320px, 560px) 1fr; gap: 28px; align-items:start; }
+  .qrwrap img { width:100%; border: 10px solid #fff; border-radius: 12px; box-shadow: 0 6px 30px rgba(26,12,78,.18); }
+  .big { font-size: 64px; font-weight: 800; color: var(--indigo); line-height: 1; }
+  .err { color:#991b1b; }
+  ol { padding-left: 18px; margin: 8px 0; } li { padding: 2px 0; }
+  @media (max-width: 800px) { .qrwrap { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header><b>LICET Attendance Station</b><span id="who">not signed in</span></header>
+<main>
+  <section class="card" id="login">
+    <h2>Sign in with your ERP account</h2>
+    <div class="row">
+      <input id="email" type="email" placeholder="you@licet.ac.in" autocomplete="username" style="min-width:260px">
+      <input id="password" type="password" placeholder="Password" autocomplete="current-password">
+      <button onclick="login()">Sign in</button>
+    </div>
+    <p class="muted" id="loginMsg">Your password goes only to the ERP server; the station keeps the session in memory and forgets it when closed.</p>
+  </section>
+
+  <section class="card" id="pick" style="display:none">
+    <h2>Open self check-in</h2>
+    <p class="muted">In the ERP, open the class hour you are teaching and press <b>Self check-in</b>. It appears here — tick it (tick every period of a lab block) and press Start.</p>
+    <div id="classes"></div>
+    <div class="row" style="margin-top:12px">
+      <label class="muted">Students reach this laptop at
+        <select id="ip"></select></label>
+      <button onclick="start()">Start — show QR</button>
+      <button class="ghost" onclick="loadClasses()">Refresh</button>
+      <button class="ghost" onclick="logout()">Sign out</button>
+    </div>
+    <p class="muted">Choose the address of the hotspot this laptop is running (Windows Wi-Fi Direct / Mobile Hotspot is normally 192.168.137.1).</p>
+  </section>
+
+  <section class="card" id="live">
+    <div class="qrwrap">
+      <div><img id="qr" alt="Check-in QR code"><p class="muted" id="link"></p></div>
+      <div>
+        <p class="muted" id="title"></p>
+        <p class="big"><span id="present">0</span><span style="font-size:28px;color:#6b6680"> / <span id="total">0</span></span></p>
+        <p class="muted">present so far · QR changes every <span id="rot">15</span> s</p>
+        <ol id="recent"></ol>
+        <p id="pending" class="muted"></p>
+        <div class="row" style="margin-top:16px">
+          <button onclick="stop()">Stop check-in</button>
+        </div>
+        <p class="muted">After stopping, review the list in the ERP, mark anyone the phone could not (no phone, flat battery) and press Submit.</p>
+      </div>
+    </div>
+  </section>
+</main>
+<script>
+  const api = (p, body) => fetch(p, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {}).then(r => r.json())
+  let poll
+  async function login() {
+    const r = await api('/api/login', { email: email.value, password: password.value })
+    if (r.ok) { who.textContent = r.name; login_.style.display = 'none'; pick.style.display = ''; password.value = ''; loadClasses() }
+    else { loginMsg.textContent = r.error; loginMsg.className = 'err' }
+  }
+  const login_ = document.getElementById('login')
+  async function loadClasses() {
+    const r = await api('/api/classes')
+    if (r.error) { alert(r.error); return }
+    ip.innerHTML = r.addresses.map(a => `<option value="${a.address}" ${a.address === r.hostIp ? 'selected' : ''}>${a.address} (${a.name})</option>`).join('') || '<option>127.0.0.1</option>'
+    classes.innerHTML = r.classes.length ? r.classes.map(c => `<label class="cls"><input type="checkbox" value="${c.id}" checked>
+      <b>P${c.period_no}</b> ${(c.subjects && (c.subjects.short_name || c.subjects.code)) || c.label || ''} · ${c.section || 'combined'} ${c.audience !== 'ALL' ? '· ' + (c.audience === 'BATCH' ? 'Batch ' : '') + (c.audience_value || '') : ''}
+      <span class="muted">${c.roster.length} students · open until ${new Date(c.self_open_until).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></label>`).join('')
+      : '<p class="muted">No class is open for self check-in yet.</p>'
+  }
+  async function start() {
+    const ids = [...classes.querySelectorAll('input:checked')].map(i => i.value)
+    if (!ids.length) { alert('Tick the class first'); return }
+    const t = classes.querySelector('input:checked').parentElement.innerText.split('\n')[0]
+    await api('/api/start', { ids, hostIp: ip.value, title: t })
+    pick.style.display = 'none'; live.style.display = ''
+    tick(); poll = setInterval(tick, 2000)
+  }
+  async function tick() {
+    const s = await api('/api/status')
+    if (!s.open) return
+    qr.src = s.qr; link.textContent = s.link; rot.textContent = s.rotate
+    present.textContent = s.present ?? '–'; total.textContent = s.total ?? '–'; title.textContent = s.title
+    recent.innerHTML = s.recent.map(n => `<li>${n}</li>`).join('')
+    pending.textContent = s.pending ? `${s.pending} check-in(s) waiting for internet — they will sync automatically` : ''
+  }
+  async function stop() { clearInterval(poll); await api('/api/stop', {}); live.style.display = 'none'; pick.style.display = ''; loadClasses() }
+  async function logout() { await api('/api/logout', {}); location.reload() }
+  password.addEventListener('keydown', e => { if (e.key === 'Enter') login() })
+</script>
+</body>
+</html>

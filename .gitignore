@@ -48,3 +48,8 @@ scripts/.dev/
 
 # Internal documentation exports (not for the public repository)
 docs/*.pdf
+
+# attendance station
+station/node_modules
+station/.env
+station/queue.json

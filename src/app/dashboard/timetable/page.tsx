@@ -2,398 +2,307 @@
 
 export const dynamic = "force-dynamic"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { Loader2, Pencil, Plus, Trash2, X, Printer, Check } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { isTier1 } from "@/lib/roles"
 import type { AuthUser } from "@/lib/auth"
-import type { Database } from "@/lib/supabase"
-import { Save, Loader2, Settings } from "lucide-react"
-import { toast, reportResult } from "@/components/toaster"
-import { getActiveSemester } from "@/lib/semester"
+import { reportResult } from "@/components/toaster"
+import {
+  SECTIONS, DAY_NAMES, type Offering, type PeriodSlot, type Term, type TimetableEntry, type Vertical, type StudentGroup, type Audience,
+  loadTerms, loadPeriods, loadTimetable, loadVerticals, loadGroups, entryTitle, fmtTime, shortAudience, audienceLabel,
+} from "@/lib/academic"
 
-type Subject = Database['public']['Tables']['subjects']['Row']
-
-// LICET period structure
-const PERIOD_PARTS = [
-  {
-    part: 1, label: 'Part I', time: '8:00 AM',
-    periods: [
-      { no: 1, start: '8:00', end: '9:00',  duration: '60 min' },
-      { no: 2, start: '9:00', end: '9:50',  duration: '50 min' },
-    ]
-  },
-  {
-    part: 2, label: 'Part II', time: '10:10 AM',
-    periods: [
-      { no: 3, start: '10:10', end: '11:00', duration: '50 min' },
-      { no: 4, start: '11:00', end: '11:50', duration: '50 min' },
-      { no: 5, start: '11:50', end: '12:40', duration: '50 min' },
-    ]
-  },
-  {
-    part: 3, label: 'Part III', time: '1:30 PM',
-    periods: [
-      { no: 6, start: '1:30', end: '2:20', duration: '50 min' },
-      { no: 7, start: '2:20', end: '3:10', duration: '50 min' },
-      { no: 8, start: '3:10', end: '4:00', duration: '50 min' },
-    ]
-  },
-]
-
-const ALL_PERIODS = PERIOD_PARTS.flatMap(p => p.periods)
-const HALF_DAY_PERIODS = ALL_PERIODS.slice(0, 5) // periods 1-5 for half day
-const WEEKDAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday']
-const SECTIONS  = ['I CSE-A','I CSE-B','II CSE-A','II CSE-B','III CSE-A','III CSE-B','IV CSE-A','IV CSE-B']
-
-const SUBJECT_COLORS = [
-  'bg-blue-50 border-blue-200 text-blue-700 dark:text-blue-700',
-  'bg-purple-50 border-purple-200 text-purple-700 dark:text-purple-700',
-  'bg-green-50 border-green-200 text-green-700 dark:text-green-700',
-  'bg-orange-50 border-orange-200 text-orange-700 dark:text-orange-700',
-  'bg-pink-50 border-pink-200 text-pink-700 dark:text-pink-700',
-  'bg-cyan-50 border-cyan-200 text-cyan-700 dark:text-cyan-700',
-  'bg-amber-50 border-amber-200 text-amber-700 dark:text-amber-700',
-  'bg-red-50 border-red-200 text-red-700 dark:text-red-700',
-  'bg-emerald-50 border-emerald-200 text-emerald-700 dark:text-emerald-700',
-  'bg-indigo-50 border-indigo-200 text-indigo-700 dark:text-indigo-700',
-]
-
-interface TimetableSlot { subjectId: string; subjectCode: string; subjectName: string }
-interface SaturdayConfig { enabled: boolean; followsDay: string; halfDay: boolean }
-
+type Staff = { id: string; full_name: string }
+const PALETTE = ['bg-sky-50 border-sky-200', 'bg-emerald-50 border-emerald-200', 'bg-amber-50 border-amber-200', 'bg-rose-50 border-rose-200',
+  'bg-violet-50 border-violet-200', 'bg-lime-50 border-lime-200', 'bg-orange-50 border-orange-200', 'bg-teal-50 border-teal-200',
+  'bg-fuchsia-50 border-fuchsia-200', 'bg-indigo-50 border-indigo-200', 'bg-yellow-50 border-yellow-200', 'bg-cyan-50 border-cyan-200']
 
 export default function TimetablePage() {
   const router = useRouter()
-  const [authUser, setAuthUser]   = useState<AuthUser | null>(null)
-  const [profile, setProfile]     = useState<any>(null)
-  const [subjects, setSubjects]   = useState<Subject[]>([])
-  const [section, setSection]     = useState('II CSE-A')
-  const [editing, setEditing]     = useState(false)
-  const [saving, setSaving]       = useState(false)
-  const [saveMsg, setSaveMsg]     = useState('')
-  const [showSatConfig, setShowSatConfig] = useState(false)
-
-  // timetable[day][periodNo] = TimetableSlot
-  const [timetable, setTimetable] = useState<Record<string, Record<number, TimetableSlot>>>({})
-  const [satConfig, setSatConfig] = useState<SaturdayConfig>({ enabled: false, followsDay: 'Monday', halfDay: true })
-
-  const isHOD     = authUser?.type === 'staff' && isTier1(authUser.data)
-  const isFaculty = authUser?.type === 'staff'
-  const isStudent = authUser?.type === 'student'
-  const currentSem = (s: string) => getActiveSemester(s)
+  const [user, setUser] = useState<AuthUser | null>(null)
+  const [terms, setTerms] = useState<Term[]>([])
+  const [termId, setTermId] = useState('')
+  const [section, setSection] = useState('II CSE-A')
+  const [mode, setMode] = useState<'class' | 'mine'>('class')
+  const [entries, setEntries] = useState<TimetableEntry[]>([])
+  const [allEntries, setAllEntries] = useState<TimetableEntry[]>([])
+  const [periods, setPeriods] = useState<PeriodSlot[]>([])
+  const [offerings, setOfferings] = useState<Offering[]>([])
+  const [verticals, setVerticals] = useState<Vertical[]>([])
+  const [groups, setGroups] = useState<StudentGroup[]>([])
+  const [staff, setStaff] = useState<Staff[]>([])
+  const [editing, setEditing] = useState(false)
+  const [cell, setCell] = useState<{ day: number; period: number } | null>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const stored = localStorage.getItem('excelsior_user') || localStorage.getItem('excelsior_user') || localStorage.getItem('licet_user')
+    const stored = localStorage.getItem('licet_user')
     if (!stored) { router.push('/login'); return }
     const au = JSON.parse(stored) as AuthUser
-    setAuthUser(au)
-    supabase.from('profiles').select('*').eq('email', au.data.email).single()
-      .then(({ data, error }) => {
-        if (error) { console.error('Failed to load profile for', au.data.email, error); return }
-        if (data) setProfile(data)
-      })
-    if (au.type === 'student') {
-      // Fall back to stale localStorage section only until profile loads (handled below)
-      const sec = (au.data as any)?.section ?? 'I CSE-A'
-      setSection(sec)
-    }
+    setUser(au)
+    if (au.type === 'student' && au.data.section) setSection(au.data.section)
+    else if (au.data.advisor_section) setSection(au.data.advisor_section)
+    if (au.type === 'staff' && !isTier1(au.data)) setMode('mine')
+    loadTerms().then(ts => { setTerms(ts); setTermId(ts.find(t => t.is_current)?.id ?? ts[0]?.id ?? '') })
+    loadVerticals().then(setVerticals)
+    loadGroups().then(setGroups)
+    supabase.from('profiles').select('id, full_name').neq('role', 'STUDENT').eq('is_active', true).order('full_name').then(({ data }) => setStaff((data ?? []) as Staff[]))
   }, [router])
 
-  // Once the live profile loads, prefer its section for students (overrides stale localStorage value)
-  useEffect(() => {
-    if (authUser?.type === 'student' && profile?.section) {
-      setSection(profile.section)
-    }
-  }, [authUser, profile])
+  const term = terms.find(t => t.id === termId)
+  const grad = term ? Number(term.academic_year.split('-')[1]) + ({ I: 3, II: 2, III: 1, IV: 0 } as Record<string, number>)[section.split(' ')[0]] : 0
 
-  // Load subjects
-  useEffect(() => {
-    if (!authUser) return
-    supabase.from('subjects').select('*')
-      .eq('section', section).eq('semester', currentSem(section)).order('code')
-      .then(({ data, error }) => {
-        if (error) { console.error('Failed to load subjects for section', section, error); return }
-        if (data) setSubjects(data)
-      })
-  }, [section, authUser])
+  const load = useCallback(async () => {
+    if (!termId) return
+    setLoading(true)
+    const [mine, all, ps, offs] = await Promise.all([
+      loadTimetable(termId, section), loadTimetable(termId), loadPeriods(termId),
+      supabase.from('subjects').select('*').eq('term_id', termId).order('code'),
+    ])
+    setEntries(mine); setAllEntries(all); setPeriods(ps); setOfferings((offs.data ?? []) as Offering[])
+    setLoading(false)
+  }, [termId, section])
+  useEffect(() => { load() }, [load])
 
-  // Load saved timetable
-  useEffect(() => {
-    supabase.from('announcements').select('*')
-      .eq('audience', `TIMETABLE:${section}`)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .then(({ data }) => {
-        if (data && data.length > 0) {
-          try {
-            const parsed = JSON.parse(data[0].body)
-            setTimetable(parsed.timetable ?? {})
-            setSatConfig(parsed.satConfig ?? { enabled: false, followsDay: 'Monday', halfDay: true })
-          } catch {}
-        } else {
-          setTimetable({})
-          setSatConfig({ enabled: false, followsDay: 'Monday', halfDay: true })
-        }
-      })
-  }, [section])
+  if (!user || !term) return <div className="p-10 flex items-center text-muted-foreground"><Loader2 className="w-5 h-5 animate-spin mr-2" /> Loading…</div>
+  const isStudent = user.type === 'student'
+  const isHod = user.type === 'staff' && isTier1(user.data)
+  const meId = user.data.id
+  const myBatch = isStudent ? String(user.data.lab_batch ?? '') : ''
+  const myVertical = isStudent ? user.data.vertical ?? '' : ''
+  const relevant = (e: TimetableEntry) => !isStudent || e.audience === 'ALL' || (e.audience === 'BATCH' && e.audience_value === myBatch) || (e.audience === 'VERTICAL' && e.audience_value === myVertical) || e.audience === 'GROUP'
 
-  const setSlot = (day: string, periodNo: number, subjectId: string) => {
-    const sub = subjects.find(s => s.id === subjectId)
-    setTimetable(prev => {
-      const next = { ...prev, [day]: { ...(prev[day] ?? {}) } }
-      if (!subjectId) {
-        delete next[day][periodNo]
-      } else {
-        next[day][periodNo] = {
-          subjectId,
-          subjectCode: sub?.code ?? '',
-          subjectName: sub?.name ?? ''
-        }
-      }
-      return next
-    })
-  }
-
-  const saveTimetable = async () => {
-    if (!profile) return
-    setSaving(true)
-    // Write the new version first and only then remove older ones, so a failed
-    // save can never leave the section without a timetable.
-    const { data: saved, error } = await supabase.from('announcements').insert({
-      title: `Timetable – ${section}`,
-      body: JSON.stringify({ timetable, satConfig }),
-      audience: `TIMETABLE:${section}`,
-      is_urgent: false,
-      created_by: profile.id,
-      department_id: '00000000-0000-0000-0000-000000000001'
-    }).select('id').single()
-    if (!error && saved) {
-      const { error: cleanupError } = await supabase.from('announcements').delete().eq('audience', `TIMETABLE:${section}`).neq('id', saved.id)
-      if (cleanupError) toast.error(`Saved, but older versions could not be removed: ${cleanupError.message}`)
-    }
-    setSaving(false)
-    if (!reportResult(error)) return
-    setEditing(false)
-    setSaveMsg('✓ Timetable saved')
-    setTimeout(() => setSaveMsg(''), 3000)
-  }
-
-  const colorMap: Record<string, string> = {}
-  subjects.forEach((s, i) => { colorMap[s.id] = SUBJECT_COLORS[i % SUBJECT_COLORS.length] })
-
-  // Saturday display — follows a weekday or disabled
-  const saturdayPeriods = satConfig.halfDay ? HALF_DAY_PERIODS : ALL_PERIODS
-  const saturdayTimetable = satConfig.enabled ? (timetable[satConfig.followsDay] ?? {}) : {}
-
-  const displayDays = [...WEEKDAYS, 'Saturday']
+  const shown = mode === 'mine' && !isStudent ? allEntries.filter(e => e.faculty_ids.includes(meId)) : entries
+  const days = [1, 2, 3, 4, 5, 6].filter(d => d <= 5 || shown.some(e => e.day_order === d))
+  const colorOf = (() => {
+    const ids = [...new Set(shown.map(e => e.subject_id ?? 'L:' + e.label))]
+    return (e: TimetableEntry) => PALETTE[ids.indexOf(e.subject_id ?? 'L:' + e.label) % PALETTE.length]
+  })()
+  const sectionOfferings = offerings.filter(o => o.section === section || (o.section === null && o.cohort_grad_year === grad))
+  const legend = (mode === 'mine' && !isStudent)
+    ? offerings.filter(o => shown.some(e => e.subject_id === o.id))
+    : sectionOfferings.filter(o => entries.some(e => e.subject_id === o.id))
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-start justify-between">
+    <div className="px-5 md:px-8 py-6 space-y-5 print:p-0">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <span className="eyebrow">TIMETABLE</span>
-          <h1 className="text-2xl font-semibold tracking-tight mt-2">Class Timetable</h1>
-          <p className="text-[13.5px] text-muted-foreground mt-1.5 max-w-3xl">
-            3-part attendance system · Period 1 = 60 min · Periods 2–8 = 50 min each
-          </p>
+          <span className="eyebrow">Timetable</span>
+          <h1 className="font-display text-3xl font-bold text-licet-indigo mt-1">{mode === 'mine' && !isStudent ? 'My timetable' : `${section} timetable`}</h1>
+          <p className="text-[13.5px] text-muted-foreground mt-1">{term.label}. A split hour shows each batch or vertical separately. Saturdays follow the day order set in the academic calendar.</p>
         </div>
-        <div className="flex items-center gap-2">
-          {saveMsg && <span className="font-mono text-xs text-green-700">{saveMsg}</span>}
-          {(isHOD || isFaculty) && !editing && (
-            <button onClick={() => setEditing(true)}
-              className="px-4 py-2 bg-licet-indigo text-white text-[13px] font-semibold rounded-md hover:bg-licet-violet shadow-sm">
-              Edit Timetable
+        <div className="flex flex-wrap items-center gap-2 print:hidden">
+          <select value={termId} onChange={e => setTermId(e.target.value)} className="h-9 px-2 rounded-md border border-input bg-white text-[13.5px]">
+            {terms.map(t => <option key={t.id} value={t.id}>{t.label}{t.is_current ? ' (current)' : ''}</option>)}
+          </select>
+          <button onClick={() => window.print()} className="h-9 px-3 rounded-md border border-border bg-white text-[13px] inline-flex items-center gap-1.5 hover:bg-muted"><Printer className="w-4 h-4" /> Print</button>
+          {isHod && mode === 'class' && (
+            <button onClick={() => setEditing(v => !v)} className={`h-9 px-3 rounded-md text-[13px] font-semibold inline-flex items-center gap-1.5 ${editing ? 'bg-green-700 text-white' : 'bg-licet-indigo text-white hover:bg-licet-violet'}`}>
+              {editing ? <><Check className="w-4 h-4" /> Done editing</> : <><Pencil className="w-4 h-4" /> Edit</>}
             </button>
-          )}
-          {(isHOD || isFaculty) && editing && (
-            <div className="flex gap-2">
-              <button onClick={() => setShowSatConfig(!showSatConfig)}
-                className="flex items-center gap-1 px-3 py-2 border border-border bg-white text-licet-indigo text-[13px] font-semibold rounded-md hover:bg-licet-cream/60">
-                <Settings className="w-3 h-3" /> Saturday
-              </button>
-              <button onClick={saveTimetable} disabled={saving}
-                className="flex items-center gap-2 px-4 py-2 bg-green-700 text-white text-[13px] font-semibold rounded-md hover:bg-green-800 disabled:opacity-50">
-                {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-                {saving ? 'Saving...' : 'Save'}
-              </button>
-            </div>
           )}
         </div>
       </div>
 
-      {/* Section selector */}
       {!isStudent && (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-1.5 print:hidden">
+          <button onClick={() => setMode('mine')} className={`text-[12.5px] px-3 py-1.5 rounded-full border ${mode === 'mine' ? 'bg-licet-violet text-white border-licet-violet' : 'border-border bg-white'}`}>My timetable</button>
           {SECTIONS.map(s => (
-            <button key={s} onClick={() => { setSection(s); setEditing(false) }}
-              className={`text-[12.5px] font-medium px-3.5 py-1.5 rounded-full border transition-all ${section === s ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:border-primary/50'}`}>
-              {s}
-            </button>
+            <button key={s} onClick={() => { setSection(s); setMode('class') }} className={`text-[12.5px] px-3 py-1.5 rounded-full border ${mode === 'class' && section === s ? 'bg-licet-indigo text-white border-licet-indigo' : 'border-border bg-white'}`}>{s}</button>
           ))}
         </div>
       )}
-
-      {/* Saturday config */}
-      {showSatConfig && editing && (
-        <div className="bg-card border border-amber-200 rounded-lg p-4 space-y-3">
-          <span className="eyebrow">SATURDAY CONFIGURATION</span>
-          <div className="flex flex-wrap items-center gap-6">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={satConfig.enabled}
-                onChange={e => setSatConfig({...satConfig, enabled: e.target.checked})}
-                className="w-4 h-4 accent-primary" />
-              <span className="font-mono text-sm">Saturday is a working day</span>
-            </label>
-            {satConfig.enabled && (
-              <>
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-xs text-muted-foreground">Follows:</span>
-                  <select value={satConfig.followsDay} onChange={e => setSatConfig({...satConfig, followsDay: e.target.value})}
-                    className="h-8 px-2 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none">
-                    {WEEKDAYS.map(d => <option key={d} value={d}>{d}</option>)}
-                  </select>
-                  <span className="font-mono text-xs text-muted-foreground">timetable</span>
-                </div>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" checked={satConfig.halfDay}
-                    onChange={e => setSatConfig({...satConfig, halfDay: e.target.checked})}
-                    className="w-4 h-4 accent-primary" />
-                  <span className="font-mono text-sm">Half day (5 periods only)</span>
-                </label>
-              </>
-            )}
-          </div>
-        </div>
+      {isStudent && (myBatch || myVertical) && (
+        <p className="text-[13px] text-muted-foreground">You are in <b>Batch {myBatch || '—'}</b>{myVertical ? <> and the <b>{audienceLabel('VERTICAL', myVertical, verticals)}</b></> : null}; hours for other batches are greyed out.</p>
       )}
 
-      {/* Subject legend */}
-      <div className="flex flex-wrap gap-2">
-        {subjects.map(s => (
-          <span key={s.id} className={`font-mono text-xs px-2 py-1 rounded border ${colorMap[s.id] ?? ''}`}>
-            {s.code}
-          </span>
-        ))}
-      </div>
-
-      {/* Part labels */}
-      <div className="flex gap-4 font-mono text-xs">
-        {PERIOD_PARTS.map(p => (
-          <div key={p.part} className={`flex items-center gap-1.5 px-3 py-1 rounded border ${p.part === 1 ? 'text-blue-700 bg-blue-50 border-blue-200' : p.part === 2 ? 'text-green-700 bg-green-50 border-green-200' : 'text-orange-700 bg-orange-50 border-orange-200'}`}>
-            <span className="font-bold">Part {p.part}</span>
-            <span className="text-muted-foreground">{p.time} · {p.periods.map(x => `P${x.no}`).join(', ')}</span>
-          </div>
-        ))}
-      </div>
-
-      {/* Timetable grid */}
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-sm">
-          <thead>
-            <tr>
-              <th className="font-mono text-xs text-muted-foreground text-left p-3 border border-border bg-accent/50 w-20">Day</th>
-              {PERIOD_PARTS.map(part => (
-                part.periods.map((period, idx) => (
-                  <th key={period.no}
-                    className={`font-mono text-xs text-center p-2 border border-border ${part.part === 1 ? 'bg-blue-50' : part.part === 2 ? 'bg-green-50' : 'bg-orange-50'} ${idx === 0 && part.part > 1 ? 'border-l-2 border-l-border' : ''}`}>
-                    <div className="font-bold">P{period.no}</div>
-                    <div className="text-muted-foreground" style={{fontSize:'10px'}}>{period.start}</div>
-                    <div className="text-muted-foreground" style={{fontSize:'9px'}}>{period.duration}</div>
+      {loading ? (
+        <div className="py-16 flex items-center justify-center text-muted-foreground"><Loader2 className="w-5 h-5 animate-spin mr-2" /> Loading timetable…</div>
+      ) : (
+        <div className="overflow-x-auto rounded-lg border border-border bg-white">
+          <table className="w-full border-collapse text-[12.5px]">
+            <thead>
+              <tr className="bg-licet-paper">
+                <th className="px-3 py-2 border-b border-border text-left w-20">Day</th>
+                {periods.map(p => (
+                  <th key={p.period_no} className={`px-2 py-2 border-b border-l border-border ${p.period_no === 3 || p.period_no === 6 ? 'border-l-2 border-l-licet-gold' : ''}`}>
+                    <span className="font-display font-bold text-licet-indigo">{p.period_no}</span>
+                    <span className="block font-normal text-[10.5px] text-muted-foreground whitespace-nowrap">{fmtTime(p.starts_at)}–{fmtTime(p.ends_at)}</span>
                   </th>
-                ))
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {displayDays.map(day => {
-              const isSat = day === 'Saturday'
-              const isDisabled = isSat && !satConfig.enabled
-              const slots = isSat ? saturdayTimetable : (timetable[day] ?? {})
-              const periodsToShow = isSat
-                ? (satConfig.halfDay ? HALF_DAY_PERIODS : ALL_PERIODS)
-                : ALL_PERIODS
-
-              return (
-                <tr key={day} className={isDisabled ? 'opacity-30' : ''}>
-                  <td className={`font-mono text-xs p-3 border border-border font-bold ${isSat ? 'bg-amber-50' : 'bg-accent/30'}`}>
-                    <div>{day}</div>
-                    {isSat && satConfig.enabled && (
-                      <div className="font-normal text-muted-foreground" style={{fontSize:'9px'}}>
-                        follows {satConfig.followsDay}
-                        {satConfig.halfDay ? ' · half' : ' · full'}
-                      </div>
-                    )}
-                    {isSat && !satConfig.enabled && (
-                      <div className="font-normal text-muted-foreground" style={{fontSize:'9px'}}>Holiday</div>
-                    )}
-                  </td>
-                  {ALL_PERIODS.map(period => {
-                    const inRange = periodsToShow.find(p => p.no === period.no)
-                    const slot    = slots[period.no]
-                    const color   = slot ? (colorMap[slot.subjectId] ?? '') : ''
-                    const part    = PERIOD_PARTS.find(p => p.periods.some(x => x.no === period.no))
-
-                    if (!inRange && isSat) {
-                      return (
-                        <td key={period.no} className="border border-border bg-accent/10 p-1">
-                          <div className="h-10 flex items-center justify-center">
-                            <span className="font-mono text-muted-foreground" style={{fontSize:'9px'}}>—</span>
-                          </div>
-                        </td>
-                      )
-                    }
-
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {days.map(d => (
+                <tr key={d} className="border-b border-border last:border-0">
+                  <td className="px-3 py-2 font-semibold text-licet-indigo align-top">{DAY_NAMES[d].slice(0, 3)}</td>
+                  {periods.map(p => {
+                    const here = shown.filter(e => e.day_order === d && e.period_no === p.period_no)
                     return (
-                      <td key={period.no}
-                        className={`border border-border p-1 min-w-[90px] ${part?.part === 1 ? 'bg-blue-50' : part?.part === 2 ? 'bg-green-50' : 'bg-orange-50'}`}>
-                        {editing && !isSat ? (
-                          <select value={slot?.subjectId ?? ''}
-                            onChange={e => setSlot(day, period.no, e.target.value)}
-                            className="w-full h-9 px-1 bg-background border border-border rounded font-mono text-xs focus:border-primary focus:outline-none">
-                            <option value="">—</option>
-                            {subjects.map(s => (
-                              <option key={s.id} value={s.id}>{s.code}</option>
-                            ))}
-                          </select>
-                        ) : slot ? (
-                          <div className={`p-1.5 rounded border text-center ${color}`}>
-                            <p className="font-mono font-bold" style={{fontSize:'11px'}}>{slot.subjectCode}</p>
-                          </div>
-                        ) : (
-                          <div className="h-9" />
-                        )}
+                      <td key={p.period_no} onClick={() => editing && setCell({ day: d, period: p.period_no })}
+                        className={`border-l border-border p-1 align-top min-w-[104px] ${p.period_no === 3 || p.period_no === 6 ? 'border-l-2 border-l-licet-gold' : ''} ${editing ? 'cursor-pointer hover:bg-licet-cream/40' : ''}`}>
+                        <div className={`grid gap-1 ${here.length > 1 ? 'grid-cols-1' : ''}`}>
+                          {here.map(e => (
+                            <div key={e.id} className={`rounded border px-1.5 py-1 leading-tight ${colorOf(e)} ${relevant(e) ? '' : 'opacity-35'}`} title={e.faculty_names ?? ''}>
+                              <span className="block font-semibold text-[12px] text-foreground">{entryTitle(e)}</span>
+                              <span className="block text-[10.5px] text-muted-foreground">
+                                {[mode === 'mine' && !isStudent ? (e.subjects?.section === null ? 'Combined' : e.section) : null, e.audience !== 'ALL' ? shortAudience(e.audience, e.audience_value) : null, e.room, !e.takes_attendance ? 'no attendance' : null].filter(Boolean).join(' · ')}
+                              </span>
+                            </div>
+                          ))}
+                          {editing && !here.length && <span className="flex items-center justify-center h-9 text-muted-foreground"><Plus className="w-4 h-4" /></span>}
+                        </div>
                       </td>
                     )
                   })}
                 </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Period time reference */}
-      <div className="bg-card border border-border rounded-lg p-4">
-        <span className="eyebrow block mb-3">PERIOD TIME REFERENCE</span>
-        <div className="grid grid-cols-3 gap-4">
-          {PERIOD_PARTS.map(part => (
-            <div key={part.part}>
-              <p className={`font-mono text-xs font-bold mb-2 ${part.part === 1 ? 'text-blue-700' : part.part === 2 ? 'text-green-700' : 'text-orange-700'}`}>
-                Part {part.part} — {part.label} ({part.time})
-              </p>
-              {part.periods.map(p => (
-                <div key={p.no} className="flex justify-between font-mono text-xs text-muted-foreground py-0.5">
-                  <span>Period {p.no}</span>
-                  <span>{p.start} – {p.end}</span>
-                  <span>{p.duration}</span>
-                </div>
               ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {legend.length > 0 && (
+        <div className="rounded-lg border border-border bg-white overflow-hidden">
+          <p className="px-4 py-2.5 eyebrow border-b border-border">Courses and faculty</p>
+          <table className="w-full text-[13px]">
+            <tbody>
+              {legend.map(o => (
+                <tr key={o.id} className="border-b border-border last:border-0">
+                  <td className="px-4 py-2 font-mono text-[12px] text-muted-foreground whitespace-nowrap">{o.code}</td>
+                  <td className="px-2 py-2"><b className="text-licet-indigo">{o.short_name}</b> <span className="text-muted-foreground">— {o.name}</span>{o.audience === 'VERTICAL' ? <span className="ml-2 text-[11px] px-1.5 py-0.5 rounded bg-licet-cream">{audienceLabel('VERTICAL', o.audience_value, verticals)}</span> : null}</td>
+                  <td className="px-4 py-2 text-muted-foreground">{o.faculty_names ?? '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {cell && (
+        <CellEditor term={term} section={section} day={cell.day} period={cell.period}
+          entries={entries.filter(e => e.day_order === cell.day && e.period_no === cell.period)}
+          offerings={sectionOfferings} verticals={verticals} groups={groups} staff={staff}
+          onClose={() => setCell(null)} onSaved={() => { load() }} />
+      )}
+    </div>
+  )
+}
+
+type Draft = Partial<TimetableEntry> & { _new?: boolean; _del?: boolean; key: string }
+
+function CellEditor({ term, section, day, period, entries, offerings, verticals, groups, staff, onClose, onSaved }: {
+  term: Term; section: string; day: number; period: number; entries: TimetableEntry[]; offerings: Offering[]
+  verticals: Vertical[]; groups: StudentGroup[]; staff: Staff[]; onClose: () => void; onSaved: () => void
+}) {
+  const [drafts, setDrafts] = useState<Draft[]>(entries.map(e => ({ ...e, key: e.id })))
+  const [busy, setBusy] = useState(false)
+  const [span, setSpan] = useState(1)
+  const set = (k: string, patch: Partial<Draft>) => setDrafts(ds => ds.map(d => d.key === k ? { ...d, ...patch } : d))
+  const add = () => setDrafts(ds => [...ds, { key: crypto.randomUUID(), _new: true, audience: 'ALL', takes_attendance: true, faculty_ids: [], subject_id: null, label: null }])
+  const live = drafts.filter(d => !d._del)
+
+  const save = async () => {
+    setBusy(true)
+    for (const d of drafts) {
+      const row = {
+        term_id: term.id, section, day_order: day, subject_id: d.subject_id || null, label: d.label?.trim() || null,
+        audience: (d.audience ?? 'ALL') as Audience, audience_value: d.audience === 'ALL' || d.audience === 'GROUP' ? null : d.audience_value ?? null,
+        group_id: d.audience === 'GROUP' ? d.group_id ?? null : null, room: d.room?.trim() || null,
+        faculty_ids: d.faculty_ids ?? [], faculty_names: d.faculty_names?.trim() || null, takes_attendance: d.takes_attendance ?? true,
+        effective_from: d.effective_from || null, effective_to: d.effective_to || null, updated_at: new Date().toISOString(),
+      }
+      if (!row.subject_id && !row.label) continue
+      if (d._del && !d._new) { const { error } = await supabase.from('timetable_entries').delete().eq('id', d.id!); if (!reportResult(error)) { setBusy(false); return } }
+      else if (d._new && !d._del) {
+        const rows = Array.from({ length: span }, (_, i) => ({ ...row, period_no: period + i }))
+        const { error } = await supabase.from('timetable_entries').insert(rows); if (!reportResult(error)) { setBusy(false); return }
+      } else if (!d._del) { const { error } = await supabase.from('timetable_entries').update({ ...row, period_no: period }).eq('id', d.id!); if (!reportResult(error)) { setBusy(false); return } }
+    }
+    setBusy(false)
+    reportResult(null, 'Timetable updated')
+    onSaved(); onClose()
+  }
+
+  return (
+    <div className="fixed inset-0 z-[80] bg-black/40 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+        <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+          <div>
+            <p className="eyebrow">{section} · {DAY_NAMES[day]} · Period {period}</p>
+            <h2 className="font-display text-xl font-bold text-licet-indigo mt-1">Edit this hour</h2>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-md hover:bg-muted"><X className="w-5 h-5" /></button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+          <p className="text-[12.5px] text-muted-foreground">Add more than one entry to split the hour — e.g. Batch 1 in one lab and Batch 2 in another, or each vertical in its own course. Attendance is then taken separately for each.</p>
+          {live.map((d, i) => (
+            <div key={d.key} className="rounded-lg border border-border p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[12px] font-semibold text-licet-violet">Entry {i + 1}</span>
+                <button onClick={() => set(d.key, { _del: true })} className="text-red-700 text-[12px] inline-flex items-center gap-1 hover:underline"><Trash2 className="w-3.5 h-3.5" /> Remove</button>
+              </div>
+              <div className="grid sm:grid-cols-2 gap-2">
+                <label className="text-[12px] text-muted-foreground">Course
+                  <select value={d.subject_id ?? ''} onChange={e => set(d.key, { subject_id: e.target.value || null })} className="mt-0.5 w-full h-9 px-2 rounded-md border border-input bg-white text-[13px] text-foreground">
+                    <option value="">— none (activity / label) —</option>
+                    {offerings.map(o => <option key={o.id} value={o.id}>{o.short_name || o.code} — {o.name}{o.section === null ? ' (combined)' : ''}</option>)}
+                  </select>
+                </label>
+                <label className="text-[12px] text-muted-foreground">Label (shown instead of the course name; e.g. “OS Lab”, “Library”)
+                  <input value={d.label ?? ''} onChange={e => set(d.key, { label: e.target.value })} className="mt-0.5 w-full h-9 px-2 rounded-md border border-input text-[13px] text-foreground" />
+                </label>
+                <label className="text-[12px] text-muted-foreground">Who attends
+                  <select value={`${d.audience ?? 'ALL'}|${d.audience_value ?? d.group_id ?? ''}`} onChange={e => {
+                    const [a, v] = e.target.value.split('|') as [Audience, string]
+                    set(d.key, { audience: a, audience_value: a === 'BATCH' || a === 'VERTICAL' ? v : null, group_id: a === 'GROUP' ? v : null })
+                  }} className="mt-0.5 w-full h-9 px-2 rounded-md border border-input bg-white text-[13px] text-foreground">
+                    <option value="ALL|">Whole class</option>
+                    <option value="BATCH|1">Batch 1</option>
+                    <option value="BATCH|2">Batch 2</option>
+                    <option value="BATCH|3">Batch 3</option>
+                    {verticals.map(v => <option key={v.code} value={`VERTICAL|${v.code}`}>{v.name}</option>)}
+                    {groups.map(g => <option key={g.id} value={`GROUP|${g.id}`}>{g.name}</option>)}
+                  </select>
+                </label>
+                <label className="text-[12px] text-muted-foreground">Room
+                  <input value={d.room ?? ''} onChange={e => set(d.key, { room: e.target.value })} className="mt-0.5 w-full h-9 px-2 rounded-md border border-input text-[13px] text-foreground" />
+                </label>
+                <label className="text-[12px] text-muted-foreground sm:col-span-2">Faculty with ERP accounts (they see this hour under “My classes”)
+                  <select multiple value={d.faculty_ids ?? []} onChange={e => set(d.key, { faculty_ids: [...e.target.selectedOptions].map(o => o.value) })} className="mt-0.5 w-full h-24 px-2 rounded-md border border-input bg-white text-[13px] text-foreground">
+                    {staff.map(s => <option key={s.id} value={s.id}>{s.full_name}</option>)}
+                  </select>
+                </label>
+                <label className="text-[12px] text-muted-foreground sm:col-span-2">Faculty names as printed (include external / other-department faculty)
+                  <input value={d.faculty_names ?? ''} onChange={e => set(d.key, { faculty_names: e.target.value })} className="mt-0.5 w-full h-9 px-2 rounded-md border border-input text-[13px] text-foreground" />
+                </label>
+                <label className="text-[12px] text-muted-foreground">From date (optional)
+                  <input type="date" value={d.effective_from ?? ''} onChange={e => set(d.key, { effective_from: e.target.value })} className="mt-0.5 w-full h-9 px-2 rounded-md border border-input text-[13px] text-foreground" />
+                </label>
+                <label className="text-[12px] text-muted-foreground">Until date (optional)
+                  <input type="date" value={d.effective_to ?? ''} onChange={e => set(d.key, { effective_to: e.target.value })} className="mt-0.5 w-full h-9 px-2 rounded-md border border-input text-[13px] text-foreground" />
+                </label>
+                <label className="inline-flex items-center gap-2 text-[13px] sm:col-span-2">
+                  <input type="checkbox" checked={d.takes_attendance ?? true} onChange={e => set(d.key, { takes_attendance: e.target.checked })} className="accent-licet-indigo" /> Attendance is taken in this hour
+                </label>
+              </div>
             </div>
           ))}
+          <div className="flex flex-wrap items-center gap-3">
+            <button onClick={add} className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md border border-dashed border-licet-violet text-licet-violet text-[13px] font-semibold hover:bg-licet-cream/40"><Plus className="w-4 h-4" /> Add entry{live.length ? ' (split this hour)' : ''}</button>
+            {drafts.some(d => d._new) && (
+              <label className="text-[12.5px] text-muted-foreground inline-flex items-center gap-2">New entries run for
+                <select value={span} onChange={e => setSpan(Number(e.target.value))} className="h-8 px-1 rounded border border-input bg-white">{[1, 2, 3, 4].map(n => <option key={n} value={n}>{n} period{n > 1 ? 's' : ''}</option>)}</select>
+              </label>
+            )}
+          </div>
         </div>
-        <p className="font-mono text-xs text-muted-foreground mt-3">
-          Break after Part I: 9:50–10:10 (20 min) · Lunch after Part II: 12:40–1:30 (50 min)
-        </p>
+        <div className="px-5 py-3 border-t border-border flex justify-end gap-2">
+          <button onClick={onClose} className="h-9 px-4 rounded-md border border-border text-[13px] font-semibold">Cancel</button>
+          <button onClick={save} disabled={busy} className="h-9 px-5 rounded-md bg-licet-indigo text-white text-[13px] font-semibold inline-flex items-center gap-1.5 disabled:opacity-50">{busy && <Loader2 className="w-4 h-4 animate-spin" />} Save</button>
+        </div>
       </div>
     </div>
   )

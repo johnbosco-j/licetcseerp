@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LICET Check-in</title>
+<style>
+  :root { --indigo:#1A0C4E; --violet:#41317E; --gold:#DCCAA0; --paper:#F9F7F5; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--paper); color:#1f1b2e; }
+  main { max-width: 420px; margin: 0 auto; padding: 28px 18px; }
+  h1 { font-size: 22px; color: var(--indigo); margin: 4px 0 2px; }
+  .eyebrow { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--violet); font-weight: 700; }
+  label { display:block; font-size: 13px; color:#555; margin-top: 16px; }
+  input { width:100%; height: 52px; font-size: 20px; padding: 0 14px; border:1px solid #cfc8db; border-radius: 10px; margin-top: 6px; letter-spacing: .04em; }
+  input:focus { outline: none; border-color: var(--violet); }
+  button { width:100%; height: 54px; margin-top: 22px; border:0; border-radius: 10px; background: var(--indigo); color:#fff; font-size: 17px; font-weight: 700; }
+  button:disabled { opacity: .5; }
+  .msg { margin-top: 18px; padding: 14px; border-radius: 10px; font-size: 15px; }
+  .ok { background:#e8f6ec; color:#14532d; border:1px solid #b7e1c3; }
+  .err { background:#fdecec; color:#7f1d1d; border:1px solid #f3c2c2; }
+  .bar { height: 4px; background: var(--gold); border-radius: 2px; margin-bottom: 18px; width: 56px; }
+  small { color:#777; display:block; margin-top: 14px; font-size: 12px; line-height: 1.5; }
+</style>
+</head>
+<body>
+<main>
+  <div class="bar"></div>
+  <p class="eyebrow">LICET · CSE</p>
+  <h1>Mark my attendance</h1>
+  <form id="f">
+    <label>Register number<input id="reg" inputmode="numeric" autocomplete="off" maxlength="12" required></label>
+    <label>Attendance PIN<input id="pin" type="password" inputmode="numeric" maxlength="6" required></label>
+    <button id="b" type="submit">Check in</button>
+  </form>
+  <div id="m"></div>
+  <small>Set your PIN once in the ERP (Attendance → Attendance PIN). The first phone you use is registered to you. Checking in for someone else is misconduct; your teacher sees every check-in.</small>
+</main>
+<script>
+  const q = new URLSearchParams(location.search)
+  const nonce = q.get('n') || ''
+  let device = ''
+  try {
+    device = localStorage.getItem('licet_device') || ''
+    if (!device) { device = (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2) + Date.now()); localStorage.setItem('licet_device', device) }
+    document.getElementById('reg').value = localStorage.getItem('licet_reg') || ''
+  } catch (e) { device = '' }
+  let ticket = ''
+  fetch('/api/ticket', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nonce }) })
+    .then(r => r.json()).then(j => {
+      if (j.ok) { ticket = j.ticket; if (j.title) document.querySelector('h1').textContent = j.title }
+      else { show('err', j.error); document.getElementById('b').disabled = true }
+    }).catch(() => show('err', 'Join the class Wi-Fi shown on the screen, then scan again.'))
+  const show = (cls, text) => { const m = document.getElementById('m'); m.className = 'msg ' + cls; m.textContent = text }
+  document.getElementById('f').addEventListener('submit', async (e) => {
+    e.preventDefault()
+    const reg = document.getElementById('reg').value.trim(), pin = document.getElementById('pin').value.trim()
+    const b = document.getElementById('b'); b.disabled = true; b.textContent = 'Checking in…'
+    try {
+      const r = await fetch('/api/checkin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reg, pin, device, ticket }) })
+      const j = await r.json()
+      if (j.ok) { try { localStorage.setItem('licet_reg', reg) } catch (e) {} ; show('ok', (j.already ? 'Already marked: ' : 'Present ✓ ') + (j.name || '')); document.getElementById('f').style.display = 'none' }
+      else show('err', j.error || 'Not accepted')
+    } catch (err) { show('err', 'Could not reach the station. Stay on the class Wi-Fi and try again.') }
+    b.disabled = false; b.textContent = 'Check in'
+  })
+</script>
+</body>
+</html>

@@ -58,3 +58,9 @@ export function normalizeMobile(raw: string | null | undefined): string | null {
 
 /** 9876543210 → "98765 43210" */
 export const formatMobile = (m: string | null | undefined) => (m && m.length === 10 ? `${m.slice(0, 5)} ${m.slice(5)}` : m ?? '')
+
+/** From R2024 (batch graduating 2028 onwards) students choose a vertical in III year. */
+export function needsVertical(section: string, batchYear: number | null | undefined): boolean {
+  const y = ({ I: 1, II: 2, III: 3, IV: 4 } as Record<string, number>)[section.split(' ')[0]] ?? 0
+  return y >= 3 && Number(batchYear) >= 2028
+}
