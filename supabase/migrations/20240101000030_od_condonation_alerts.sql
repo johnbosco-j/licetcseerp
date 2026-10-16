@@ -209,3 +209,26 @@ alter table public.attendance_alert_log enable row level security;
 drop policy if exists alert_log_read on public.attendance_alert_log;
 create policy alert_log_read on public.attendance_alert_log for select to authenticated
   using (student_id = (select auth.uid()) or is_hod() or advises_student(student_id));
+
+-- Weekly shortage alerts: students of the current term below the alert threshold
+-- (default 80%, so they hear before reaching 75%). Server (service role) only.
+create or replace function public.att_alert_candidates(p_threshold numeric default 80)
+returns table (student_id uuid, full_name text, email text, parent_email text, section text, advisor_email text,
+               hours bigint, attended bigint, pct numeric)
+language sql stable security definer set search_path = public as $$
+  with t as (select id from academic_terms where is_current limit 1),
+  h as (
+    select r.sid, count(*) hours, count(*) filter (where not (r.sid = any(s.absent))) att
+    from attendance_sessions s cross join lateral unnest(s.roster) r(sid)
+    where s.term_id = (select id from t)
+    group by r.sid
+  )
+  select p.id, p.full_name, p.email, p.parent_email, p.section,
+         (select a.email from profiles a where a.advisor_section = p.section and a.is_active limit 1),
+         h.hours, h.att, round(100.0 * h.att / nullif(h.hours, 0), 1)
+  from h join profiles p on p.id = h.sid
+  where p.role = 'STUDENT' and p.is_active and h.hours >= 20
+    and 100.0 * h.att / nullif(h.hours, 0) < p_threshold
+$$;
+revoke execute on function public.att_alert_candidates(numeric) from public, anon, authenticated;
+grant execute on function public.att_alert_candidates(numeric) to service_role;

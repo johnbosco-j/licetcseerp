@@ -87,11 +87,11 @@ export function RegisterView({ term, isHod, me, defaultSection }: { term: Term; 
   const cell = (sid: string, ss: AttSession[]) => {
     const s = ss.find(x => x.roster.includes(sid))
     if (!s) return null
-    return s.absent.includes(sid) ? 'A' : 'P'
+    return s.absent.includes(sid) ? 'A' : (s.on_duty ?? []).includes(sid) ? 'OD' : 'P'
   }
   const totals = (sid: string) => {
     let h = 0, p = 0
-    for (const c of cols) { const v = cell(sid, c.sessions); if (v) { h++; if (v === 'P') p++ } }
+    for (const c of cols) { const v = cell(sid, c.sessions); if (v) { h++; if (v !== 'A') p++ } }
     return { h, p, pct: h ? Math.round(p / h * 1000) / 10 : null }
   }
 
@@ -99,7 +99,7 @@ export function RegisterView({ term, isHod, me, defaultSection }: { term: Term; 
     const header = ['S.No', 'Roll No', 'Reg No', 'Name', ...cols.map(c => `${c.date.slice(8)}/${c.date.slice(5, 7)} P${c.period} ${offName(c.sessions[0].subject_id, c.sessions[0].label)}`), 'Present', 'Worked', '%']
     const rows = students.map((s, i) => {
       const t = totals(s.id)
-      return [i + 1, s.roll_number ?? '', s.register_number ?? '', s.full_name, ...cols.map(c => { const v = cell(s.id, c.sessions); return v === 'P' ? 1 : v === 'A' ? 0 : '' }), t.p, t.h, t.pct ?? '']
+      return [i + 1, s.roll_number ?? '', s.register_number ?? '', s.full_name, ...cols.map(c => { const v = cell(s.id, c.sessions); return v === 'P' ? 1 : v === 'OD' ? 2 : v === 'A' ? 0 : '' }), t.p, t.h, t.pct ?? '']
     })
     const ws = XLSX.utils.aoa_to_sheet([[`${section} — Attendance ${month} (${term.label})`], header, ...rows])
     const wb = XLSX.utils.book_new()
@@ -183,7 +183,7 @@ export function RegisterView({ term, isHod, me, defaultSection }: { term: Term; 
                     </td>
                     {cols.map(c => {
                       const v = cell(s.id, c.sessions)
-                      return <td key={c.key} className={`text-center border-l border-b border-border ${v === 'A' ? 'bg-red-100 text-red-800 font-bold' : v === 'P' ? 'text-green-800' : 'bg-muted/30 text-muted-foreground'}`}>{v ?? '·'}</td>
+                      return <td key={c.key} className={`text-center border-l border-b border-border ${v === 'A' ? 'bg-red-100 text-red-800 font-bold' : v === 'OD' ? 'bg-violet-50 text-licet-violet font-semibold text-[9.5px]' : v === 'P' ? 'text-green-800' : 'bg-muted/30 text-muted-foreground'}`}>{v ?? '·'}</td>
                     })}
                     <td className="px-2 text-center border-l border-b border-border tabular-nums">{t.p}/{t.h}</td>
                     <td className={`px-2 text-center border-l border-b border-border tabular-nums font-semibold ${t.pct !== null && t.pct < 65 ? 'text-red-700' : t.pct !== null && t.pct < 75 ? 'text-amber-700' : ''}`}>{t.pct ?? '—'}</td>
@@ -194,7 +194,7 @@ export function RegisterView({ term, isHod, me, defaultSection }: { term: Term; 
           </table>
         </div>
       )}
-      <p className="text-[12px] text-muted-foreground">P = present · A = absent · · = not in that class (other batch or vertical). Click a period number to open that hour.</p>
+      <p className="text-[12px] text-muted-foreground">P = present · OD = present on duty · A = absent · · = not in that class (other batch or vertical). Excel export uses 1 / 2 (OD) / 0 like the department register. Click a period number to open that hour.</p>
       {edit && <MarkPanel date={edit.date} block={blockFor(edit)} dayOrder={null} isHod={isHod} onClose={() => { setEdit(null); load() }} onSaved={load} />}
     </div>
   )

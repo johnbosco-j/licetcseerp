@@ -32,7 +32,7 @@ export default function StudentsPage() {
   const [notice, setNotice]     = useState("")
   const [editId, setEditId]     = useState<string | null>(null)
   const [importing, setImporting] = useState(false)
-  const [form, setForm]         = useState({ full_name: '', email: '', section: 'I CSE-A', batch_year: graduationYear('I CSE-A'), roll_number: '', register_number: '', parent_mobile: '', lab_batch: 1, vertical: '' })
+  const [form, setForm]         = useState({ full_name: '', email: '', section: 'I CSE-A', batch_year: graduationYear('I CSE-A'), roll_number: '', register_number: '', parent_mobile: '', lab_batch: 1, vertical: '', parent_email: '' })
 
   const isHOD = authUser?.type === 'staff' && isTier1(authUser.data)
 
@@ -74,6 +74,7 @@ export default function StudentsPage() {
         parent_mobile: parentMobile || null,
         lab_batch: form.lab_batch || null,
         vertical: form.vertical || null,
+        parent_email: form.parent_email.trim().toLowerCase() || null,
       }).eq('id', editId)
 
       if (updErr) setError(updErr.message)
@@ -120,13 +121,14 @@ export default function StudentsPage() {
       parent_mobile: student.parent_mobile ?? '',
       lab_batch: student.lab_batch ?? 1,
       vertical: student.vertical ?? '',
+      parent_email: (student as { parent_email?: string | null }).parent_email ?? '',
     })
     setEditId(student.id)
     setShowForm(true)
   }
 
   const openAdd = () => {
-    setForm({ full_name: '', email: '', section: 'I CSE-A', batch_year: graduationYear('I CSE-A'), roll_number: '', register_number: '', parent_mobile: '', lab_batch: 1, vertical: '' })
+    setForm({ full_name: '', email: '', section: 'I CSE-A', batch_year: graduationYear('I CSE-A'), roll_number: '', register_number: '', parent_mobile: '', lab_batch: 1, vertical: '', parent_email: '' })
     setEditId(null)
     setShowForm(true)
   }
@@ -258,6 +260,11 @@ export default function StudentsPage() {
                     <option value="FSD">Full Stack Development</option>
                   </select>
                 </div>
+              </div>
+              <div className="space-y-1">
+                <label className="font-mono text-xs text-muted-foreground">Parent / Guardian Email (attendance alerts)</label>
+                <input value={form.parent_email} onChange={e => setForm({...form, parent_email: e.target.value})} type="email" autoComplete="off" placeholder="parent@example.com"
+                  className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none" />
               </div>
               <div className="space-y-1">
                 <label className="font-mono text-xs text-muted-foreground">Parent / Guardian Mobile</label>

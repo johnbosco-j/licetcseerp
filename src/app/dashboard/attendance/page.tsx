@@ -12,8 +12,9 @@ import { TakeAttendance } from "@/components/attendance/take-attendance"
 import { RegisterView } from "@/components/attendance/register-view"
 import { SummaryView } from "@/components/attendance/summary-view"
 import { MyAttendance } from "@/components/attendance/my-attendance"
+import { CondonationDesk } from "@/components/attendance/condonation"
 
-type Tab = 'take' | 'register' | 'summary'
+type Tab = 'take' | 'register' | 'summary' | 'condonation'
 
 export default function AttendancePage() {
   const router = useRouter()
@@ -64,7 +65,8 @@ export default function AttendancePage() {
       ) : (
         <>
           <div className="flex gap-1 border-b border-border">
-            {([['take', 'Take attendance'], ['register', 'Register'], ['summary', 'Summary & eligibility']] as [Tab, string][]).map(([k, label]) => (
+            {([['take', 'Take attendance'], ['register', 'Register'], ['summary', 'Summary & eligibility'],
+               ...((isHod || user.data.advisor_section) ? [['condonation', 'Condonation']] : [])] as [Tab, string][]).map(([k, label]) => (
               <button key={k} onClick={() => setTab(k)}
                 className={`px-4 py-2 -mb-px text-[13.5px] font-semibold border-b-2 ${tab === k ? 'border-licet-indigo text-licet-indigo' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>{label}</button>
             ))}
@@ -73,6 +75,7 @@ export default function AttendancePage() {
             ? <TakeAttendance term={term} me={me} isHod={isHod} />
             : <p className="text-[13.5px] text-muted-foreground">{term.label} is a past term — use Register to view or correct its hours.</p>)}
           {tab === 'register' && <RegisterView term={term} isHod={isHod} me={me} defaultSection={user.data.advisor_section} />}
+          {tab === 'condonation' && <CondonationDesk term={term} isHod={isHod} />}
           {tab === 'summary' && <SummaryView term={term} minPct={limits.min} condPct={limits.cond} defaultSection={user.data.advisor_section} />}
         </>
       )}

@@ -30,7 +30,7 @@ begin
             case when i <= 4 then 'FSD' else 'AIML' end);
   end loop;
   insert into academic_terms (academic_year, parity, label, starts_on, ends_on) values ('2097-2098', 'ODD', 'TEST TERM', today - 60, today + 60) returning id into t;
-  insert into period_slots (term_id, period_no, starts_at, ends_at) values (t, 1, '08:00', '09:00'), (t, 2, '09:00', '09:50'), (t, 7, '23:59', '23:59');
+  insert into period_slots (term_id, period_no, starts_at, ends_at) values (t, 1, '08:00', '09:00'), (t, 2, '09:00', '09:50'), (t, 7, '23:59', '23:59'), (t, 3, '00:00', '00:01');
   insert into subjects (code, name, semester, section, term_id, cohort_grad_year, audience, audience_value, faculty_id)
     values ('TPOPL', 'Test POPL', 5, null, t, 2099, 'VERTICAL', 'FSD', fa) returning id into popl;
   insert into subjects (code, name, semester, section, term_id, cohort_grad_year, audience, faculty_id)
@@ -110,7 +110,7 @@ begin
   perform set_config('request.jwt.claims', json_build_object('sub', fa, 'role', 'authenticated')::text, true);
   begin perform att_self_open((select id from attendance_sessions where id = s.id), 10); insert into r(ok, test, info) values (false, 'self check-in only for today', 'allowed');
   exception when others then get stacked diagnostics msg = message_text; insert into r(ok, test, info) values (msg like '%today%' or msg like '%submitted%', 'self check-in only for today', msg); end;
-  s := att_open(today, 1::smallint, 'III CSE-Z', toc, null, 'ALL', null, null, ent);
+  s := att_open(today, 3::smallint, 'III CSE-Z', toc, null, 'ALL', null, null, ent);   -- period 3 starts at midnight, so it has begun at any hour
   s := att_self_open(s.id, 10);
   insert into r(ok, test, info) values (cardinality(s.absent) = 6, 'self check-in starts with everyone absent', 'ok');
   for i in 1..5 loop j := att_station_mark(s.id, '999999104001', '0000', 'dev-A'); end loop;

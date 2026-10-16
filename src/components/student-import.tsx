@@ -14,13 +14,14 @@ import { toast } from "@/components/toaster"
 
 const COLUMNS: { key: keyof NewStudent; label: string; aliases: RegExp }[] = [
   { key: "full_name",       label: "Name",            aliases: /^(full\s*)?name|student\s*name$/i },
-  { key: "email",           label: "Email",           aliases: /e-?mail/i },
+  { key: "email",           label: "Email",           aliases: /^(student\s*|official\s*)?e-?mail(\s*id)?$/i },
   { key: "section",         label: "Section",         aliases: /^(section|class)$/i },
   { key: "lab_batch",       label: "Lab batch (1/2)", aliases: /lab\s*batch/i },
   { key: "vertical",        label: "Vertical (AIML/FSD)", aliases: /vertical/i },
   { key: "batch_year",      label: "Batch (graduating year)",      aliases: /graduat|passing|^batch$|batch\s*year|year\s*of\s*(joining|admission)/i },
   { key: "roll_number",     label: "Roll number",     aliases: /roll/i },
   { key: "register_number", label: "Register number", aliases: /reg(ister|istration)?\.?\s*(no|number)?/i },
+  { key: "parent_email",    label: "Parent email",    aliases: /(parent|guardian|father|mother).*(e-?mail)/i },
   { key: "parent_mobile",   label: "Parent mobile",   aliases: /parent|guardian|father|mother/i },
 ]
 
@@ -76,6 +77,7 @@ export function StudentImport({ onClose, onDone, existingEmails }: { onClose: ()
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) problems.push("invalid email")
         if (!SECTIONS.includes(section)) problems.push(`unknown section "${get("section")}"`)
         if (parent && normalizeMobile(parent) === null) problems.push("parent mobile not 10 digits")
+        if (get("parent_email") && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(get("parent_email"))) problems.push("parent email not valid")
         if (existingEmails.has(email)) problems.push("already has an account")
         if (seen.has(email)) problems.push("repeated in file")
         seen.add(email)
@@ -83,7 +85,7 @@ export function StudentImport({ onClose, onDone, existingEmails }: { onClose: ()
           _row: i + 2, _problems: problems,
           full_name: get("full_name"), email, section, batch_year: batch,
           roll_number: get("roll_number"), register_number: get("register_number"), parent_mobile: parent,
-          lab_batch: labBatch, vertical,
+          lab_batch: labBatch, vertical, parent_email: get("parent_email").toLowerCase() || null,
         }
       }).filter(r => r.full_name || r.email)
       setRows(parsed)
@@ -116,7 +118,7 @@ export function StudentImport({ onClose, onDone, existingEmails }: { onClose: ()
   const downloadTemplate = () => {
     const ws = XLSX.utils.aoa_to_sheet([
       COLUMNS.map(c => c.label),
-      ["Example Student", "example.30csa@licet.ac.in", "I CSE-A", 1, "", graduationYear("I CSE-A"), "26CS001", "311126104001", "9876543210"],
+      ["Example Student", "example.30csa@licet.ac.in", "I CSE-A", 1, "", graduationYear("I CSE-A"), "26CS001", "311126104001", "parent@example.com", "9876543210"],
     ])
     ws["!cols"] = COLUMNS.map(() => ({ wch: 22 }))
     const wb = XLSX.utils.book_new()

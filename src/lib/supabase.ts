@@ -42,6 +42,8 @@ export type Database = {
           parent_mobile: string | null
           lab_batch: number | null
           vertical: string | null
+          parent_email: string | null
+          archived_at: string | null
           created_at: string
           updated_at: string
         }

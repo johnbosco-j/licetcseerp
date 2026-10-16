@@ -15,6 +15,8 @@ export interface NewStudent {
   roll_number?: string
   register_number?: string
   parent_mobile?: string
+  /** parent / guardian email for attendance alerts */
+  parent_email?: string | null
   /** lab batch (1, 2 …) — decides which half of a split lab hour the student attends */
   lab_batch?: number | null
   /** vertical code (e.g. AIML, FSD) for III/IV-year students of R2024 batches */
@@ -36,6 +38,7 @@ async function createStudent(db: ReturnType<typeof adminClient>, data: NewStuden
   if (!(lab_batch >= 1 && lab_batch <= 4)) return { error: 'Choose the lab batch (1 or 2)' }
   const vertical = data.vertical?.trim().toUpperCase() || null
   if (needsVertical(data.section, data.batch_year) && !vertical) return { error: 'Choose the vertical (e.g. AI & ML or Full Stack)' }
+  if (data.parent_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.parent_email.trim())) return { error: 'Parent email is not valid' }
 
   const password = defaultStudentPassword(email)
   const { data: authData, error: authErr } = await db.auth.admin.createUser({ email, password, email_confirm: true })
@@ -54,6 +57,7 @@ async function createStudent(db: ReturnType<typeof adminClient>, data: NewStuden
     parent_mobile: normalizeMobile(data.parent_mobile) || null,
     lab_batch,
     vertical,
+    parent_email: data.parent_email?.trim().toLowerCase() || null,
     is_active: true,
     must_change_password: true,
   })

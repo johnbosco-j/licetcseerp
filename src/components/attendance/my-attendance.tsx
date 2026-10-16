@@ -6,8 +6,9 @@ import { supabase } from "@/lib/supabase"
 import { reportResult } from "@/components/toaster"
 import { attendanceHeadroom } from "@/lib/dashboard"
 import { type Offering, type Term, eligibility, TONE, DAY_SHORT, weekdayOf } from "@/lib/academic"
+import { MyCondonations } from "./condonation"
 
-type Hour = { session_id: string; date: string; period_no: number; subject_id: string | null; label: string | null; present: boolean; topic: string | null; status: string }
+type Hour = { session_id: string; date: string; period_no: number; subject_id: string | null; label: string | null; present: boolean; on_duty: boolean; topic: string | null; status: string }
 
 export function MyAttendance({ terms, minPct, condPct, me }: { terms: Term[]; minPct: number; condPct: number; me: { id: string } }) {
   const [termId, setTermId] = useState(terms.find(t => t.is_current)?.id ?? terms[0]?.id ?? '')
@@ -124,7 +125,7 @@ export function MyAttendance({ terms, minPct, condPct, me }: { terms: Term[]; mi
                   {hs.sort((a, b) => a.period_no - b.period_no).map(h => (
                     <span key={h.session_id} title={`${short(h)}${h.topic ? ' — ' + h.topic : ''}`}
                       className={`text-[11.5px] px-1.5 py-0.5 rounded border ${h.present ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-600 border-red-600 text-white'}`}>
-                      P{h.period_no} {short(h)}
+                      P{h.period_no} {short(h)}{h.on_duty ? ' · OD' : ''}
                     </span>
                   ))}
                 </li>
@@ -144,6 +145,12 @@ export function MyAttendance({ terms, minPct, condPct, me }: { terms: Term[]; mi
           <span className="inline-flex items-center gap-1 text-[12.5px] text-muted-foreground ml-auto"><Smartphone className="w-4 h-4" /> {device ? `Phone registered on ${new Date(device).toLocaleDateString('en-IN')}` : 'No phone registered yet'}</span>
         </div>
       </div>
+      {terms.find(t => t.id === termId) && (
+        <div className="space-y-2">
+          <p className="eyebrow">Condonation (medical / sports)</p>
+          <MyCondonations studentId={me.id} term={terms.find(t => t.id === termId)!} />
+        </div>
+      )}
     </div>
   )
 }

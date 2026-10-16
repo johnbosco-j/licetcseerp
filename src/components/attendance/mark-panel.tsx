@@ -28,6 +28,8 @@ export function MarkPanel({ date, block, dayOrder, isHod, onClose, onSaved }: {
   const [sessions, setSessions] = useState<AttSession[]>([])
   const [students, setStudents] = useState<RosterStudent[]>([])
   const [absent, setAbsent] = useState<Set<string>>(new Set())
+  const [onDuty, setOnDuty] = useState<Set<string>>(new Set())
+  const [onLeave, setOnLeave] = useState<Set<string>>(new Set())
   const [periods, setPeriods] = useState<number[]>(block.periods)
   const [topic, setTopic] = useState('')
   const [headcount, setHeadcount] = useState('')
@@ -54,6 +56,11 @@ export function MarkPanel({ date, block, dayOrder, isHod, onClose, onSaved }: {
     const ids = [...new Set(out.flatMap(s => s.roster))]
     setStudents(await loadRosterStudents(ids))
     setAbsent(new Set(out[0]?.absent ?? []))
+    setOnDuty(new Set(out[0]?.on_duty ?? []))
+    // approved leave covering this date (shown as a hint; the teacher still marks)
+    const { data: lv } = await supabase.from('leaves').select('applicant_id').in('applicant_id', ids.slice(0, 300))
+      .eq('status', 'APPROVED').lte('from_date', date).gte('to_date', date)
+    setOnLeave(new Set(((lv ?? []) as { applicant_id: string }[]).map(l => l.applicant_id)))
     setTopic(out[0]?.topic ?? '')
     setHeadcount(out[0]?.headcount != null ? String(out[0].headcount) : '')
     setDirty(false)
@@ -85,12 +92,18 @@ export function MarkPanel({ date, block, dayOrder, isHod, onClose, onSaved }: {
   const canEdit = !locked || isHod
   const differs = sessions.length > 1 && sessions.some(s => s.absent.length !== sessions[0].absent.length || s.absent.some(x => !sessions[0].absent.includes(x)))
 
+  const toggleOd = (id: string) => {
+    if (!canEdit || absent.has(id)) return
+    setOnDuty(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n })
+    setDirty(true)
+  }
   const toggle = (id: string) => {
+    setOnDuty(prev => { if (!prev.has(id)) return prev; const n = new Set(prev); n.delete(id); return n })
     if (!canEdit) return
     setAbsent(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n })
     setDirty(true)
   }
-  const setAll = (present: boolean) => { if (!canEdit) return; setAbsent(present ? new Set() : new Set(students.map(s => s.id))); setDirty(true) }
+  const setAll = (present: boolean) => { if (!canEdit) return; setAbsent(present ? new Set() : new Set(students.map(s => s.id))); if (!present) setOnDuty(new Set()); setDirty(true) }
 
   const save = async (submit: boolean) => {
     if (!chosen.length) { toast.error('Choose at least one period'); return }
@@ -102,6 +115,7 @@ export function MarkPanel({ date, block, dayOrder, isHod, onClose, onSaved }: {
       const { data, error } = await supabase.rpc('att_save', {
         p_session: s.id, p_absent: ab, p_topic: topic || null, p_submit: submit, p_reason: locked ? reason.trim() : null,
         p_headcount: headcount.trim() ? Number(headcount) : null,
+        p_on_duty: [...onDuty].filter(id => s.roster.includes(id) && !absent.has(id)),
       })
       if (error) { reportResult(error); ok = false; break }
       setSessions(prev => prev.map(x => x.id === s.id ? (data as AttSession) : x))
@@ -221,19 +235,22 @@ export function MarkPanel({ date, block, dayOrder, isHod, onClose, onSaved }: {
             <ul className="flex-1 overflow-y-auto divide-y divide-border">
               {shown.map((s, i) => {
                 const isAbsent = absent.has(s.id)
+                const isOd = !isAbsent && onDuty.has(s.id)
                 return (
-                  <li key={s.id}>
+                  <li key={s.id} className={`flex items-center ${isAbsent ? 'bg-red-50/70' : ''}`}>
                     <button onClick={() => toggle(s.id)} disabled={!canEdit}
-                      className={`w-full flex items-center gap-3 px-5 py-2.5 text-left transition-colors ${isAbsent ? 'bg-red-50/70' : 'hover:bg-muted/40'} disabled:cursor-default`}>
+                      className={`flex-1 min-w-0 flex items-center gap-3 pl-5 pr-2 py-2.5 text-left transition-colors ${isAbsent ? '' : 'hover:bg-muted/40'} disabled:cursor-default`}>
                       <span className="w-7 text-right font-mono text-[11.5px] text-muted-foreground">{i + 1}</span>
                       <span className="flex-1 min-w-0">
                         <span className={`block text-[14px] font-medium truncate ${isAbsent ? 'text-red-800' : 'text-foreground'}`}>{s.full_name}</span>
-                        <span className="block font-mono text-[11.5px] text-muted-foreground">{s.register_number ?? s.roll_number ?? '—'}{multiSection && s.section ? ` · ${s.section}` : ''}{s.lab_batch ? ` · B${s.lab_batch}` : ''}</span>
+                        <span className="block font-mono text-[11.5px] text-muted-foreground">{s.register_number ?? s.roll_number ?? '—'}{multiSection && s.section ? ` · ${s.section}` : ''}{s.lab_batch ? ` · B${s.lab_batch}` : ''}{onLeave.has(s.id) ? <span className="ml-1.5 font-sans text-amber-700">· on approved leave</span> : null}</span>
                       </span>
                       <span className={`inline-flex items-center gap-1 w-[92px] justify-center h-8 rounded-full text-[12.5px] font-semibold border ${isAbsent ? 'bg-red-600 text-white border-red-600' : 'bg-green-50 text-green-800 border-green-200'}`}>
                         {isAbsent ? <><X className="w-3.5 h-3.5" /> Absent</> : <><Check className="w-3.5 h-3.5" /> Present</>}
                       </span>
                     </button>
+                    <button onClick={() => toggleOd(s.id)} disabled={!canEdit || isAbsent} title="Present on duty (OD)"
+                      className={`mr-4 h-8 w-11 rounded-full text-[11.5px] font-bold border transition-colors disabled:opacity-30 ${isOd ? 'bg-licet-violet text-white border-licet-violet' : 'bg-white text-muted-foreground border-border hover:border-licet-violet'}`}>OD</button>
                   </li>
                 )
               })}
@@ -243,7 +260,7 @@ export function MarkPanel({ date, block, dayOrder, isHod, onClose, onSaved }: {
             <div className="px-5 py-3 border-t border-border space-y-2 bg-licet-paper/60">
               <div className="flex items-center gap-3 text-[13px]">
                 <Users className="w-4 h-4 text-muted-foreground" />
-                <span><b className="text-green-800">{presentCount}</b> present · <b className="text-red-700">{students.length - presentCount}</b> absent · {students.length} on list</span>
+                <span><b className="text-green-800">{presentCount}</b> present{onDuty.size ? <> (incl. <b className="text-licet-violet">{[...onDuty].filter(id => !absent.has(id)).length}</b> OD)</> : null} · <b className="text-red-700">{students.length - presentCount}</b> absent · {students.length} on list</span>
               </div>
               <input value={topic} onChange={ev => { setTopic(ev.target.value); setDirty(true) }} disabled={!canEdit}
                 placeholder="Topic covered (for the course register)" className="w-full h-9 px-3 rounded-md border border-input text-[13.5px] focus:outline-none focus:border-licet-violet disabled:bg-muted/40" />
@@ -252,7 +269,7 @@ export function MarkPanel({ date, block, dayOrder, isHod, onClose, onSaved }: {
                   <span className="text-muted-foreground">Head count in the room</span>
                   <input value={headcount} onChange={ev => { setHeadcount(ev.target.value.replace(/\D/g, '').slice(0, 3)); setDirty(true) }} inputMode="numeric" disabled={!canEdit}
                     className="w-20 h-9 px-2 rounded-md border border-input text-[13.5px] focus:outline-none focus:border-licet-violet" />
-                  {headcount && presentCount > Number(headcount) && <span className="text-red-700 text-[12.5px]">{presentCount - Number(headcount)} more present than counted — check the list</span>}
+                  {headcount && presentCount - [...onDuty].filter(id => !absent.has(id)).length > Number(headcount) && <span className="text-red-700 text-[12.5px]">{presentCount - [...onDuty].filter(id => !absent.has(id)).length - Number(headcount)} more present than counted — check the list</span>}
                 </label>
               )}
               {locked && isHod && (

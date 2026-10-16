@@ -83,6 +83,9 @@ const RULES: { key: string; label: string; help: string; kind: 'number' | 'bool'
   { key: 'attendance.open_before_minutes', label: 'An hour can be opened this many minutes before it starts', help: 'Stops attendance being marked in advance.', kind: 'number' },
   { key: 'attendance.pin_max_attempts', label: 'Wrong PINs before a student is locked out', help: 'Protects self check-in against guessing.', kind: 'number' },
   { key: 'attendance.pin_lock_minutes', label: 'PIN lock-out (minutes)', help: 'The teacher can still mark the student manually.', kind: 'number' },
+  { key: 'alerts.weekly_enabled', label: 'Weekly attendance alerts (Monday morning email)', help: 'Students below the alert level get one email a week, copied to the class advisor.', kind: 'bool' },
+  { key: 'alerts.threshold_percent', label: 'Alert when attendance falls below (%)', help: 'Higher than the minimum so students are warned in time (default 80).', kind: 'number' },
+  { key: 'alerts.parents', label: 'Copy alerts to parents (if a parent email is on file)', help: 'Parent emails are added on the student record or by Excel import.', kind: 'bool' },
   { key: 'attendance.allow_any_staff', label: 'Any staff may take any class', help: 'Off (recommended): only the course instructor, class advisor, a colleague the instructor handed the class to, or the HOD.', kind: 'bool' },
 ]
 export function RulesTab({ settings, reload }: { settings: Record<string, unknown>; reload: () => void }) {
