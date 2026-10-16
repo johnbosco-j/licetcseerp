@@ -36,7 +36,7 @@ export function MyAttendance({ terms, minPct, condPct, me }: { terms: Term[]; mi
   const total = hours.length, present = hours.filter(h => h.present).length
   const pct = total ? present / total * 100 : null
   const el = eligibility(pct, minPct, condPct)
-  const room = attendanceHeadroom(present, total, minPct / 100)
+  const room = attendanceHeadroom(present, total, (minPct - 0.5) / 100) // Reg. 7.2 rounds to the nearest integer
   const perCourse = useMemo(() => {
     const m = new Map<string, { name: string; code: string; c: number; a: number }>()
     for (const h of hours) {
