@@ -15,6 +15,7 @@ import {
   type SectionAttendance, type StudentAttendance, type EventItem, type NoticeItem, type ExamItem, type DocItem, type Period, type Slot,
 } from "@/lib/dashboard"
 import { academicYear, semesterTerm } from "@/lib/utils"
+import { getAcademicState } from "@/lib/semester"
 import {
   Hero, HeroChip, HeroPanel, Kpi, KpiSkeleton, Panel, PanelEmpty, Bar, AttPct, Pill, Initials, ListRow, phaseLabel, CallParent,
 } from "./widgets"
@@ -183,14 +184,25 @@ export default function HodDashboard({ name, greeting, designation }: { name: st
   ] : []
   const openItems = attention.filter(a => a.count > 0).length
 
+  const ac = getAcademicState()
+  const today = new Date().toISOString().slice(0, 10)
+  const daysLeft = ac?.termEnds ? Math.round((Date.parse(ac.termEnds) - Date.parse(today)) / 86400000) : null
+
   return (
     <div className="space-y-6">
+      {daysLeft !== null && daysLeft <= 14 && (
+        <Link href="/dashboard/config?tab=terms" className={`block rounded-lg border px-4 py-3 text-[13.5px] ${daysLeft < 0 ? 'border-amber-300 bg-amber-50 text-amber-900' : 'border-licet-gold bg-licet-cream/60 text-licet-indigo'}`}>
+          {daysLeft < 0
+            ? <><b>{ac?.termLabel} ended {-daysLeft} day{daysLeft === -1 ? '' : 's'} ago.</b> Start the next term in Configuration → Terms (promotion, courses, calendar).</>
+            : <><b>{ac?.termLabel} ends in {daysLeft} day{daysLeft === 1 ? '' : 's'}.</b> Verify registers, then start the next term from Configuration → Terms.</>}
+        </Link>
+      )}
       <Hero
         kicker={`${greeting}${name ? `, ${name}` : ''}`}
         title={<>Department of <span className="italic">Computer Science</span> &amp; Engineering</>}
         subtitle={`${now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} · ${designation ?? 'Head of Department'} · Department overview`}
         chips={<>
-          <HeroChip tone="gold">{semesterTerm()} · {academicYear(new Date(), true)}</HeroChip>
+          <HeroChip tone="gold">{ac?.termLabel ?? `${semesterTerm()} · ${academicYear(new Date(), true)}`}</HeroChip>
           <HeroChip tone={phase.kind === 'period' ? 'live' : 'plain'}>{phaseLabel(phase)}</HeroChip>
           {d && d.staffOnLeave.length > 0 && <HeroChip>{d.staffOnLeave.length} faculty on leave today</HeroChip>}
         </>}

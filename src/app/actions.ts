@@ -146,11 +146,17 @@ export async function resetPassword(accessToken: string, userId: string, newPass
 // Removes students marked GRADUATED (login + profile; linked records cascade).
 // Archive-then-remove: every graduate's complete record is saved to the private
 // "archives" storage bucket first; accounts are deleted only if that succeeds.
+/**
+ * Archives graduated students: their complete record (profile, hour-wise attendance,
+ * marks, leaves, grievances, alerts, promotion history) is saved to the department
+ * archive, and their sign-in is blocked. Accounts and history are kept, so the HOD
+ * can always read past registers with names. Nothing is deleted.
+ */
 export async function removeGraduatedStudents(accessToken: string): Promise<ActionResult & { removed?: number; archive?: string }> {
   try {
     const actor = await requireRole(accessToken, ['HOD'])
     const db = adminClient()
-    const { data: grads, error } = await db.from('profiles').select('*').eq('role', 'STUDENT').eq('section', 'GRADUATED')
+    const { data: grads, error } = await db.from('profiles').select('*').eq('role', 'STUDENT').eq('section', 'GRADUATED').is('archived_at', null)
     if (error) return { error: error.message }
     if (!grads?.length) return { success: true, removed: 0 }
 
@@ -167,11 +173,31 @@ export async function removeGraduatedStudents(accessToken: string): Promise<Acti
       }
       return rows
     }
+    // hour-wise attendance: every class hour each graduate was on the list for
+    type Sess = { date: string; period_no: number; subject_id: string | null; label: string | null; roster: string[]; absent: string[]; term_id: string | null }
+    const sessions: Sess[] = []
+    for (let from = 0; ; from += 1000) {
+      const { data, error: e } = await db.from('attendance_sessions').select('date, period_no, subject_id, label, roster, absent, term_id').overlaps('roster', ids).order('date').range(from, from + 999)
+      if (e) throw new Error(`attendance_sessions: ${e.message}`)
+      sessions.push(...((data ?? []) as Sess[]))
+      if (!data || data.length < 1000) break
+    }
+    const subjIds = [...new Set(sessions.map(s => s.subject_id).filter(Boolean))] as string[]
+    const codes = new Map<string, string>()
+    for (let i = 0; i < subjIds.length; i += 200) {
+      const { data } = await db.from('subjects').select('id, code').in('id', subjIds.slice(i, i + 200))
+      for (const r of (data ?? []) as { id: string; code: string }[]) codes.set(r.id, r.code)
+    }
+    const hourly: Record<string, { date: string; period: number; course: string; present: boolean }[]> = {}
+    for (const s of sessions) for (const id of s.roster) if (ids.includes(id)) {
+      (hourly[id] ??= []).push({ date: s.date, period: s.period_no, course: (s.subject_id && codes.get(s.subject_id)) || s.label || '', present: !s.absent.includes(id) })
+    }
     const archive = {
       kind: 'graduated-students',
       generated_at: new Date().toISOString(),
       generated_by: { id: actor.id, name: actor.full_name },
       students: grads,
+      hour_attendance: hourly,
       day_attendance: await all('day_attendance', '*', 'student_id'),
       subject_attendance: await all('attendance', '*, subjects(code, name, semester)', 'student_id'),
       marks: await all('marks', '*, subjects(code, name, semester, credits)', 'student_id'),
@@ -183,14 +209,17 @@ export async function removeGraduatedStudents(accessToken: string): Promise<Acti
     const path = `graduates/${archive.generated_at.slice(0, 19).replace(/:/g, '')}-${grads.length}-students.json`
     const { error: upErr } = await db.storage.from('archives')
       .upload(path, JSON.stringify(archive, null, 2), { contentType: 'application/json', upsert: false })
-    if (upErr) return { error: `Archive could not be saved, nothing was removed: ${upErr.message}` }
+    if (upErr) return { error: `Archive could not be saved, nothing was changed: ${upErr.message}` }
 
-    let removed = 0
+    let archived = 0
     for (const g of grads) {
-      const { error: e } = await db.auth.admin.deleteUser(g.id)
-      if (!e) removed++
+      // block sign-in (about 100 years); the profile and all history stay
+      const { error: e } = await db.auth.admin.updateUserById(g.id, { ban_duration: '876000h' })
+      if (e) continue
+      const { error: e2 } = await db.from('profiles').update({ archived_at: new Date().toISOString(), is_active: false }).eq('id', g.id)
+      if (!e2) archived++
     }
-    return { success: true, removed, archive: path }
+    return { success: true, removed: archived, archive: path }
   } catch (e) {
     return failure(e)
   }

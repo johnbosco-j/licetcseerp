@@ -134,8 +134,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       }
       // Academic state (latest promotion) drives the odd/even semester everywhere.
       const { data: academic } = await supabase.rpc("current_academic_state" as never)
-      const ac = (academic ?? {}) as { academic_year?: string; promoted_at?: string }
-      setAcademicState({ academicYear: ac.academic_year ?? null, promotedAt: ac.promoted_at ?? null })
+      const ac = (academic ?? {}) as { academic_year?: string; promoted_at?: string; term_parity?: 'ODD' | 'EVEN'; term_starts?: string; term_label?: string; term_ends?: string }
+      setAcademicState({ academicYear: ac.academic_year ?? null, promotedAt: ac.promoted_at ?? null,
+        termParity: ac.term_parity ?? null, termStarts: ac.term_starts ?? null, termLabel: ac.term_label ?? null, termEnds: ac.term_ends ?? null })
       if (!active) return
 
       const type = profile.role === "STUDENT" ? "student" : "staff"

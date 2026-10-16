@@ -1,7 +1,8 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { Loader2, Plus, Star } from "lucide-react"
+import { Loader2, Plus, Star, ArrowRightCircle } from "lucide-react"
+import { NextTermWizard, CalendarImportButton } from "./next-term"
 import { supabase } from "@/lib/supabase"
 import { reportResult } from "@/components/toaster"
 import { type CalendarDay, type PeriodSlot, type Term, DAY_NAMES, DAY_SHORT, weekdayOf } from "@/lib/academic"
@@ -15,6 +16,7 @@ export function TermsTab({ terms, reload }: { terms: Term[]; reload: () => void 
   const term = terms.find(t => t.id === termId)
   const [draft, setDraft] = useState<Partial<Term>>({})
   const [newTerm, setNewTerm] = useState({ academic_year: '', parity: 'EVEN', starts_on: '', ends_on: '' })
+  const [wizard, setWizard] = useState(false)
   useEffect(() => { setDraft(term ? { ...term } : {}) }, [term])
 
   const saveTerm = async () => {
@@ -48,6 +50,7 @@ export function TermsTab({ terms, reload }: { terms: Term[]; reload: () => void 
             {terms.map(t => <option key={t.id} value={t.id}>{t.label}{t.is_current ? ' (current)' : ''}</option>)}
           </select>
           {term && !term.is_current && <button onClick={makeCurrent} className={ghostCls}><Star className="w-4 h-4" /> Make current term</button>}
+          <button onClick={() => setWizard(true)} className={`${btnCls} ml-auto`}><ArrowRightCircle className="w-4 h-4" /> Start next term</button>
         </div>
         {term && (
           <div className="grid sm:grid-cols-4 gap-2">
@@ -69,6 +72,7 @@ export function TermsTab({ terms, reload }: { terms: Term[]; reload: () => void 
           <p className="text-[12px] text-muted-foreground mt-1">Then add courses (Courses tab → copy from a previous term), timetable and calendar days for it.</p>
         </details>
       </section>
+      {wizard && <NextTermWizard terms={terms} onClose={() => setWizard(false)} onDone={() => { setWizard(false); reload() }} />}
       {term && <PeriodsEditor term={term} />}
       {term && <CalendarEditor term={term} />}
     </div>

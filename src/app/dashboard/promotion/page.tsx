@@ -61,7 +61,7 @@ export default function PromotionPage() {
   const refresh = async () => {
     const [{ data: logRows }, { count }, arch] = await Promise.all([
       supabase.from('promotion_log' as any).select('*').order('promotion_date', { ascending: false }),
-      supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'STUDENT').eq('section', 'GRADUATED'),
+      supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'STUDENT').eq('section', 'GRADUATED').is('archived_at', null),
       listArchives(await getAccessToken() ?? ''),
     ])
     const entries = (logRows ?? []) as unknown as LogEntry[]
@@ -110,12 +110,12 @@ export default function PromotionPage() {
   }
 
   const removeGraduates = async () => {
-    if (!confirm(`Archive and remove ${gradCount} graduated students?\n\nTheir complete records (profile, attendance, marks, leaves, grievances, alerts, promotion history) are first saved to the department archive. Their accounts are then removed from the ERP.`)) return
+    if (!confirm(`Archive ${gradCount} graduated students?\n\nTheir complete records (profile, hour-wise attendance, marks, leaves, grievances, alerts, promotion history) are saved to the department archive and their sign-in is blocked. Nothing is deleted — their registers stay readable under each past term.`)) return
     setBusy('remove'); setMessage(null)
     const res = await removeGraduatedStudents(await getAccessToken() ?? '')
     setBusy('')
     if (res.error) { setMessage({ tone: 'err', text: res.error }); return }
-    setMessage({ tone: 'ok', text: `Archived and removed ${res.removed} graduated students. The archive can be downloaded below.` })
+    setMessage({ tone: 'ok', text: `Archived ${res.removed} graduated students and blocked their sign-in. Their records stay in the ERP; the archive file can be downloaded below.` })
     await refresh()
   }
 
@@ -227,13 +227,13 @@ export default function PromotionPage() {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <p className="text-[13.5px] text-licet-indigo max-w-2xl">
             {gradCount > 0
-              ? `${gradCount} graduated student${gradCount === 1 ? '' : 's'} still ${gradCount === 1 ? 'has an account' : 'have accounts'}. Archiving saves their complete records to the department archive before the accounts are removed.`
-              : 'No graduated students have accounts in the ERP.'}
+              ? `${gradCount} graduated student${gradCount === 1 ? ' is' : 's are'} not archived yet. Archiving saves their complete records to the department archive and blocks their sign-in; nothing is deleted.`
+              : 'All graduated students are archived. Their records remain readable under past terms.'}
           </p>
           {gradCount > 0 && (
             <button disabled={!!busy} onClick={removeGraduates}
-              className="flex items-center gap-2 h-9 px-4 rounded-md bg-red-700 text-white text-[13px] font-semibold hover:bg-red-800 disabled:opacity-50">
-              {busy === 'remove' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Archive className="w-4 h-4" />} Archive and remove
+              className="flex items-center gap-2 h-9 px-4 rounded-md bg-licet-indigo text-white text-[13px] font-semibold hover:bg-licet-violet disabled:opacity-50">
+              {busy === 'remove' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Archive className="w-4 h-4" />} Archive and lock
             </button>
           )}
         </div>
