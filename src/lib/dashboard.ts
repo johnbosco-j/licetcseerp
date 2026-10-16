@@ -125,8 +125,11 @@ export async function loadStudentAttendance(section?: string): Promise<StudentAt
 /** Sessions a student can still miss (or must attend) to stay at or reach 75%. */
 export function attendanceHeadroom(present: number, sessions: number, target = 0.75) {
   if (!sessions) return { canMiss: 0, mustAttend: 0 }
-  const canMiss = Math.max(0, Math.floor(present / target - sessions))
-  const mustAttend = Math.max(0, Math.ceil((target * sessions - present) / (1 - target)))
+  // Targets like 0.8 are not exact in binary: 0.8 / 0.2 is 4.000000000000001, which
+  // ceil() would turn into 5. Allow for that rounding error before floor/ceil.
+  const EPS = 1e-9
+  const canMiss = Math.max(0, Math.floor(present / target - sessions + EPS))
+  const mustAttend = Math.max(0, Math.ceil((target * sessions - present) / (1 - target) - EPS))
   return { canMiss, mustAttend }
 }
 

@@ -119,13 +119,17 @@ export interface ClassBlock { key: string; section: string; periods: number[]; e
 export function toBlocks(entries: TimetableEntry[]): ClassBlock[] {
   const sorted = [...entries].sort((a, b) => a.section.localeCompare(b.section) || a.period_no - b.period_no)
   const out: ClassBlock[] = []
+  // Latest block per class: batches/verticals that share a period are interleaved
+  // in `sorted`, so the previous block in `out` is not necessarily the same class.
+  const latest = new Map<string, ClassBlock>()
   for (const e of sorted) {
     const id = `${e.section}|${e.subject_id ?? e.label}|${e.audience}|${e.audience_value ?? ''}`
-    const last = out[out.length - 1]
-    if (last && last.key.startsWith(id + '|') && last.periods[last.periods.length - 1] === e.period_no - 1) {
+    const last = latest.get(id)
+    if (last && last.periods[last.periods.length - 1] === e.period_no - 1) {
       last.periods.push(e.period_no); last.entries.push(e); continue
     }
-    out.push({ key: `${id}|${e.period_no}`, section: e.section, periods: [e.period_no], entry: e, entries: [e] })
+    const block: ClassBlock = { key: `${id}|${e.period_no}`, section: e.section, periods: [e.period_no], entry: e, entries: [e] }
+    out.push(block); latest.set(id, block)
   }
   return out
 }
