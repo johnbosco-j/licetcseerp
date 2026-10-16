@@ -1,0 +1,57 @@
+# LICET CSE ERP: HTTPS front door, ONE hostname for both the ERP and the API.
+#
+# Use this when the college gives a single DNS name. Set in deploy/.env:
+#   CADDYFILE=Caddyfile.single-domain
+#   API_DOMAIN=<same as APP_DOMAIN>
+#   NEXT_PUBLIC_SUPABASE_URL=https://<APP_DOMAIN>
+# and run deploy/supabase/setup.sh with the same name for both.
+#
+# The Supabase API lives under /auth/v1, /rest/v1, /storage/v1 and
+# /realtime/v1, which never clash with the ERP's own pages (/login,
+# /dashboard, /api/...). Everything else goes to the ERP.
+
+{
+	email {$ACME_EMAIL}
+}
+
+{$APP_DOMAIN} {
+	encode zstd gzip
+	header {
+		defer
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+		-X-Powered-By
+	}
+	log {
+		output stdout
+		format console
+	}
+
+	@supabase_api path /auth/v1/* /rest/v1/* /storage/v1/* /realtime/v1/* /functions/v1/* /graphql/v1 /graphql/v1/*
+	handle @supabase_api {
+		request_body {
+			max_size 60MB
+		}
+		reverse_proxy api-gw:8000 {
+			header_up X-Forwarded-Port 443
+		}
+	}
+
+	@cron {
+		path /api/cron/*
+		not remote_ip 127.0.0.1/8 ::1 172.16.0.0/12
+	}
+	handle @cron {
+		respond "Not found" 404
+	}
+
+	handle {
+		header {
+			defer
+			X-Frame-Options "DENY"
+		}
+		reverse_proxy app:3000
+	}
+}

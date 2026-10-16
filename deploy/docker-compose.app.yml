@@ -1,0 +1,88 @@
+# LICET CSE ERP: the web app and the HTTPS front door (Caddy).
+#
+# Self-hosted Supabase runs as its own compose project ("supabase", installed by
+# deploy/supabase/setup.sh). Caddy joins its network to reach the API gateway,
+# so no Supabase port is published to the outside world.
+#
+#   cp deploy/.env.example deploy/.env      # then fill it in
+#   docker compose -f deploy/docker-compose.app.yml up -d --build
+#
+# Docker Compose reads deploy/.env automatically (it sits next to this file).
+
+name: licet-erp
+
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:?set NEXT_PUBLIC_SUPABASE_URL in deploy/.env}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:?set NEXT_PUBLIC_SUPABASE_ANON_KEY in deploy/.env}
+    image: licet-erp:latest
+    container_name: licet-erp-app
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:?set SUPABASE_SERVICE_ROLE_KEY in deploy/.env}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      EMAIL_FROM: ${EMAIL_FROM:-}
+      CRON_SECRET: ${CRON_SECRET:-}
+      TZ: ${TZ:-Asia/Kolkata}
+    expose:
+      - "3000"
+    networks:
+      - erp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    logging: &logging
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  caddy:
+    image: caddy:2.10.2-alpine
+    container_name: licet-erp-caddy
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:?set APP_DOMAIN in deploy/.env}
+      API_DOMAIN: ${API_DOMAIN:?set API_DOMAIN in deploy/.env}
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL in deploy/.env}
+    volumes:
+      # Caddyfile = two hostnames (ERP + API). Caddyfile.single-domain = one
+      # hostname serving both. Choose with CADDYFILE in deploy/.env.
+      - ./caddy/${CADDYFILE:-Caddyfile}:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      erp:
+        # The app's server-side calls to https://API_DOMAIN stay inside Docker
+        # and reach Caddy directly, even if the college router cannot loop
+        # traffic back to its own public IP.
+        aliases:
+          - ${APP_DOMAIN}
+          - ${API_DOMAIN}
+      supabase: {}
+    logging: *logging
+
+networks:
+  erp: {}
+  supabase:
+    external: true
+    name: ${SUPABASE_NETWORK:-supabase_default}
+
+volumes:
+  # Holds the Let's Encrypt account and certificates. Do not delete.
+  caddy_data:
+  caddy_config:

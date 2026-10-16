@@ -1,0 +1,11 @@
+# Rotate the cron job logs of the LICET CSE ERP.
+#   sudo install -m 644 deploy/cron/licet-erp.logrotate /etc/logrotate.d/licet-erp
+/var/log/licet-erp/*.log {
+    weekly
+    rotate 12
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 0640 root adm
+}

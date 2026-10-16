@@ -1,0 +1,35 @@
+# LICET CSE ERP: scheduled jobs (system crontab format, with a user column).
+#
+# Install (adjust ERP_HOME if the repository is not in /opt/licet/erp):
+#   sudo install -m 644 deploy/cron/erp.cron /etc/cron.d/licet-erp
+#   sudo install -m 644 deploy/cron/licet-erp.logrotate /etc/logrotate.d/licet-erp
+#   sudo mkdir -p /var/log/licet-erp
+#
+# Times are server-local: set the server to IST first
+#   sudo timedatectl set-timezone Asia/Kolkata
+#
+# HTTPS certificates are renewed automatically by Caddy; no cron job needed.
+# Put an address in MAILTO (needs a local mail relay, e.g. msmtp-mta) to get
+# the output of failing jobs by email.
+
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+MAILTO=""
+ERP_HOME=/opt/licet/erp
+
+# Nightly backup at 01:30: database + uploaded files + config, 14 daily / 8 weekly.
+30 1 * * *   root  $ERP_HOME/deploy/scripts/backup.sh >> /var/log/licet-erp/backup.log 2>&1
+
+# Weekly attendance-shortage alerts, Monday 07:00. Calls /api/cron/attendance-alerts
+# with the x-cron-secret header (CRON_SECRET in deploy/.env).
+0 7 * * 1    root  $ERP_HOME/deploy/scripts/run-weekly.sh >> /var/log/licet-erp/cron.log 2>&1
+
+# Health check every 15 minutes; prints (and mails, with MAILTO) only problems.
+*/15 * * * * root  $ERP_HOME/deploy/scripts/healthcheck.sh --quiet >> /var/log/licet-erp/health.log 2>&1
+
+# Optional: pick up new commits (e.g. the department-website sync) every night
+# at 03:00. Only rebuilds when the remote branch has moved. Uncomment to enable.
+# 0 3 * * *  root  $ERP_HOME/deploy/scripts/deploy-app.sh --if-changed >> /var/log/licet-erp/deploy.log 2>&1
+
+# Weekly Docker clean-up of unused images and build cache (keeps volumes).
+30 4 * * 0   root  docker image prune -af --filter "until=168h" >/dev/null 2>&1; docker builder prune -af --filter "until=168h" >/dev/null 2>&1

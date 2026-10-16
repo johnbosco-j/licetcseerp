@@ -1,0 +1,79 @@
+# LICET CSE ERP: HTTPS front door, two hostnames.
+#
+#   https://{$APP_DOMAIN}  -> the ERP (Next.js, container "app")
+#   https://{$API_DOMAIN}  -> the Supabase API gateway (container "api-gw", port 8000)
+#
+# Caddy gets and renews Let's Encrypt certificates by itself. Ports 80 and 443
+# must be reachable from the internet, and both DNS names must point here.
+# If the college supplies its own certificate instead, see deploy/RUNBOOK.md
+# ("Certificates").
+#
+# Supabase Studio (the admin dashboard) is deliberately NOT published; reach
+# it through an SSH tunnel (deploy/RUNBOOK.md, "Supabase Studio").
+
+{
+	email {$ACME_EMAIL}
+	# If the college puts another proxy or load balancer in front of this
+	# server, list its address so client IPs are logged correctly, e.g.:
+	# servers {
+	# 	trusted_proxies static 10.0.0.1/32
+	# }
+}
+
+(common) {
+	encode zstd gzip
+	header {
+		# "defer" applies these after the upstream response, replacing any
+		# duplicates the app or the gateway sent.
+		defer
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+		-X-Powered-By
+	}
+	log {
+		output stdout
+		format console
+	}
+}
+
+{$APP_DOMAIN} {
+	import common
+
+	header {
+		defer
+		X-Frame-Options "DENY"
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
+	}
+
+	# Cron-only endpoint: reachable from the server itself, not from outside.
+	@cron {
+		path /api/cron/*
+		not remote_ip 127.0.0.1/8 ::1 172.16.0.0/12
+	}
+	respond @cron 404
+
+	reverse_proxy app:3000
+}
+
+{$API_DOMAIN} {
+	import common
+
+	# Only the API routes the ERP and the Attendance Station use. Everything
+	# else on the gateway (Studio, /pg/ meta API) stays private.
+	@supabase_api path /auth/v1/* /rest/v1/* /storage/v1/* /realtime/v1/* /functions/v1/* /graphql/v1 /graphql/v1/*
+	handle @supabase_api {
+		request_body {
+			# Storage buckets allow 50 MB files (migration 10); leave headroom.
+			max_size 60MB
+		}
+		reverse_proxy api-gw:8000 {
+			header_up X-Forwarded-Port 443
+		}
+	}
+
+	handle {
+		respond "Not found" 404
+	}
+}
