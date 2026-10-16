@@ -80,3 +80,13 @@ Set `RESEND_API_KEY` and `EMAIL_FROM` (an address on a domain verified in Resend
 ## Scripts
 
 Scripts in `scripts/` read `.env.local`; run them from the project root. Never hard-code keys in them.
+
+## Deployment
+
+The ERP runs on Vercel + Supabase cloud today and is moving to the college's own server. `deploy/` has everything for that:
+
+- **Self-hosted Supabase** (official Docker setup, pinned release) installed by `deploy/supabase/setup.sh`, with sign-up disabled and every port on localhost.
+- **The app** as a Docker image (`output: 'standalone'`), behind **Caddy** for automatic HTTPS on the college domain (`deploy/docker-compose.app.yml`).
+- **Scripts** for moving the data from the cloud, applying migrations, nightly backups (14 daily / 8 weekly, optional off-site copy), restores, updates and health checks, plus a crontab.
+
+Start with **[deploy/RUNBOOK.md](deploy/RUNBOOK.md)**: server preparation, DNS, installation, the cloud-to-server cutover with rollback, backups and restore tests, upgrades, key rotation and security hardening.
