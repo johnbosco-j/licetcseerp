@@ -30,6 +30,7 @@ export function MarkPanel({ date, block, dayOrder, isHod, onClose, onSaved }: {
   const [absent, setAbsent] = useState<Set<string>>(new Set())
   const [periods, setPeriods] = useState<number[]>(block.periods)
   const [topic, setTopic] = useState('')
+  const [headcount, setHeadcount] = useState('')
   const [reason, setReason] = useState('')
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(true)
@@ -54,6 +55,7 @@ export function MarkPanel({ date, block, dayOrder, isHod, onClose, onSaved }: {
     setStudents(await loadRosterStudents(ids))
     setAbsent(new Set(out[0]?.absent ?? []))
     setTopic(out[0]?.topic ?? '')
+    setHeadcount(out[0]?.headcount != null ? String(out[0].headcount) : '')
     setDirty(false)
     setLoading(false)
   }, [block, date, e])
@@ -99,6 +101,7 @@ export function MarkPanel({ date, block, dayOrder, isHod, onClose, onSaved }: {
       const ab = [...absent].filter(id => s.roster.includes(id))
       const { data, error } = await supabase.rpc('att_save', {
         p_session: s.id, p_absent: ab, p_topic: topic || null, p_submit: submit, p_reason: locked ? reason.trim() : null,
+        p_headcount: headcount.trim() ? Number(headcount) : null,
       })
       if (error) { reportResult(error); ok = false; break }
       setSessions(prev => prev.map(x => x.id === s.id ? (data as AttSession) : x))
@@ -244,6 +247,14 @@ export function MarkPanel({ date, block, dayOrder, isHod, onClose, onSaved }: {
               </div>
               <input value={topic} onChange={ev => { setTopic(ev.target.value); setDirty(true) }} disabled={!canEdit}
                 placeholder="Topic covered (for the course register)" className="w-full h-9 px-3 rounded-md border border-input text-[13.5px] focus:outline-none focus:border-licet-violet disabled:bg-muted/40" />
+              {(selfOpen || sessions.some(x => x.mode === 'SELF')) && (
+                <label className="flex items-center gap-2 text-[13px]">
+                  <span className="text-muted-foreground">Head count in the room</span>
+                  <input value={headcount} onChange={ev => { setHeadcount(ev.target.value.replace(/\D/g, '').slice(0, 3)); setDirty(true) }} inputMode="numeric" disabled={!canEdit}
+                    className="w-20 h-9 px-2 rounded-md border border-input text-[13.5px] focus:outline-none focus:border-licet-violet" />
+                  {headcount && presentCount > Number(headcount) && <span className="text-red-700 text-[12.5px]">{presentCount - Number(headcount)} more present than counted — check the list</span>}
+                </label>
+              )}
               {locked && isHod && (
                 <input value={reason} onChange={ev => setReason(ev.target.value)} placeholder="Reason for changing a locked hour (required)"
                   className="w-full h-9 px-3 rounded-md border border-red-300 text-[13.5px] focus:outline-none focus:border-red-500" />

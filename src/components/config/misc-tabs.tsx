@@ -78,6 +78,12 @@ const RULES: { key: string; label: string; help: string; kind: 'number' | 'bool'
   { key: 'attendance.condonation_percent', label: 'Condonation floor (%)', help: 'Regulation 7.2 — between this and the minimum only with medical / sports documents. Below it: SA.', kind: 'number' },
   { key: 'attendance.self_mark_enabled', label: 'Allow self check-in (QR + Attendance Station)', help: 'Staff can open a 10-minute self check-in from the marking screen.', kind: 'bool' },
   { key: 'attendance.qr_rotate_seconds', label: 'QR code changes every (seconds)', help: 'Used by the Attendance Station; shorter makes forwarding a photo of the QR useless.', kind: 'number' },
+  { key: 'attendance.require_headcount', label: 'Head count required to submit a self check-in', help: 'The teacher counts heads; the ERP refuses more “present” than counted.', kind: 'bool' },
+  { key: 'attendance.backdate_days', label: 'Staff may enter attendance up to (days back)', help: 'Older hours can only be entered by the HOD.', kind: 'number' },
+  { key: 'attendance.open_before_minutes', label: 'An hour can be opened this many minutes before it starts', help: 'Stops attendance being marked in advance.', kind: 'number' },
+  { key: 'attendance.pin_max_attempts', label: 'Wrong PINs before a student is locked out', help: 'Protects self check-in against guessing.', kind: 'number' },
+  { key: 'attendance.pin_lock_minutes', label: 'PIN lock-out (minutes)', help: 'The teacher can still mark the student manually.', kind: 'number' },
+  { key: 'attendance.allow_any_staff', label: 'Any staff may take any class', help: 'Off (recommended): only the course instructor, class advisor, a colleague the instructor handed the class to, or the HOD.', kind: 'bool' },
 ]
 export function RulesTab({ settings, reload }: { settings: Record<string, unknown>; reload: () => void }) {
   const [vals, setVals] = useState<Record<string, unknown>>(settings)

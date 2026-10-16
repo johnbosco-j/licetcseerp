@@ -8,6 +8,7 @@ import {
   activeOn, dayInfo, entryTitle, fmtTime, isoToday, loadPeriods, loadTimetable, shortAudience, toBlocks, weekdayOf,
 } from "@/lib/academic"
 import { MarkPanel } from "./mark-panel"
+import { DelegationsButton, loadDelegationsToMe, type Delegation } from "./delegations"
 
 type DayMap = Record<string, { working: boolean; dayOrder: number | null; label: string | null }>
 
@@ -41,6 +42,7 @@ export function TakeAttendance({ term, me, isHod }: { term: Term; me: { id: stri
   const [periods, setPeriods] = useState<PeriodSlot[]>([])
   const [days, setDays] = useState<DayMap>({})
   const [sessions, setSessions] = useState<AttSession[]>([])
+  const [covering, setCovering] = useState<Delegation[]>([])
   const [view, setView] = useState<'mine' | 'all'>(isHod ? 'all' : 'mine')
   const [section, setSection] = useState<string>('')
   const [open, setOpen] = useState<{ block: ClassBlock; dayOrder: number | null } | null>(null)
@@ -57,10 +59,14 @@ export function TakeAttendance({ term, me, isHod }: { term: Term; me: { id: stri
     setLoading(true)
     const infos = await Promise.all(SECTIONS.map(s => dayInfo(date, s)))
     setDays(Object.fromEntries(SECTIONS.map((s, i) => [s, infos[i]])))
-    const { data } = await supabase.from('attendance_sessions').select('*').eq('date', date)
+    const [{ data }, dl] = await Promise.all([
+      supabase.from('attendance_sessions').select('*').eq('date', date),
+      loadDelegationsToMe(me.id, date),
+    ])
     setSessions((data ?? []) as AttSession[])
+    setCovering(dl)
     setLoading(false)
-  }, [date])
+  }, [date, me.id])
   useEffect(() => { loadDay() }, [loadDay])
 
   const blocksFor = useCallback((sec: string) => {
@@ -74,13 +80,14 @@ export function TakeAttendance({ term, me, isHod }: { term: Term; me: { id: stri
     const out: ClassBlock[] = []
     const seen = new Set<string>()
     for (const sec of SECTIONS) for (const b of blocksFor(sec)) {
-      if (!b.entry.faculty_ids.includes(me.id)) continue
+      const handedToMe = covering.some(d => (d.subject_id && d.subject_id === b.entry.subject_id) || (!d.subject_id && b.entry.faculty_ids.includes(d.from_faculty)))
+      if (!b.entry.faculty_ids.includes(me.id) && !handedToMe) continue
       const k = b.entry.subjects?.section === null ? `${b.entry.subject_id}|${b.entry.audience_value}|${b.periods[0]}` : b.key
       if (seen.has(k)) continue
       seen.add(k); out.push(b)
     }
     return out.sort((a, b) => a.periods[0] - b.periods[0])
-  }, [blocksFor, me.id])
+  }, [blocksFor, me.id, covering])
 
   const shift = (n: number) => {
     const d = new Date(date + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n)
@@ -130,9 +137,12 @@ export function TakeAttendance({ term, me, isHod }: { term: Term; me: { id: stri
           {anyDay?.dayOrder && anyDay.dayOrder !== wd ? <> · follows <b className="text-licet-violet">{DAY_NAMES[anyDay.dayOrder]}</b> timetable</> : null}
           {anyDay && !anyDay.working ? <> · <span className="text-amber-700">not a working day{anyDay.label ? ` (${anyDay.label.split(' / ')[0]})` : ''}</span></> : null}
         </p>
-        <div className="ml-auto inline-flex rounded-md border border-border overflow-hidden text-[13px]">
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+        <DelegationsButton me={me.id} termId={term.id} />
+        <div className="inline-flex rounded-md border border-border overflow-hidden text-[13px]">
           <button onClick={() => setView('mine')} className={`px-3 h-9 ${view === 'mine' ? 'bg-licet-indigo text-white' : 'bg-white hover:bg-muted'}`}>My classes</button>
-          <button onClick={() => setView('all')} className={`px-3 h-9 ${view === 'all' ? 'bg-licet-indigo text-white' : 'bg-white hover:bg-muted'}`}>{isHod ? 'All classes' : 'Any class (substitution)'}</button>
+          <button onClick={() => setView('all')} className={`px-3 h-9 ${view === 'all' ? 'bg-licet-indigo text-white' : 'bg-white hover:bg-muted'}`}>{isHod ? 'All classes' : 'All classes (view)'}</button>
+        </div>
         </div>
       </div>
 
@@ -143,7 +153,7 @@ export function TakeAttendance({ term, me, isHod }: { term: Term; me: { id: stri
           <div className="grid gap-2.5 sm:grid-cols-2">{myBlocks.map(blockCard)}</div>
         ) : (
           <div className="rounded-lg border border-dashed border-border bg-white px-6 py-10 text-center text-[13.5px] text-muted-foreground">
-            No classes on your timetable for this day. To take a class for a colleague, switch to <b>Any class</b>.
+            No classes on your timetable for this day. Class advisors can take any hour of their class from <b>All classes</b>; to cover a colleague, ask them to hand the class over to you.
             <br /><span className="text-[12.5px]">If your classes are missing, ask the HOD to link your name to the courses in Configuration → Courses.</span>
           </div>
         )

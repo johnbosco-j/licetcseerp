@@ -36,6 +36,7 @@ export interface AttSession {
   entry_id: string | null; roster: string[]; absent: string[]; topic: string | null; mode: 'MANUAL' | 'SELF' | 'IMPORT'
   status: 'DRAFT' | 'SUBMITTED'; taken_by: string | null; submitted_at: string | null; lock_at: string | null
   unlocked_until: string | null; self_open_until: string | null; edit_reason: string | null; updated_at: string
+  headcount: number | null; on_duty?: string[]
 }
 
 export const yearOf = (section: string) => ({ I: 1, II: 2, III: 3, IV: 4 } as Record<string, number>)[section.split(' ')[0]] ?? 0
