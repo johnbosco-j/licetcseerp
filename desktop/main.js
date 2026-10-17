@@ -6,6 +6,9 @@ const path = require('node:path')
 const fs = require('node:fs')
 const { spawn } = require('node:child_process')
 const { pathToFileURL } = require('node:url')
+const { autoUpdater } = require('electron-updater')
+
+const RELEASES = 'https://github.com/johnbosco-j/licetcseerp/releases/latest'
 
 const defaults = require('./config.json')
 const settingsFile = () => path.join(app.getPath('userData'), 'settings.json')
@@ -90,6 +93,38 @@ ipcMain.handle('settings:save', (_e, next) => {
   return { ok: true }
 })
 
+// ── Updates (over the air) ─────────────────────────────────────────────────
+// Windows: downloaded in the background and installed on restart. macOS: an unsigned app
+// cannot replace itself, so the new version is offered and its download page opened.
+const newer = (a, b) => { const x = a.split('.').map(Number), y = b.split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0) } return false }
+let updateDownloaded = false
+async function checkForUpdates(manual = false) {
+  if (!app.isPackaged) { if (manual) dialog.showMessageBox({ message: 'Updates are checked in the installed app only.' }); return }
+  try {
+    if (process.platform === 'win32') {
+      const r = await autoUpdater.checkForUpdates()
+      if (manual && (!r || !r.updateInfo || !newer(r.updateInfo.version, app.getVersion()))) dialog.showMessageBox({ message: `LICET Things Staff ${app.getVersion()} is the latest version.` })
+      return
+    }
+    const res = await fetch('https://api.github.com/repos/johnbosco-j/licetcseerp/releases/latest', { headers: { accept: 'application/vnd.github+json' } })
+    if (!res.ok) throw new Error(`GitHub answered ${res.status}`)
+    const latest = String((await res.json()).tag_name || '').replace(/^v/, '')
+    if (latest && newer(latest, app.getVersion())) {
+      const r = await dialog.showMessageBox({ type: 'info', message: `LICET Things Staff ${latest} is available`, detail: `You have ${app.getVersion()}. Download the new .dmg, open it and drag the app to Applications.`, buttons: ['Download', 'Later'] })
+      if (r.response === 0) shell.openExternal(RELEASES)
+    } else if (manual) dialog.showMessageBox({ message: `LICET Things Staff ${app.getVersion()} is the latest version.` })
+  } catch (e) { if (manual) dialog.showErrorBox('Updates', `Could not check for updates: ${e.message}`) }
+}
+autoUpdater.autoDownload = true
+autoUpdater.autoInstallOnAppQuit = true
+autoUpdater.on('update-downloaded', info => {
+  if (updateDownloaded) return
+  updateDownloaded = true
+  dialog.showMessageBox({ type: 'info', message: `Update ${info.version} is ready`, detail: 'It is installed when you restart the app.', buttons: ['Restart now', 'Later'] })
+    .then(r => { if (r.response === 0) autoUpdater.quitAndInstall() })
+})
+autoUpdater.on('error', () => { /* offline or no release yet: try again later */ })
+
 function buildMenu() {
   const isMac = process.platform === 'darwin'
   Menu.setApplicationMenu(Menu.buildFromTemplate([
@@ -109,6 +144,7 @@ function buildMenu() {
     { role: 'windowMenu' },
     { label: 'Help', submenu: [
       { label: 'Station guide', click: () => shell.openExternal('https://github.com/johnbosco-j/licetcseerp/blob/main/station/README.md') },
+      { label: 'Check for updates…', click: () => checkForUpdates(true) },
       { label: `Version ${app.getVersion()}`, enabled: false },
     ] },
   ]))
@@ -117,7 +153,12 @@ function buildMenu() {
 if (!app.requestSingleInstanceLock()) app.quit()
 else {
   app.on('second-instance', () => { if (main) { if (main.isMinimized()) main.restore(); main.focus() } })
-  app.whenReady().then(() => { buildMenu(); createMain(); if (process.env.LICET_OPEN_STATION === '1') openStation() })
+  app.whenReady().then(() => {
+    buildMenu(); createMain()
+    if (process.env.LICET_OPEN_STATION === '1') openStation()
+    setTimeout(() => checkForUpdates(false), 8000)
+    setInterval(() => checkForUpdates(false), 4 * 3600e3)
+  })
   app.on('activate', () => { if (!main) createMain() })
   app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit() })
 }
