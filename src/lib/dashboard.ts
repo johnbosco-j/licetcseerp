@@ -1,6 +1,6 @@
 import { supabase } from "@/lib/supabase"
 import { getActiveSemester, semesterStartDate } from "@/lib/semester"
-import { dayInfo, activeOn, entryTitle, type TimetableEntry } from "@/lib/academic"
+import { activeOn, entryTitle, scopeOf, weekdayOf, type CalendarDay, type TimetableEntry } from "@/lib/academic"
 
 export const SECTIONS = ['I CSE-A', 'I CSE-B', 'II CSE-A', 'II CSE-B', 'III CSE-A', 'III CSE-B', 'IV CSE-A', 'IV CSE-B']
 export const YEARS = ['I', 'II', 'III', 'IV'] as const
@@ -94,8 +94,15 @@ function slotOf(es: TimetableEntry[]): Slot {
 
 /** Which weekday's timetable each section follows today (null = holiday), from the academic calendar. */
 export async function loadTodayDays(sections: string[], date = isoDate()): Promise<Record<string, string | null>> {
-  const infos = await Promise.all(sections.map(s => dayInfo(date, s)))
-  return Object.fromEntries(sections.map((s, i) => [s, infos[i].working && infos[i].dayOrder ? WEEKDAY[infos[i].dayOrder!] : null]))
+  const { data } = await supabase.from('calendar_days').select('scope, is_working, day_order').eq('date', date)
+  const rows = (data ?? []) as Pick<CalendarDay, 'scope' | 'is_working' | 'day_order'>[]
+  const wd = weekdayOf(date)
+  return Object.fromEntries(sections.map(s => {
+    const c = rows.find(r => r.scope === scopeOf(s)) ?? rows.find(r => r.scope === 'ALL')
+    // no calendar entry: Monday–Friday follow their own timetable, weekends are off
+    const order = c ? (c.is_working ? c.day_order ?? (wd <= 6 ? wd : null) : null) : (wd <= 5 ? wd : null)
+    return [s, order ? WEEKDAY[order] : null]
+  }))
 }
 
 /** Today's periods for each section, following the academic calendar (holidays, Saturday orders). */

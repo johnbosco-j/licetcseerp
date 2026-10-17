@@ -8,6 +8,17 @@ import {
   type AttSession, type ClassBlock, type RosterStudent, loadRosterStudents, entryTitle, audienceLabel, DAY_NAMES,
 } from "@/lib/academic"
 
+// Unsaved marks are kept in this browser too, so a closed tab or a dropped
+// connection does not lose a half-marked register.
+type Backup = { absent: string[]; onDuty: string[]; topic: string; headcount: string; at: number }
+const backupKey = (ids: string[]) => `att-backup:${ids.join(',')}`
+function readBackup(ids: string[]): Backup | null {
+  try { const raw = localStorage.getItem(backupKey(ids)); return raw ? JSON.parse(raw) as Backup : null } catch { return null }
+}
+function writeBackup(ids: string[], b: Backup | null) {
+  try { if (b) localStorage.setItem(backupKey(ids), JSON.stringify(b)); else localStorage.removeItem(backupKey(ids)) } catch { /* storage unavailable */ }
+}
+
 const isLocked = (s: AttSession, now: number) =>
   s.status === 'SUBMITTED' && !!s.lock_at && now > Date.parse(s.lock_at) && (!s.unlocked_until || Date.parse(s.unlocked_until) < now)
 
@@ -40,6 +51,7 @@ export function MarkPanel({ date, block, dayOrder, isHod, onClose, onSaved }: {
   const [now, setNow] = useState(() => Date.now())
   const [dirty, setDirty] = useState(false)
   const [refused, setRefused] = useState<string | null>(null)
+  const [savedAt, setSavedAt] = useState<number | null>(null)
 
   const open = useCallback(async () => {
     setLoading(true)
@@ -65,6 +77,11 @@ export function MarkPanel({ date, block, dayOrder, isHod, onClose, onSaved }: {
     setTopic(out[0]?.topic ?? '')
     setHeadcount(out[0]?.headcount != null ? String(out[0].headcount) : '')
     setDirty(false)
+    const sids = out.map(x => x.id), b = readBackup(sids)
+    if (b && out.every(x => x.status !== 'SUBMITTED') && b.at > Math.max(...out.map(x => Date.parse(x.updated_at) || 0))) {
+      setAbsent(new Set(b.absent)); setOnDuty(new Set(b.onDuty)); setTopic(b.topic); setHeadcount(b.headcount); setDirty(true)
+      toast.info('Restored marks that had not been saved')
+    } else if (b) writeBackup(sids, null)
     setLoading(false)
   }, [block, date, e])
 
@@ -106,10 +123,10 @@ export function MarkPanel({ date, block, dayOrder, isHod, onClose, onSaved }: {
   }
   const setAll = (present: boolean) => { if (!canEdit) return; setAbsent(present ? new Set() : new Set(students.map(s => s.id))); if (!present) setOnDuty(new Set()); setDirty(true) }
 
-  const save = async (submit: boolean) => {
-    if (!chosen.length) { toast.error('Choose at least one period'); return }
-    if (locked && isHod && !reason.trim()) { toast.error('Give a reason for changing a locked hour'); return }
-    setBusy(true)
+  const save = async (submit: boolean, silent = false) => {
+    if (!chosen.length) { if (!silent) toast.error('Choose at least one period'); return }
+    if (locked && isHod && !reason.trim()) { if (!silent) toast.error('Give a reason for changing a locked hour'); return }
+    if (!silent) setBusy(true)
     let ok = true
     for (const s of chosen) {
       const ab = [...absent].filter(id => s.roster.includes(id))
@@ -118,15 +135,42 @@ export function MarkPanel({ date, block, dayOrder, isHod, onClose, onSaved }: {
         p_headcount: headcount.trim() ? Number(headcount) : null,
         p_on_duty: [...onDuty].filter(id => s.roster.includes(id) && !absent.has(id)),
       })
-      if (error) { reportResult(error); ok = false; break }
+      if (error) { if (!silent) reportResult(error); ok = false; break }
       setSessions(prev => prev.map(x => x.id === s.id ? (data as AttSession) : x))
     }
-    setBusy(false)
+    if (!silent) setBusy(false)
     if (ok) {
       setDirty(false)
-      toast.success(submit ? `Submitted · ${presentCount}/${students.length} present. You can still correct it for a few minutes.` : 'Saved as draft')
-      onSaved?.()
+      setSavedAt(Date.now())
+      writeBackup(sessions.map(x => x.id), null)
+      if (!silent) {
+        toast.success(submit ? `Submitted · ${presentCount}/${students.length} present. You can still correct it for a few minutes.` : 'Saved as draft')
+        onSaved?.()
+      }
     }
+  }
+
+  // Keep a browser copy of every change, and save unsubmitted registers as a draft
+  // a few seconds after the last tap. Submitted hours are only changed on purpose.
+  useEffect(() => {
+    if (!dirty || !sessions.length) return
+    writeBackup(sessions.map(x => x.id), { absent: [...absent], onDuty: [...onDuty], topic, headcount, at: Date.now() })
+  }, [dirty, absent, onDuty, topic, headcount, sessions])
+  useEffect(() => {
+    if (!dirty || submitted || locked || selfOpen || busy) return
+    const t = setTimeout(() => { save(false, true) }, 3000)
+    return () => clearTimeout(t)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dirty, absent, onDuty, topic, headcount, submitted, locked, selfOpen, busy])
+  useEffect(() => {
+    if (!dirty) return
+    const warn = (ev: BeforeUnloadEvent) => { ev.preventDefault() }
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [dirty])
+  const close = () => {
+    if (dirty && submitted && !confirm('Your correction has not been saved. Close anyway?')) return
+    onClose()
   }
 
   const unlock = async () => {
@@ -172,7 +216,7 @@ export function MarkPanel({ date, block, dayOrder, isHod, onClose, onSaved }: {
   const multiSection = sessions[0] && sessions[0].section === null
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-stretch sm:items-center justify-center bg-black/40 sm:p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-[80] flex items-stretch sm:items-center justify-center bg-black/40 sm:p-4" onClick={close}>
       <div className="bg-white w-full sm:max-w-2xl sm:rounded-xl shadow-2xl flex flex-col max-h-full sm:max-h-[92vh]" onClick={ev => ev.stopPropagation()}>
         <div className="px-5 pt-4 pb-3 border-b border-border">
           <div className="flex items-start justify-between gap-3">
@@ -183,7 +227,7 @@ export function MarkPanel({ date, block, dayOrder, isHod, onClose, onSaved }: {
                 {multiSection ? 'III CSE-A + III CSE-B together' : e.section} · {audienceLabel(e.audience, e.audience_value)}
               </p>
             </div>
-            <button onClick={onClose} className="p-2 -m-2 rounded-md hover:bg-muted" aria-label="Close"><X className="w-5 h-5" /></button>
+            <button onClick={close} className="p-2 -m-2 rounded-md hover:bg-muted" aria-label="Close"><X className="w-5 h-5" /></button>
           </div>
           {block.periods.length > 1 && (
             <div className="flex flex-wrap items-center gap-2 mt-3 text-[13px]">
@@ -290,6 +334,7 @@ export function MarkPanel({ date, block, dayOrder, isHod, onClose, onSaved }: {
                   </button>
                 )}
                 {locked && !isHod && <span className="mr-auto inline-flex items-center gap-1 text-[12.5px] text-muted-foreground"><ShieldAlert className="w-4 h-4" /> Read only</span>}
+                {!submitted && (dirty || savedAt) && <span className="text-[12px] text-muted-foreground">{dirty ? 'Saving…' : `Draft saved ${new Date(savedAt!).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })}`}</span>}
                 {!submitted && <button onClick={() => save(false)} disabled={busy || !canEdit} className="h-9 px-4 rounded-md border border-border text-[13px] font-semibold hover:bg-muted disabled:opacity-50">Save draft</button>}
                 <button onClick={() => save(true)} disabled={busy || !canEdit || (submitted && !dirty)}
                   className="inline-flex items-center gap-1.5 h-9 px-5 rounded-md bg-licet-indigo text-white text-[13px] font-semibold hover:bg-licet-violet disabled:opacity-50">

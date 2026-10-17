@@ -152,6 +152,7 @@ const TABLES: { name: string; label: string; pk: string[]; readOnly?: boolean; o
   { name: 'student_groups', label: 'Groups', pk: ['id'] },
   { name: 'student_group_members', label: 'Group members', pk: ['group_id', 'student_id'] },
   { name: 'subject_faculty', label: 'Course ↔ faculty links', pk: ['subject_id', 'faculty_id'] },
+  { name: 'pending_staff_links', label: 'Staff awaiting an account (advisor posts, course links)', pk: ['name_key'], order: 'created_at' },
   { name: 'marks', label: 'Marks', pk: ['id'], order: 'recorded_at' },
   { name: 'announcements', label: 'Notices, events, documents, timetable notes', pk: ['id'], order: 'created_at' },
   { name: 'leaves', label: 'Leave requests', pk: ['id'], order: 'created_at' },
