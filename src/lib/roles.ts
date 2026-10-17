@@ -5,7 +5,7 @@ export const NAV_HOD_IDS = [
   "dashboard","students","attendance","marks","subjects","timetable",
   "analytics","finance","inventory","placements","leaves","events",
   "documents","feedback","grievances","notices","alerts","appraisal",
-  "attendance-analysis","change-password","editor","examination",
+  "change-password","editor","examination",
   "naac","promotion","curriculum","reports","accounts","audit","export","profile","config","insights"
 ]
 

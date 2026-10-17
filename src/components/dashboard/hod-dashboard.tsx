@@ -252,7 +252,7 @@ export default function HodDashboard({ name, greeting, designation }: { name: st
           <Kpi label="Courses this semester" value={currentSubjects.length} icon={BookOpen} href="/dashboard/subjects"
             tone={unallotted.length ? 'warn' : 'default'}
             sub={unallotted.length ? `${unallotted.length} awaiting faculty allotment` : 'All courses allotted'} />
-          <Kpi label="Semester attendance" value={semAttPct == null ? '—' : `${semAttPct}%`} icon={ClipboardCheck} href="/dashboard/attendance-analysis"
+          <Kpi label="Semester attendance" value={semAttPct == null ? '—' : `${semAttPct}%`} icon={ClipboardCheck} href="/dashboard/insights"
             meter={semAttPct} sub={semAtt.n ? `${semAtt.n.toLocaleString('en-IN')} session records since semester start` : 'No attendance marked this semester'} />
           <Kpi label="Below 75%" value={d.lowStudents.length} icon={ShieldAlert} href="/dashboard/analytics"
             tone={d.lowStudents.length ? 'bad' : 'good'} sub={below65 ? `${below65} below 65% (not eligible)` : 'All eligible for exams'} />
@@ -280,7 +280,7 @@ export default function HodDashboard({ name, greeting, designation }: { name: st
           )}
         </Panel>
 
-        <Panel kicker={`${new Date().toLocaleDateString('en-IN', { weekday: 'long' })} · hour-wise attendance`} title="Today’s attendance by section" href="/dashboard/attendance-analysis" hrefLabel="Analysis">
+        <Panel kicker={`${new Date().toLocaleDateString('en-IN', { weekday: 'long' })} · hour-wise attendance`} title="Today’s attendance by section" href="/dashboard/insights" hrefLabel="Analysis">
           {!d ? <div className="p-5 grid grid-cols-2 gap-3">{Array.from({ length: 8 }).map((_, i) => <div key={i} className="h-20 rounded-lg bg-muted animate-pulse" />)}</div> : (
             <div className="p-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
               {SECTIONS.map(section => {

@@ -63,16 +63,16 @@ export default function ReportsPage() {
 
       const results = []
       for (const f of faculty) {
-        const { data: marked } = await supabase.from('attendance')
-          .select('subject_id').eq('faculty_id', f.id)
-        const { data: marksEntered } = await supabase.from('marks')
-          .select('subject_id').eq('faculty_id', f.id)
-        const subjects = [...new Set(marked?.map(m => m.subject_id) ?? [])]
+        const [{ data: courses }, { count: hours }, { count: marksEntered }] = await Promise.all([
+          supabase.from('subject_faculty').select('subject_id, subjects!inner(term_id, academic_terms!inner(is_current))').eq('faculty_id', f.id).eq('subjects.academic_terms.is_current', true),
+          supabase.from('attendance_sessions').select('id', { count: 'exact', head: true }).eq('taken_by', f.id).eq('status', 'SUBMITTED'),
+          supabase.from('marks').select('id', { count: 'exact', head: true }).eq('faculty_id', f.id),
+        ])
         results.push({
           name: f.full_name, email: f.email,
-          subjects_handled: subjects.length,
-          attendance_sessions: marked?.length ?? 0,
-          marks_entries: marksEntered?.length ?? 0,
+          subjects_handled: courses?.length ?? 0,
+          attendance_sessions: hours ?? 0,
+          marks_entries: marksEntered ?? 0,
         })
       }
       setStats({ type: 'faculty_workload', data: results })

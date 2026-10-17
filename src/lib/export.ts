@@ -16,9 +16,9 @@ export type Period = { from: string | null; to: string | null; label: string }  
 
 export const DATASETS = [
   { id: "students",   label: "Student details",             hint: "Names, roll and register numbers, section, contact and parent / guardian mobile", staffOnly: true },
-  { id: "attSummary", label: "Attendance summary",          hint: "Sessions, present, percentage and exam eligibility per student" },
-  { id: "dayAtt",     label: "Attendance register",         hint: "Every session (Part I, II, III) with status" },
-  { id: "subjAtt",    label: "Subject attendance",          hint: "Course-wise attendance records" },
+  { id: "attSummary", label: "Attendance summary",          hint: "Hours, attended, on duty, percentage and exam eligibility per student" },
+  { id: "dayAtt",     label: "Attendance register",         hint: "Every class hour with course and status" },
+  { id: "subjAtt",    label: "Course attendance",           hint: "Hours and percentage per student per course" },
   { id: "marks",      label: "Marks (all assessments)",     hint: "CIA components and semester-end marks" },
   { id: "results",    label: "Course results",              hint: "Internal, SEE, total, grade and result per course (Regulations 2024)" },
   { id: "leaves",     label: "Leave applications",          hint: "Type, dates, status and review" },
@@ -102,7 +102,7 @@ export async function buildWorkbook(opts: ExportOptions): Promise<{ workbook: XL
   const staffName = new Map((staff ?? []).map(s => [s.id, s.full_name]))
 
   // Subjects (for codes and names)
-  const needSubjects = want("subjAtt") || want("marks") || want("results") || want("courses")
+  const needSubjects = want("subjAtt") || want("dayAtt") || want("marks") || want("results") || want("courses")
   const subjects = needSubjects ? await readAll(() => supabase.from("subjects").select("*").order("semester").order("code")) : []
   const subj = new Map(subjects.map(s => [String(s.id), s]))
 
@@ -122,44 +122,75 @@ export async function buildWorkbook(opts: ExportOptions): Promise<{ workbook: XL
   }
 
   // ── Attendance ──
-  if (want("dayAtt") || want("attSummary")) {
+  if (want("dayAtt") || want("attSummary") || want("subjAtt")) {
     onProgress("Reading attendance register…")
-    const rows = await readForStudents(ids, "student_id",
-      () => inRange(supabase.from("day_attendance").select("student_id, date, part, status, section, marked_by").order("date"), "date"),
-      n => onProgress(`Reading attendance register… ${n.toLocaleString("en-IN")} sessions`))
+    // One row per class hour; each student on its list was present unless marked absent.
+    const sessions = await readAll(() => {
+      let q = inRange(supabase.from("attendance_sessions").select("date, period_no, subject_id, label, roster, absent, on_duty, taken_by, status").order("date").order("period_no"), "date")
+      if (ids && ids.length <= 150) q = q.overlaps("roster", ids)
+      return q
+    }, n => onProgress(`Reading attendance register… ${n.toLocaleString("en-IN")} hours`))
+    // Students cannot read whole registers (they name classmates); their own hours come from my_attendance.
+    if (scope.kind === "student" && sessions.length === 0) {
+      const { data: terms } = await supabase.from("academic_terms").select("id, starts_on, ends_on")
+      for (const t of (terms ?? []) as { id: string; starts_on: string | null; ends_on: string | null }[]) {
+        if ((period.from && t.ends_on && t.ends_on < period.from) || (period.to && t.starts_on && t.starts_on > period.to)) continue
+        const { data: mine } = await supabase.rpc("my_attendance", { p_term: t.id })
+        for (const h of (mine ?? []) as { date: string; period_no: number; subject_id: string | null; label: string | null; present: boolean; on_duty: boolean }[]) {
+          if ((period.from && h.date < period.from) || (period.to && h.date > period.to)) continue
+          sessions.push({ date: h.date, period_no: h.period_no, subject_id: h.subject_id, label: h.label, roster: [scope.id],
+            absent: h.present ? [] : [scope.id], on_duty: h.on_duty ? [scope.id] : [], taken_by: null })
+        }
+      }
+    }
+    const wanted = ids ? new Set(ids) : null
+    const rows: { student_id: string; date: string; period: number; subject_id: string | null; label: string | null; status: "PRESENT" | "ABSENT" | "OD"; taken_by: unknown }[] = []
+    for (const h of sessions) {
+      const absent = new Set(h.absent as string[]), od = new Set((h.on_duty as string[] | null) ?? [])
+      for (const sid of h.roster as string[]) {
+        if (wanted && !wanted.has(sid)) continue
+        rows.push({ student_id: sid, date: String(h.date), period: Number(h.period_no), subject_id: (h.subject_id as string | null) ?? null, label: (h.label as string | null) ?? null,
+          status: absent.has(sid) ? "ABSENT" : od.has(sid) ? "OD" : "PRESENT", taken_by: h.taken_by })
+      }
+    }
+    const courseOf = (r: { subject_id: string | null; label: string | null }) => { const c = r.subject_id ? subj.get(r.subject_id) : null; return { code: c?.code ?? "", name: c?.name ?? r.label ?? "" } }
+    const statusText = { PRESENT: "Present", ABSENT: "Absent", OD: "On duty" }
     if (want("dayAtt")) {
       sheets.push(["Attendance register", rows.map(r => ({
-        "Date": d(r.date), "Part": ["", "I", "II", "III"][Number(r.part)] ?? r.part, ...who(r.student_id),
-        "Status": cap(r.status), "Marked by": staffName.get(String(r.marked_by)) ?? "",
+        "Date": d(r.date), "Period": r.period, "Course Code": courseOf(r).code, "Course": courseOf(r).name, ...who(r.student_id),
+        "Status": statusText[r.status], "Marked by": staffName.get(String(r.taken_by)) ?? "",
       }))])
     }
     if (want("attSummary")) {
-      const agg = new Map<string, { n: number; p: number; a: number; l: number }>()
+      const agg = new Map<string, { n: number; p: number; od: number; a: number }>()
       for (const r of rows) {
-        const k = String(r.student_id); const x = agg.get(k) ?? { n: 0, p: 0, a: 0, l: 0 }
-        x.n++; if (r.status === "PRESENT") x.p++; else if (r.status === "LATE") { x.p++; x.l++ } else if (r.status === "ABSENT") x.a++
-        agg.set(k, x)
+        const x = agg.get(r.student_id) ?? { n: 0, p: 0, od: 0, a: 0 }
+        x.n++; if (r.status === "ABSENT") x.a++; else { x.p++; if (r.status === "OD") x.od++ }
+        agg.set(r.student_id, x)
       }
       sheets.push(["Attendance summary", students.map(s => {
         const x = agg.get(String(s.id))
         const pct = x?.n ? Math.round(x.p / x.n * 1000) / 10 : null
         const st = pct == null ? null : attendanceStatus(pct)
         return {
-          ...who(s.id), "Sessions": x?.n ?? 0, "Present (incl. late)": x?.p ?? 0, "Late": x?.l ?? 0, "Absent": x?.a ?? 0,
+          ...who(s.id), "Hours": x?.n ?? 0, "Attended (incl. on duty)": x?.p ?? 0, "On duty": x?.od ?? 0, "Absent": x?.a ?? 0,
           "Attendance %": pct ?? "", "Eligibility": st ? (st.eligible === "YES" ? "Eligible" : st.eligible === "CONDONATION" ? "Condonation required" : "Shortage of attendance (SA)") : "No records",
         }
       })])
     }
-  }
-
-  if (want("subjAtt")) {
-    onProgress("Reading subject attendance…")
-    const rows = await readForStudents(ids, "student_id",
-      () => inRange(supabase.from("attendance").select("student_id, subject_id, date, status, faculty_id").order("date"), "date"))
-    sheets.push(["Subject attendance", rows.map(r => {
-      const s = subj.get(String(r.subject_id))
-      return { "Date": d(r.date), ...who(r.student_id), "Course Code": s?.code ?? "", "Course": s?.name ?? "", "Status": cap(r.status), "Faculty": staffName.get(String(r.faculty_id)) ?? "" }
-    })])
+    if (want("subjAtt")) {
+      const agg = new Map<string, { student_id: string; subject_id: string | null; label: string | null; n: number; p: number }>()
+      for (const r of rows) {
+        const k = `${r.student_id}|${r.subject_id ?? r.label}`
+        const x = agg.get(k) ?? { student_id: r.student_id, subject_id: r.subject_id, label: r.label, n: 0, p: 0 }
+        x.n++; if (r.status !== "ABSENT") x.p++
+        agg.set(k, x)
+      }
+      sheets.push(["Course attendance", [...agg.values()].map(x => ({
+        ...who(x.student_id), "Course Code": courseOf(x).code, "Course": courseOf(x).name,
+        "Hours": x.n, "Attended": x.p, "Attendance %": Math.round(x.p / x.n * 1000) / 10,
+      }))])
+    }
   }
 
   // ── Marks and results ──
