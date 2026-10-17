@@ -40,5 +40,31 @@ begin
   insert into r(ok, test, info) values (my_teaching_ids() = array[other] and not teaches_subject(subj), 'other faculty are unaffected', 'ok');
   perform set_config('request.jwt.claims', '', true);
 end $$;
+
+-- elective plan: everyone signed in reads it, only the HOD changes it
+create or replace function pg_temp.as_user(who uuid) returns void language plpgsql as $$
+begin
+  perform set_config('request.jwt.claims', json_build_object('sub', who, 'role', 'authenticated')::text, true);
+  perform set_config('role', 'authenticated', true);
+end $$;
+grant all on r to authenticated; grant usage on sequence r_n_seq to authenticated;
+do $$
+declare st uuid := (select id from profiles where email = 'hst@example.test'); hod uuid := (select id from profiles where email = 'hoff@example.test'); n int;
+begin
+  perform pg_temp.as_user(st);
+  begin
+    insert into elective_plan (cohort_grad_year, slot, vertical, course_code) values (2099, 'PE1', 'AIML', 'PCS2444');
+    insert into r(ok, test, info) values (false, 'a student cannot change the elective plan', 'allowed');
+  exception when others then insert into r(ok, test, info) values (true, 'a student cannot change the elective plan', 'refused'); end;
+  perform set_config('role', 'postgres', true);
+  perform pg_temp.as_user(hod);
+  insert into elective_plan (cohort_grad_year, slot, vertical, course_code) values (2099, 'PE1', 'AIML', 'PCS2444');
+  get diagnostics n = row_count;
+  insert into r(ok, test, info) values (n = 1, 'the HOD sets the elective plan', n || ' rows');
+  perform set_config('role', 'postgres', true);
+  perform pg_temp.as_user(st);
+  insert into r(ok, test, info) select count(*) = 1, 'students can read the plan', count(*)::text from elective_plan where cohort_grad_year = 2099;
+  perform set_config('role', 'postgres', true);
+end $$;
 select ok, test, info from r order by n;
 rollback;

@@ -2,7 +2,7 @@
 
 import { adminClient, requireRole, AuthError } from '@/lib/server-auth'
 import { normalizeMobile, needsVertical } from '@/lib/utils'
-import { canResetPassword, defaultStudentPassword, MIN_PASSWORD_LENGTH } from '@/lib/passwords'
+import { defaultStaffPassword, canResetPassword, defaultStudentPassword, MIN_PASSWORD_LENGTH } from '@/lib/passwords'
 
 const DEPT_ID = '00000000-0000-0000-0000-000000000001'
 const SECTIONS = ['I CSE-A','I CSE-B','II CSE-A','II CSE-B','III CSE-A','III CSE-B','IV CSE-A','IV CSE-B']
@@ -243,5 +243,39 @@ export async function listArchives(accessToken: string): Promise<{ error?: strin
     return { files }
   } catch (e) {
     return failure(e)
+  }
+}
+
+// ── Staff accounts (HOD) ────────────────────────────────────────────────────
+export type NewStaff = { full_name: string; email: string; department?: string | null }
+export type StaffRowResult = { email: string; full_name: string; ok: boolean; password?: string; error?: string }
+
+/** Creates faculty accounts (default password licet@<name>, changed at first sign-in).
+ *  department empty = CSE; anything else marks staff of another department. */
+export async function createStaffAdmin(accessToken: string, rows: NewStaff[]): Promise<{ error?: string; results?: StaffRowResult[] }> {
+  try {
+    await requireRole(accessToken, ['HOD'])
+    if (!Array.isArray(rows) || !rows.length || rows.length > 200) return { error: 'Give between 1 and 200 staff' }
+    const db = adminClient()
+    const results: StaffRowResult[] = []
+    for (const r of rows) {
+      const full_name = String(r.full_name ?? '').trim().replace(/\s+/g, ' ')
+      const email = String(r.email ?? '').trim().toLowerCase()
+      const dept = String(r.department ?? '').trim()
+      if (!full_name || !/^[^\s@]+@licet\.ac\.in$/.test(email)) { results.push({ email, full_name, ok: false, error: 'Needs a name and a licet.ac.in email' }); continue }
+      const password = defaultStaffPassword(full_name)
+      if (password.length < 10) { results.push({ email, full_name, ok: false, error: 'Name too short for a default password; set one with Reset password after creating' }); continue }
+      const { data: au, error: ae } = await db.auth.admin.createUser({ email, password, email_confirm: true })
+      if (ae || !au.user) { results.push({ email, full_name, ok: false, error: /already/i.test(ae?.message ?? '') ? 'An account with this email already exists' : ae?.message ?? 'Could not create the login' }); continue }
+      const { error: pe } = await db.from('profiles').upsert({
+        id: au.user.id, role: 'PROFESSOR', department_id: DEPT_ID, full_name, email, is_active: true, must_change_password: true,
+        home_department: dept && !/^cse$/i.test(dept) ? dept : null,
+      })
+      if (pe) { await db.auth.admin.deleteUser(au.user.id); results.push({ email, full_name, ok: false, error: pe.message }); continue }
+      results.push({ email, full_name, ok: true, password })
+    }
+    return { results }
+  } catch (err) {
+    return { error: err instanceof AuthError ? err.message : 'Could not create the accounts' }
   }
 }

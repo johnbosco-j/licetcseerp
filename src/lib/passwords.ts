@@ -6,6 +6,13 @@ export function defaultStudentPassword(email: string): string {
 
 export const MIN_PASSWORD_LENGTH = 8
 
+const TITLES = new Set(['dr', 'mr', 'mrs', 'ms', 'miss', 'rev', 'prof', 'sj'])
+/** Default staff password: licet@ + the name in lower case without titles or initials
+ *  (Dr. Kavitha G → licet@kavitha). Changed at first sign-in. */
+export function defaultStaffPassword(fullName: string): string {
+  return 'licet@' + fullName.toLowerCase().split(/[^a-z]+/).filter(w => w.length >= 3 && !TITLES.has(w)).join('')
+}
+
 type Actor = { id: string; role: string; advisor_section: string | null; can_reset_passwords: boolean; access_tier?: number | null }
 type Target = { id: string; role: string; section: string | null; access_tier?: number | null }
 

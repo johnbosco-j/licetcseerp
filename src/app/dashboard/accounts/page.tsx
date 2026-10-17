@@ -7,6 +7,7 @@ import { isTier1 } from "@/lib/roles"
 import type { Database } from "@/lib/supabase"
 import { getAccessToken } from "@/lib/auth"
 import { resetPassword } from "@/app/actions"
+import { AddStaff } from "@/components/add-staff"
 import { canResetPassword, defaultStudentPassword, MIN_PASSWORD_LENGTH } from "@/lib/passwords"
 import { PageHeader, Card, CardHeader, Badge, EmptyState, btn, field } from "@/components/ui/page"
 
@@ -267,7 +268,10 @@ export default function AccountsPage() {
       )}
 
       {isHOD && tab === 'PROFESSOR' && (
-        <p className="text-[12px] text-muted-foreground flex items-center gap-1.5"><UserCog size={13} /> Password admins can reset any student or faculty password.</p>
+        <>
+          <AddStaff onDone={load} />
+          <p className="text-[12px] text-muted-foreground flex items-center gap-1.5"><UserCog size={13} /> Password admins can reset any student or faculty password.</p>
+        </>
       )}
     </div>
   )

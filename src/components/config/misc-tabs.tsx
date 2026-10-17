@@ -7,6 +7,7 @@ import { reportResult, toast } from "@/components/toaster"
 import { NAV_FACULTY_IDS, NAV_STUDENT_IDS } from "@/lib/roles"
 import type { Vertical, StudentGroup } from "@/lib/academic"
 import { inputCls, btnCls, ghostCls } from "./terms-tab"
+import { ElectivePlan } from "./elective-plan"
 
 // ── Verticals and groups ───────────────────────────────────────────────────
 export function GroupsTab({ verticals, groups, reload }: { verticals: Vertical[]; groups: StudentGroup[]; reload: () => void }) {
@@ -35,6 +36,7 @@ export function GroupsTab({ verticals, groups, reload }: { verticals: Vertical[]
   const [nv, setNv] = useState<Vertical>({ code: '', name: '', description: '', course_codes: [], is_active: true })
   return (
     <div className="space-y-6">
+      <ElectivePlan verticals={verticals} />
       <section className="rounded-lg border border-border bg-white p-4 space-y-3">
         <p className="eyebrow">Verticals (professional elective streams, R2024)</p>
         <p className="text-[12.5px] text-muted-foreground">Students choose a vertical in III year. Courses of a vertical are taught to that vertical across both sections; set each student’s vertical in the Students tab.</p>

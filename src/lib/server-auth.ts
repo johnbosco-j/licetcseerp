@@ -18,6 +18,11 @@ export class AuthError extends Error {}
 
 // The browser keeps the Supabase session in localStorage, so callers pass the
 // access token explicitly; we verify it with Supabase and check the live role.
+/** `aal` claim of a (Supabase-verified) access token. */
+function jwtAal(token: string): string | undefined {
+  try { return JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString('utf8')).aal } catch { return undefined }
+}
+
 export async function requireRole(accessToken: string | null | undefined, roles: Role[]) {
   if (!accessToken) throw new AuthError('Not signed in')
   const db = adminClient()
@@ -29,6 +34,12 @@ export async function requireRole(accessToken: string | null | undefined, roles:
   const tier1 = profile?.role === 'PROFESSOR' && profile.access_tier === 1
   if (!profile?.is_active || !(roles.includes(profile.role as Role) || (tier1 && roles.includes('HOD')))) {
     throw new AuthError('You do not have permission to do this')
+  }
+  // Two-step sign-in: once an account has an authenticator, privileged actions need a
+  // session confirmed with the code (the same rule the database applies to HOD powers).
+  const { data: factors } = await db.auth.admin.mfa.listFactors({ userId: user.id })
+  if ((factors?.factors ?? []).some(f => f.status === 'verified') && jwtAal(accessToken) !== 'aal2') {
+    throw new AuthError('Confirm your sign-in with the two-step code first')
   }
   return profile as StaffCaller
 }

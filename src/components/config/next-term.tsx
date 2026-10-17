@@ -8,6 +8,7 @@ import { CSE_R2024 } from "@/lib/regulations"
 import { parseCalendarWorkbook } from "@/lib/calendar-import"
 import { SECTIONS, type Term, yearOf } from "@/lib/academic"
 import { inputCls, btnCls, ghostCls } from "./terms-tab"
+import { applyElectivePlan } from "@/lib/electives"
 
 /** Upload the college's academic-calendar workbook into a term (dates outside the term are ignored). */
 export async function importCalendarFile(file: File, term: Term): Promise<number> {
@@ -129,15 +130,23 @@ export function NextTermWizard({ terms, onClose, onDone }: { terms: Term[]; onCl
         const { data: haveNow } = await supabase.from('subjects').select('code, cohort_grad_year').eq('term_id', termId).is('section', null)
         const exists = new Set(((haveNow ?? []) as { code: string; cohort_grad_year: number | null }[]).map(r => `${r.code}|${r.cohort_grad_year}`))
         const drop = new Set(['id', 'created_at', 'updated_at', 'group_id'])
+        // batches with an elective plan get their vertical courses from the plan instead
+        const { data: planned } = await supabase.from('elective_plan').select('cohort_grad_year')
+        const hasPlan = new Set(((planned ?? []) as { cohort_grad_year: number }[]).map(p => p.cohort_grad_year))
         const add = ((combined ?? []) as Record<string, unknown>[])
           .map(c => ({ ...Object.fromEntries(Object.entries(c).filter(([k]) => !drop.has(k))), term_id: termId, academic_year: year, cohort_grad_year: Number(c.cohort_grad_year) + years }) as Record<string, unknown>)
-          .filter(c => !exists.has(`${c.code}|${c.cohort_grad_year}`))
+          .filter(c => !exists.has(`${c.code}|${c.cohort_grad_year}`) && !(c.audience === 'VERTICAL' && hasPlan.has(Number(c.cohort_grad_year))))
         if (add.length) { const { error } = await supabase.from('subjects').insert(add); if (error) throw Object.assign(new Error(error.message), { step: 3 }) }
+        let fromPlan = 0
+        for (const b of hasPlan) {
+          try { const r = await applyElectivePlan({ id: termId as string, academic_year: year, parity }, b); fromPlan += r.created }
+          catch (e) { throw Object.assign(e instanceof Error ? e : new Error('elective plan'), { step: 3 }) }
+        }
         const { data: copied, error: cErr } = await supabase.rpc('copy_timetable', { p_from: source.id, p_to: termId, p_sections: null })
         if (cErr) throw Object.assign(new Error(cErr.message), { step: 3 })
         const rows = (copied ?? []) as { section: string; copied: number; skipped: number }[]
         const hours = rows.reduce((a, r) => a + r.copied, 0), skipped = rows.reduce((a, r) => a + r.skipped, 0)
-        set(3, { state: 'ok', note: `${add.length} combined courses, ${hours} timetable hours copied${skipped ? `; ${skipped} hours skipped (course not offered this term)` : ''}. Check teachers and changes in the timetable editor.` })
+        set(3, { state: 'ok', note: `${add.length} combined courses copied, ${fromPlan} elective courses from the elective plan, ${hours} timetable hours copied${skipped ? `; ${skipped} hours skipped (course not offered this term)` : ''}. Check teachers and changes in the timetable editor.` })
       }
       if (calendar && term) {
         set(4, { state: 'run' })
