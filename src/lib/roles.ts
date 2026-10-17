@@ -6,7 +6,7 @@ export const NAV_HOD_IDS = [
   "analytics","finance","inventory","placements","leaves","events",
   "documents","feedback","grievances","notices","alerts","appraisal",
   "attendance-analysis","change-password","editor","examination",
-  "naac","promotion","curriculum","reports","accounts","audit","export","profile","config"
+  "naac","promotion","curriculum","reports","accounts","audit","export","profile","config","insights"
 ]
 
 export const NAV_FACULTY_IDS = [
@@ -48,7 +48,7 @@ export const NAV_LABELS: Record<string, string> = {
   feedback: "Course Feedback", grievances: "Grievance Redressal", notices: "Notices & Circulars", alerts: "Attendance Alerts",
   audit: "Audit Trail", export: "Data Export", appraisal: "Faculty Appraisal", "attendance-analysis": "Attendance Analysis",
   editor: "Document Editor", naac: "NAAC & NBA", promotion: "Year Promotion", reports: "Departmental Reports",
-  config: "Configuration", profile: "My Profile", "change-password": "Change Password",
+  config: "Configuration", insights: "Insights", profile: "My Profile", "change-password": "Change Password",
 }
 
 const ALWAYS = ["dashboard", "change-password", "profile"]
@@ -58,7 +58,8 @@ export function getAllowedModules(user: NavUser, hidden?: Record<string, string[
   if (user.type === 'staff' && isTier1(user)) return NAV_HOD_IDS
   const drop = (ids: string[], role: string) => ids.filter(id => ALWAYS.includes(id) || !(hidden?.[role] ?? []).includes(id))
   if (user.type === 'staff' && user.role === 'PROFESSOR') {
-    return drop(user.advisor_section || user.can_reset_passwords ? [...NAV_FACULTY_IDS, "accounts"] : NAV_FACULTY_IDS, 'FACULTY')
+    const extra = [...(user.advisor_section || user.can_reset_passwords ? ["accounts"] : []), ...(user.advisor_section ? ["insights"] : [])]
+    return drop([...NAV_FACULTY_IDS, ...extra], 'FACULTY')
   }
   return drop(NAV_STUDENT_IDS, 'STUDENT')
 }

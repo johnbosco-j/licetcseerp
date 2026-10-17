@@ -184,6 +184,7 @@ export default function TimetablePage() {
       {cell && (
         <CellEditor term={term} section={section} day={cell.day} period={cell.period}
           entries={entries.filter(e => e.day_order === cell.day && e.period_no === cell.period)}
+          dayEntries={entries.filter(e => e.day_order === cell.day)}
           offerings={sectionOfferings} verticals={verticals} groups={groups} staff={staff}
           onClose={() => setCell(null)} onSaved={() => { load() }} />
       )}
@@ -193,13 +194,23 @@ export default function TimetablePage() {
 
 type Draft = Partial<TimetableEntry> & { _new?: boolean; _del?: boolean; key: string }
 
-function CellEditor({ term, section, day, period, entries, offerings, verticals, groups, staff, onClose, onSaved }: {
-  term: Term; section: string; day: number; period: number; entries: TimetableEntry[]; offerings: Offering[]
+function CellEditor({ term, section, day, period, entries, dayEntries, offerings, verticals, groups, staff, onClose, onSaved }: {
+  term: Term; section: string; day: number; period: number; entries: TimetableEntry[]; dayEntries: TimetableEntry[]; offerings: Offering[]
   verticals: Vertical[]; groups: StudentGroup[]; staff: Staff[]; onClose: () => void; onSaved: () => void
 }) {
   const [drafts, setDrafts] = useState<Draft[]>(entries.map(e => ({ ...e, key: e.id })))
   const [busy, setBusy] = useState(false)
   const [span, setSpan] = useState(1)
+  const [wholeBlock, setWholeBlock] = useState(true)
+  // the other periods of the same lab / class block (same course, label and batch on adjacent periods)
+  const blockOf = (e: TimetableEntry) => {
+    const same = (x: TimetableEntry) => x.subject_id === e.subject_id && (x.label ?? '') === (e.label ?? '') && x.audience === e.audience && (x.audience_value ?? '') === (e.audience_value ?? '') && (x.group_id ?? '') === (e.group_id ?? '')
+    const out: TimetableEntry[] = []
+    for (let p = e.period_no - 1; ; p--) { const x = dayEntries.find(y => y.period_no === p && same(y)); if (!x) break; out.push(x) }
+    for (let p = e.period_no + 1; ; p++) { const x = dayEntries.find(y => y.period_no === p && same(y)); if (!x) break; out.push(x) }
+    return out
+  }
+  const blockPeriods = [...new Set(entries.flatMap(e => [e.period_no, ...blockOf(e).map(x => x.period_no)]))].sort((a, b) => a - b)
   const set = (k: string, patch: Partial<Draft>) => setDrafts(ds => ds.map(d => d.key === k ? { ...d, ...patch } : d))
   const add = () => setDrafts(ds => [...ds, { key: crypto.randomUUID(), _new: true, audience: 'ALL', takes_attendance: true, faculty_ids: [], subject_id: null, label: null }])
   const live = drafts.filter(d => !d._del)
@@ -215,11 +226,20 @@ function CellEditor({ term, section, day, period, entries, offerings, verticals,
         effective_from: d.effective_from || null, effective_to: d.effective_to || null, updated_at: new Date().toISOString(),
       }
       if (!row.subject_id && !row.label) continue
-      if (d._del && !d._new) { const { error } = await supabase.from('timetable_entries').delete().eq('id', d.id!); if (!reportResult(error)) { setBusy(false); return } }
+      const orig = entries.find(e => e.id === d.id)
+      const siblings = wholeBlock && orig ? blockOf(orig).map(x => x.id) : []
+      if (d._del && !d._new) { const { error } = await supabase.from('timetable_entries').delete().in('id', [d.id!, ...siblings]); if (!reportResult(error)) { setBusy(false); return } }
       else if (d._new && !d._del) {
         const rows = Array.from({ length: span }, (_, i) => ({ ...row, period_no: period + i }))
         const { error } = await supabase.from('timetable_entries').insert(rows); if (!reportResult(error)) { setBusy(false); return }
-      } else if (!d._del) { const { error } = await supabase.from('timetable_entries').update({ ...row, period_no: period }).eq('id', d.id!); if (!reportResult(error)) { setBusy(false); return } }
+      } else if (!d._del) {
+        const { error } = await supabase.from('timetable_entries').update({ ...row, period_no: period }).eq('id', d.id!)
+        if (!reportResult(error)) { setBusy(false); return }
+        if (siblings.length) {
+          const { error: e2 } = await supabase.from('timetable_entries').update(row).in('id', siblings)
+          if (!reportResult(e2)) { setBusy(false); return }
+        }
+      }
     }
     setBusy(false)
     reportResult(null, 'Timetable updated')
@@ -290,6 +310,12 @@ function CellEditor({ term, section, day, period, entries, offerings, verticals,
               </div>
             </div>
           ))}
+          {blockPeriods.length > 1 && (
+            <label className="flex items-center gap-2 text-[13px] rounded-md bg-licet-cream/40 border border-licet-gold px-3 py-2">
+              <input type="checkbox" checked={wholeBlock} onChange={e => setWholeBlock(e.target.checked)} className="accent-licet-indigo" />
+              Apply changes to the whole block (periods {blockPeriods[0]}–{blockPeriods[blockPeriods.length - 1]}) — keeps a lab’s batches the same for all its hours
+            </label>
+          )}
           <div className="flex flex-wrap items-center gap-3">
             <button onClick={add} className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md border border-dashed border-licet-violet text-licet-violet text-[13px] font-semibold hover:bg-licet-cream/40"><Plus className="w-4 h-4" /> Add entry{live.length ? ' (split this hour)' : ''}</button>
             {drafts.some(d => d._new) && (

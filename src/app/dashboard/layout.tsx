@@ -36,6 +36,7 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
       { icon: Clock,           label: "Class Timetable",       id: "timetable" },
       { icon: BookOpen,        label: "Examinations",          id: "examination" },
       { icon: BarChart3,       label: "Academic Analytics",    id: "analytics" },
+      { icon: TrendingUp,      label: "Insights",              id: "insights" },
     ]
   },
   {

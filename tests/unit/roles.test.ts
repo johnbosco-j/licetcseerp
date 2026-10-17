@@ -96,8 +96,8 @@ describe('getAllowedModules', () => {
       expect(ids).not.toContain('finance')
     })
 
-    it('adds accounts for class advisors and password resetters, once', () => {
-      expect(getAllowedModules(ADVISOR)).toEqual([...NAV_FACULTY_IDS, 'accounts'])
+    it('adds accounts for class advisors and password resetters, once; advisors also get insights', () => {
+      expect(getAllowedModules(ADVISOR)).toEqual([...NAV_FACULTY_IDS, 'accounts', 'insights'])
       expect(getAllowedModules(RESETTER)).toEqual([...NAV_FACULTY_IDS, 'accounts'])
       const both = getAllowedModules({ ...ADVISOR, can_reset_passwords: true })
       expect(both.filter(id => id === 'accounts')).toHaveLength(1)
