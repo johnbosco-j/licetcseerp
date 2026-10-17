@@ -6,12 +6,12 @@ export const NAV_HOD_IDS = [
   "analytics","finance","inventory","placements","leaves","events",
   "documents","feedback","grievances","notices","alerts","appraisal",
   "change-password","editor","examination",
-  "naac","promotion","curriculum","reports","accounts","audit","export","profile","config","insights"
+  "naac","promotion","curriculum","reports","accounts","audit","export","profile","config","insights","obe"
 ]
 
 export const NAV_FACULTY_IDS = [
   "dashboard","students","attendance","marks","subjects","timetable",
-  "alerts","leaves","events","documents","feedback","notices","placements","appraisal","change-password","export","profile"
+  "alerts","leaves","events","documents","feedback","notices","placements","appraisal","change-password","export","profile","obe"
 ]
 
 export const NAV_STUDENT_IDS = [
@@ -48,7 +48,7 @@ export const NAV_LABELS: Record<string, string> = {
   feedback: "Course Feedback", grievances: "Grievance Redressal", notices: "Notices & Circulars", alerts: "Attendance Alerts",
   audit: "Audit Trail", export: "Data Export", appraisal: "Faculty Appraisal", "attendance-analysis": "Attendance Analysis",
   editor: "Document Editor", naac: "NAAC & NBA", promotion: "Year Promotion", reports: "Departmental Reports",
-  config: "Configuration", insights: "Insights", profile: "My Profile", "change-password": "Change Password",
+  config: "Configuration", insights: "Insights", obe: "Outcomes (CO–PO)", profile: "My Profile", "change-password": "Change Password",
 }
 
 const ALWAYS = ["dashboard", "change-password", "profile"]

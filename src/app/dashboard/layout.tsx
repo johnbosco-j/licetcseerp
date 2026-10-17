@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter, usePathname } from "next/navigation"
 import {
-  AlertCircle, ClipboardCheck, Key, FileText,
+  AlertCircle, ClipboardCheck, Key, Target, FileText,
   PenTool, CalendarDays, BookOpen, MessageSquare, Wallet, AlertTriangle,
   Package, Award, ShieldCheck, Bell, Briefcase, TrendingUp,
   FileBarChart, Users, Library, Clock, LogOut, LayoutDashboard, ChevronLeft, Menu, X,
@@ -32,6 +32,7 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
       { icon: Users,           label: "Student Records",       id: "students" },
       { icon: ClipboardCheck,  label: "Attendance Register",   id: "attendance" },
       { icon: Award,           label: "Assessments & Marks",   id: "marks" },
+      { icon: Target,          label: "Outcomes (CO–PO)",      id: "obe" },
       { icon: Library,         label: "Courses",               id: "subjects" },
       { icon: GraduationCap,   label: "Curriculum & Syllabus", id: "curriculum" },
       { icon: Clock,           label: "Class Timetable",       id: "timetable" },

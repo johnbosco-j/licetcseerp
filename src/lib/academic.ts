@@ -159,3 +159,37 @@ export const TONE: Record<string, string> = {
   bad: 'text-red-800 bg-red-50 border-red-200',
   none: 'text-muted-foreground bg-muted/40 border-border',
 }
+
+/**
+ * Students of a course offering, for marks and outcomes. A section course belongs to the
+ * batch that was in that section when it ran (cohort year + section letter), so a past
+ * term still shows the right students after promotion. A combined course is that batch's
+ * vertical / group (or the whole batch). Anyone who already has marks in it is included,
+ * so graduated batches keep their records.
+ */
+export async function loadCourseRoster(subject: Pick<Offering, 'id' | 'section' | 'cohort_grad_year' | 'audience' | 'audience_value' | 'group_id'>) {
+  const cols = 'id, full_name, register_number, roll_number, section, batch_year, vertical, lab_batch, email, is_active'
+  type P = { id: string; full_name: string; register_number: string | null; roll_number: string | null; section: string | null; batch_year: number | null; vertical: string | null; lab_batch: number | null; email: string; is_active: boolean }
+  let q = supabase.from('profiles').select(cols).eq('role', 'STUDENT')
+  if (subject.cohort_grad_year) {
+    q = q.eq('batch_year', subject.cohort_grad_year)
+    if (subject.section) q = q.like('section', `%${subject.section.split(' ').pop()}`)
+    else if (subject.audience === 'VERTICAL' && subject.audience_value) q = q.eq('vertical', subject.audience_value)
+  } else if (subject.section) q = q.eq('section', subject.section)
+  const [{ data: base }, { data: marked }, members] = await Promise.all([
+    q.order('full_name').range(0, 999),
+    supabase.from('marks').select('student_id').eq('subject_id', subject.id).range(0, 9999),
+    subject.audience === 'GROUP' && subject.group_id
+      ? supabase.from('student_group_members').select('student_id').eq('group_id', subject.group_id)
+      : Promise.resolve({ data: null }),
+  ])
+  let list = (base ?? []) as P[]
+  if (members.data) { const m = new Set((members.data as { student_id: string }[]).map(x => x.student_id)); list = list.filter(s => m.has(s.id)) }
+  const have = new Set(list.map(s => s.id))
+  const extra = [...new Set(((marked ?? []) as { student_id: string }[]).map(m => m.student_id))].filter(id => !have.has(id))
+  if (extra.length) {
+    const { data } = await supabase.from('profiles').select(cols).in('id', extra.slice(0, 500))
+    list = [...list, ...((data ?? []) as P[])]
+  }
+  return list.sort((a, b) => (a.roll_number ?? a.full_name).localeCompare(b.roll_number ?? b.full_name))
+}

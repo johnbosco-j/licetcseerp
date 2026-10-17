@@ -10,6 +10,9 @@ import type { AuthUser } from "@/lib/auth"
 import type { Database } from "@/lib/supabase"
 import { Save, Loader2, BarChart3, Download, Lock, Unlock } from "lucide-react"
 import * as XLSX from "xlsx"
+import { loadTerms, loadCourseRoster, type Term } from "@/lib/academic"
+import { MyMarkObjections } from "@/components/mark-objections"
+import { MarksImport } from "@/components/marks-import"
 import { courseResult, courseType as regulationCourseType, labIntegratedWeights, markSplit, type MarkMap } from "@/lib/regulations"
 import { getActiveSemester } from "@/lib/semester"
 
@@ -101,6 +104,8 @@ export default function MarksPage() {
   const [students, setStudents]     = useState<Profile[]>([])
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null)
   const [selectedSection, setSelectedSection] = useState('')
+  const [terms, setTerms] = useState<Term[]>([])
+  const [termId, setTermId] = useState('')   // '' until loaded; 'none' = courses recorded before terms existed
   const [marksData, setMarksData]   = useState<Record<string, MarksEntry>>({})
   // `${studentId}|${exam_type}` for marks that exist in the DB or were typed in;
   // only these are saved, so untouched fields are not stored as zeros.
@@ -135,31 +140,42 @@ export default function MarksPage() {
       })
   }, [router])
 
-  // Load subjects
   useEffect(() => {
-    if (!authUser) return
-    let query = supabase.from('subjects').select('*').order('semester').order('name')
-    if (isStudent) {
-      if (!profile) return // wait for live profile before querying with a possibly-stale section
-      const section = profile.section ?? (authUser.data as { section?: string })?.section ?? ''
-      query = query.eq('section', section).eq('semester', currentSem(section))
-    } else if (selectedSection) {
-      query = query.eq('section', selectedSection)
-    }
-    // Faculty/HOD with no section selected — load all subjects
-    query.then(({ data, error }) => {
-      if (error) { console.error('Failed to load subjects', error); return }
-      if (data) setSubjects(data)
-    })
-  }, [authUser, profile, isStudent, selectedSection])
+    loadTerms().then(ts => { setTerms(ts); setTermId(ts.find(t => t.is_current)?.id ?? ts[0]?.id ?? 'none') })
+  }, [])
 
-  // Load students
+  // Load the courses of the chosen term (a section's own courses plus the combined
+  // vertical / elective courses of that batch)
   useEffect(() => {
-    const section = selectedSubject?.section ?? selectedSection
-    if (!section || isStudent) return
-    supabase.from('profiles').select('*').eq('role', 'STUDENT').eq('section', section).order('full_name')
-      .then(({ data }) => { if (data) setStudents(data) })
-  }, [selectedSubject, selectedSection, isStudent])
+    if (!authUser || !termId) return
+    let cancelled = false
+    ;(async () => {
+      let query = supabase.from('subjects').select('*').order('semester').order('name')
+      query = termId === 'none' ? query.is('term_id', null) : query.eq('term_id', termId)
+      const section = isStudent ? (profile?.section ?? null) : selectedSection || null
+      if (isStudent && !profile) return // wait for the live profile before querying with a possibly-stale section
+      if (section && termId !== 'none') {
+        const { data: grad } = await supabase.rpc('section_grad_year', { p_section: section, p_term: termId })
+        query = query.or(`section.eq.${section},and(section.is.null,cohort_grad_year.eq.${Number(grad) || 0})`)
+      } else if (section) query = query.eq('section', section)
+      const { data, error } = await query
+      if (cancelled) return
+      if (error) { console.error('Failed to load subjects', error); return }
+      let list = (data ?? []) as Subject[]
+      // a student sees only the combined courses of their own vertical
+      if (isStudent) list = list.filter(s => s.section || s.audience !== 'VERTICAL' || s.audience_value === profile?.vertical)
+      setSubjects(list)
+    })()
+    return () => { cancelled = true }
+  }, [authUser, profile, isStudent, selectedSection, termId])
+
+  // Load the students of the chosen course
+  useEffect(() => {
+    if (!selectedSubject || isStudent) return
+    let cancelled = false
+    loadCourseRoster(selectedSubject).then(list => { if (!cancelled) setStudents(list as unknown as Profile[]) })
+    return () => { cancelled = true }
+  }, [selectedSubject, isStudent])
 
   // Load existing marks from DB
   const loadMarks = useCallback(async () => {
@@ -294,7 +310,7 @@ export default function MarksPage() {
       { wch: 5 }, { wch: 25 }, { wch: 30 },
       ...Array(Object.keys(rows[0] ?? {}).length - 3).fill({ wch: 14 })
     ]
-    const filename = `Marks_${selectedSubject.code}_${selectedSubject.section}_${new Date().toISOString().split('T')[0]}.xlsx`
+    const filename = `Marks_${selectedSubject.code}_${(selectedSubject.section ?? "combined").replace(/\s+/g, "_")}_${new Date().toISOString().split('T')[0]}.xlsx`
     XLSX.writeFile(wb, filename)
     setExporting(false)
     setSaveMsg(`✓ Exported ${rows.length} students`)
@@ -557,6 +573,7 @@ export default function MarksPage() {
               )
             })}
           </div>
+          <MyMarkObjections courses={subjects} myMarks={myMarks} />
         </div>
       )}
 
@@ -565,7 +582,17 @@ export default function MarksPage() {
         <div className="space-y-4">
           {/* Controls */}
           <div className="bg-card border border-border rounded-lg p-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {!isStudent && (
+                <div className="space-y-1">
+                  <label className="font-mono text-xs text-muted-foreground">Term</label>
+                  <select data-filter value={termId} onChange={e => { setTermId(e.target.value); setSelectedSubject(null); setMarksData({}) }}
+                    className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none">
+                    {terms.map(t => <option key={t.id} value={t.id}>{t.label}{t.is_current ? ' (current)' : ''}</option>)}
+                    <option value="none">Older records (before terms)</option>
+                  </select>
+                </div>
+              )}
               {isHOD && (
                 <div className="space-y-1">
                   <label className="font-mono text-xs text-muted-foreground">Section</label>
@@ -583,7 +610,7 @@ export default function MarksPage() {
                   setSelectedSubject(s); setMarksData({})
                 }} className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none">
                   <option value="">Select subject...</option>
-                  {[...subjects].sort((a, b) => a.semester - b.semester || a.code.localeCompare(b.code)).map(s => <option key={s.id} value={s.id}>Sem {s.semester} · {s.code} – {s.name}{selectedSection ? '' : ` (${s.section})`}</option>)}
+                  {[...subjects].sort((a, b) => a.semester - b.semester || a.code.localeCompare(b.code)).map(s => <option key={s.id} value={s.id}>Sem {s.semester} · {s.code} – {s.name}{selectedSection ? '' : ` (${s.section ?? 'combined'})`}</option>)}
                 </select>
               </div>
             </div>
@@ -615,6 +642,7 @@ export default function MarksPage() {
                   {exporting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
                   Export XLSX
                 </button>
+                {!isLocked && <MarksImport subjectId={selectedSubject.id} students={students as never} onDone={loadMarks} />}
                 {isHOD && (
                   <button onClick={() => isLocked ? toggleLock() : setShowLockModal(true)}
                     className={`flex items-center gap-2 h-9 px-3 font-mono text-xs rounded transition-colors ${isLocked ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-licet-cream text-licet-indigo border border-licet-gold hover:bg-licet-gold/50'}`}>
@@ -668,7 +696,7 @@ export default function MarksPage() {
                     <span className="eyebrow">MARKS ENTRY</span>
                     <h2 className="font-serif text-[19px] font-semibold text-licet-indigo mt-1">{selectedSubject.code} — {selectedSubject.name}</h2>
                     <p className="font-mono text-xs text-muted-foreground">
-                      {selectedSubject.section} · Semester {selectedSubject.semester} · {students.length} students
+                      {selectedSubject.section ?? "Combined (both sections)"} · Semester {selectedSubject.semester} · {students.length} students
                     </p>
                   </div>
                   <div className="font-mono text-xs px-2 py-1 bg-primary/10 text-primary border border-primary/20 rounded">

@@ -55,6 +55,10 @@ export type Database = {
           department_id: string | null; semester: number
           credits: number; section: string | null
           academic_year: string | null; faculty_id: string | null; created_at: string
+          term_id: string | null; cohort_grad_year: number | null
+          audience: 'ALL' | 'VERTICAL' | 'GROUP'; audience_value: string | null; group_id: string | null
+          short_name: string | null; faculty_names: string | null
+          co1: string | null; co2: string | null; co3: string | null; co4: string | null; co5: string | null; co6: string | null
         }
       }
       attendance: {
