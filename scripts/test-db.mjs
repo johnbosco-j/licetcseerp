@@ -14,7 +14,9 @@ const only = process.argv[2]
 async function run(sql) {
   if (process.env.DATABASE_URL) {
     const out = execFileSync('psql', [process.env.DATABASE_URL, '-X', '-q', '-At', '-F', '\t', '-v', 'ON_ERROR_STOP=1', '-c', sql], { encoding: 'utf8' })
-    return out.trim().split('\n').filter(Boolean).map(l => { const [ok, test, info] = l.split('\t'); return { ok: ok === 't', test, info } })
+    // only result rows (ok, test, info); other output such as set_config() echoes is ignored
+    return out.trim().split('\n').map(l => l.split('\t')).filter(p => p.length === 3 && (p[0] === 't' || p[0] === 'f'))
+      .map(([ok, test, info]) => ({ ok: ok === 't', test, info }))
   }
   const { SUPABASE_ACCESS_TOKEN: token, SUPABASE_PROJECT_REF: ref } = process.env
   if (!token || !ref) throw new Error('Set DATABASE_URL, or SUPABASE_ACCESS_TOKEN and SUPABASE_PROJECT_REF')
