@@ -47,6 +47,15 @@ begin
     select id, 'PROFESSOR', dept, 'Quorbantine C', email, true from auth.users where email = 'qc@example.test';
   insert into r(ok, test, info) values (not exists (select 1 from subject_faculty f join profiles x on x.id = f.faculty_id where f.subject_id = c1 and x.email = 'qc@example.test'),
     'a name shared by two staff accounts is not linked automatically', 'ok');
+
+  -- the HOD office account never collects courses (it passes to the next HOD)
+  insert into subjects (code, name, semester, section, term_id, audience, faculty_names)
+    values ('ZZ90005', 'Test course five', 7, sec, t, 'ALL', 'Dr Hodwick Officeton, Prof/CSE') returning id into c1;
+  insert into auth.users (id, email, aud, role) values (gen_random_uuid(), 'hodoffice@example.test', 'authenticated', 'authenticated');
+  insert into profiles (id, role, department_id, full_name, email, is_active)
+    select id, 'HOD', dept, 'Dr. Hodwick Officeton', email, true from auth.users where email = 'hodoffice@example.test';
+  insert into r(ok, test, info) values (not exists (select 1 from subject_faculty where subject_id = c1),
+    'the HOD office account is not given the courses printed with the HOD''s name', 'ok');
 end $$;
 select ok, test, info from r order by n;
 rollback;

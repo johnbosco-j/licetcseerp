@@ -171,13 +171,16 @@ Test accounts `hod@test.local`, `faculty1@test.local`, `advisor@test.local`,
 ## Open items
 
 - 10 lateral-entry students have no account yet (25CS023–026, 25CS134–138, 24CS031).
-- Seven printed teachers have no account: Ms E Preesha, Rev. Dr. Justine, Mr Rex,
-  Ms J Christina, Mr Martin Mahimai Doss, Dr Krishnan, Mr Clinton — their hours can
-  still be taken by the class advisor or the HOD.
-- "Ms A Jerlin" (CS24311, II CSE-B) was linked to the *aruljerlin* account by name;
-  confirm it is the same person.
-- Duplicate account "Dr. Sharmila VJ Member" (sharmila.vj@) should be merged or
-  removed.
+- Eight printed teachers have no account: Ms A Jerlin (ECE — not the *aruljerlin*
+  account, a different person), Ms E Preesha, Rev. Dr. Justine, Mr Rex, Ms J Christina,
+  Mr Martin Mahimai Doss, Dr Krishnan, Mr Clinton — their hours can still be taken by
+  the class advisor or the HOD.
+- **Two accounts for the HOD, on purpose.** `hodcse@` is the HOD *office* account: it
+  holds the HOD role and passes to the next HOD. `sharmila.vj@` is Dr. Sharmila VJ's
+  personal faculty account and carries her own courses (CS24501, CCS342). Never merge
+  them; when the HOD changes, hand over `hodcse@` (reset its password and two-step) and
+  the outgoing HOD keeps teaching from her personal account. Courses are never
+  auto-linked to the office account (migration 40).
 - III CSE-A timetable: only Tue P4 and Fri P7 of a lab swap were edited (II CSE-A was
   swapped fully) — check whether the other hours should change too.
 - Past IA workbooks are not imported yet: use Assessments & Marks → Import from Excel
