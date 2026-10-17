@@ -4,6 +4,10 @@ Department ERP for the Department of Computer Science & Engineering, Loyola-ICAM
 
 Stack: Next.js (App Router) + Supabase (Postgres, Auth, Storage, Row Level Security) + Resend for email.
 
+**Handover:** [docs/HANDOVER.md](docs/HANDOVER.md) (architecture, rules, tests, operations, open items) ·
+[docs/USER-GUIDE.md](docs/USER-GUIDE.md) (HOD, faculty, students) · [deploy/RUNBOOK.md](deploy/RUNBOOK.md) (college server) ·
+[station/README.md](station/README.md) (QR attendance station).
+
 ## Setup
 
 1. **Install**
