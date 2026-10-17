@@ -2,7 +2,7 @@
 
 Students mark their own attendance from their phones, but only if they are
 physically in the classroom. The staff member's laptop hosts the classroom Wi-Fi
-and shows a QR code that changes every 15 seconds. The staff member can still
+and shows a QR code that changes every 10 seconds (Configuration → Attendance rules). The staff member can still
 change anyone's mark before submitting.
 
 ```
@@ -22,7 +22,8 @@ change anyone's mark before submitting.
 | College Wi-Fi | Usually no | Campus networks usually block phones from reaching other devices (client isolation), and phones anywhere on campus share that network, so it proves nothing about being in the room. |
 
 **What proves presence:** only devices on the laptop's own Wi-Fi can reach the station. On top of that:
-- The QR code changes every 15 seconds, so a photo sent to a friend outside the room expires before it can be used.
+- The QR code changes every 10 seconds, so a photo sent to a friend outside the room expires before it can be used.
+- Optional (HOD setting): a 2-digit code shown on the projector next to the QR must also be typed, so even a live-relayed QR is not enough.
 - Each scan gets a 3-minute ticket tied to that phone's network address.
 
 **What proves identity:**
