@@ -41,7 +41,7 @@ The teacher sees the live count against the headcount and still submits manually
 
 Each student sets their PIN once in the ERP, under **Attendance → Attendance PIN**.
 
-If the laptop loses internet during check-in, check-ins are queued in `queue.json` and sent automatically when it reconnects. This only works while the 10-minute window is still open, so reconnect quickly or extend the window by reopening self check-in.
+If the laptop loses internet during check-in, check-ins are held in memory (never written to disk, because they contain PINs) and sent automatically when it reconnects. This only works while the check-in window is still open, so reconnect quickly. Any check-in the ERP refuses after reconnecting is listed on the console — mark those students by hand before you submit. Closing the station drops anything still waiting.
 
 ## Setup (once per laptop)
 

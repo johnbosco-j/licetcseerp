@@ -105,7 +105,8 @@
     qr.src = s.qr; link.textContent = s.link; rot.textContent = s.rotate
     present.textContent = s.present ?? '–'; total.textContent = s.total ?? '–'; title.textContent = s.title
     recent.innerHTML = s.recent.map(n => `<li>${n}</li>`).join('')
-    pending.textContent = s.pending ? `${s.pending} check-in(s) waiting for internet — they will sync automatically` : ''
+    pending.textContent = (s.pending ? `${s.pending} check-in(s) waiting for internet — they will sync automatically. ` : '')
+      + (s.failed && s.failed.length ? `Not accepted after reconnecting — mark these by hand in the ERP: ${s.failed.join('; ')}` : '')
   }
   async function stop() { clearInterval(poll); await api('/api/stop', {}); live.style.display = 'none'; pick.style.display = ''; loadClasses() }
   async function logout() { await api('/api/logout', {}); location.reload() }

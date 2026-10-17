@@ -47,13 +47,13 @@ const state = {
   nonces: [],             // current + previous QR codes
   marked: new Map(),      // register no → { name, at, ip }
   byIp: new Map(),        // ip → register no (one student per phone per class)
-  queue: [],              // check-ins waiting for the internet to come back
+  queue: [],              // check-ins waiting for the internet to come back (memory only: they hold PINs)
+  failed: [],             // queued check-ins the ERP refused once the internet returned
   tickets: new Map(),     // ticket → { ip, exp } issued when a fresh QR is scanned
   lastError: '',
 }
-const QUEUE_FILE = path.join(DIR, 'queue.json')
-try { state.queue = JSON.parse(fs.readFileSync(QUEUE_FILE, 'utf8')) } catch { /* none */ }
-const saveQueue = () => { try { fs.writeFileSync(QUEUE_FILE, JSON.stringify(state.queue)) } catch { /* ignore */ } }
+// An older version kept the offline queue in queue.json, PINs included; remove it.
+try { fs.unlinkSync(path.join(DIR, 'queue.json')) } catch { /* none */ }
 
 function rotate() {
   state.nonces = [crypto.randomBytes(6).toString('base64url'), ...state.nonces].slice(0, 2)
@@ -73,6 +73,8 @@ let hostIp = process.env.STATION_IP || lanAddresses()[0]?.address || '127.0.0.1'
 
 // ── helpers ────────────────────────────────────────────────────────────────
 const isLocal = req => ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress)
+// Console calls must come from the console page itself, not from another site open in the laptop's browser.
+const sameOrigin = req => { const o = req.headers.origin; return !o || /^http:\/\/(localhost|127\.0\.0\.1|\[::1\]):\d+$/.test(o) }
 const clientIp = req => (req.socket.remoteAddress || '').replace('::ffff:', '')
 const send = (res, code, body, type = 'application/json') => {
   res.writeHead(code, { 'Content-Type': type, 'Cache-Control': 'no-store', 'X-Frame-Options': 'DENY' })
@@ -100,9 +102,14 @@ async function flushQueue() {
   if (!state.queue.length || !state.staff) return
   const left = []
   for (const item of state.queue) {
-    try { await markOne(item) } catch { left.push(item) }
+    try {
+      const r = await markOne(item)
+      // refused now (e.g. the check-in window closed): the teacher must mark them by hand
+      if (!r?.ok) { state.failed.push({ reg: item.reg, error: r?.error ?? 'Not accepted' }); state.marked.delete(item.reg) }
+      else state.marked.set(item.reg, { name: r.name, at: Date.now(), ip: state.marked.get(item.reg)?.ip })
+    } catch { left.push(item) }
   }
-  state.queue = left; saveQueue()
+  state.queue = left
 }
 setInterval(flushQueue, 10_000)
 
@@ -151,17 +158,20 @@ const server = http.createServer(async (req, res) => {
         const r = await markOne(item)
         if (!r?.ok) return send(res, 403, r ?? { ok: false, error: 'Not accepted' })
         state.marked.set(reg, { name: r.name, at: Date.now(), ip }); state.byIp.set(ip, reg)
+        state.tickets.delete(String(b.ticket))   // one check-in per scan
         return send(res, 200, { ok: true, name: r.name })
       } catch (e) {
         // laptop lost internet: keep it and send when the connection returns
-        state.queue.push(item); saveQueue(); state.lastError = e.message
+        state.queue.push(item); state.lastError = e.message
         state.marked.set(reg, { name: reg + ' (pending)', at: Date.now(), ip }); state.byIp.set(ip, reg)
-        return send(res, 202, { ok: true, name: 'Recorded — will sync shortly', pending: true })
+        state.tickets.delete(String(b.ticket))
+        return send(res, 202, { ok: true, name: 'Saved on the teacher\'s laptop — it is sent when the internet is back. Your teacher will confirm.', pending: true })
       }
     }
 
     // Everything below is the staff console: only from this laptop.
     if (!isLocal(req)) return send(res, 404, 'Not found', 'text/plain')
+    if (req.method === 'POST' && !sameOrigin(req)) return send(res, 403, { error: 'Not allowed' })
     if (u.pathname === '/' && req.method === 'GET') return send(res, 200, page('console.html'), 'text/html; charset=utf-8')
     if (u.pathname === '/api/login' && req.method === 'POST') {
       const b = await readBody(req)
@@ -185,7 +195,7 @@ const server = http.createServer(async (req, res) => {
       state.sessions = all.filter(s => (b.ids || []).includes(s.id))
       state.title = b.title || ''
       if (b.hostIp) hostIp = b.hostIp
-      state.marked.clear(); state.byIp.clear(); rotate()
+      state.marked.clear(); state.byIp.clear(); state.failed = []; rotate()
       return send(res, 200, { ok: true, count: state.sessions.length })
     }
     if (u.pathname === '/api/stop' && req.method === 'POST') { state.sessions = []; return send(res, 200, { ok: true }) }
@@ -201,6 +211,7 @@ const server = http.createServer(async (req, res) => {
         staff: state.staff, open: state.sessions.length > 0, title: state.title, qr, link, rotate: state.rotate,
         present, total, recent: [...state.marked.values()].sort((a, b) => b.at - a.at).slice(0, 12).map(m => m.name),
         pending: state.queue.length, lastError: state.lastError,
+        failed: state.failed.map(f => `${f.reg}: ${f.error}`),
       })
     }
     return send(res, 404, 'Not found', 'text/plain')
