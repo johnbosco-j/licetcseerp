@@ -261,7 +261,7 @@ export default function HodDashboard({ name, greeting, designation }: { name: st
             tone={unallotted.length ? 'warn' : 'default'}
             sub={unallotted.length ? `${unallotted.length} awaiting faculty allotment` : 'All courses allotted'} />
           <Kpi label="Semester attendance" value={semAttPct == null ? '—' : `${semAttPct}%`} icon={ClipboardCheck} href="/dashboard/insights"
-            meter={semAttPct} sub={semAtt.n ? `${semAtt.n.toLocaleString('en-IN')} session records since semester start` : 'No attendance marked this semester'} />
+            meter={semAttPct} sub={semAtt.n ? `${semAtt.n.toLocaleString('en-IN')} student-hours recorded this term` : 'No attendance marked this semester'} />
           <Kpi label="Below 75%" value={d.lowStudents.length} icon={ShieldAlert} href="/dashboard/analytics"
             tone={d.lowStudents.length ? 'bad' : 'good'} sub={below65 ? `${below65} below 65% (not eligible)` : 'All eligible for exams'} />
           <Kpi label="Assessment pass rate" value={d.totals?.passRate == null ? '—' : `${d.totals.passRate}%`} icon={Award} href="/dashboard/marks"
