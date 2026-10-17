@@ -40,7 +40,7 @@ export default function StudentProfilePage() {
   const [student, setStudent] = useState<Profile | null>(null)
   const [missing, setMissing] = useState(false)
   const [advisor, setAdvisor] = useState<string | null>(null)
-  const [day, setDay] = useState<{ date: string; part: number; status: string }[]>([])
+  const [day, setDay] = useState<{ date: string; part: number; subject_id: string | null; status: string }[]>([])
   const [subjAtt, setSubjAtt] = useState<{ subject_id: string; status: string }[]>([])
   const [subjects, setSubjects] = useState<Record<string, Subject>>({})
   const [marks, setMarks] = useState<Mark[]>([])
@@ -68,10 +68,10 @@ export default function StudentProfilePage() {
       const { data: s } = await supabase.from("profiles").select("*").eq("id", id).eq("role", "STUDENT").maybeSingle()
       if (!s) { setMissing(true); return }
       setStudent(s)
-      const [adv, dayRes, subjRes, marksRes, leavesRes, alertsRes, grvRes, histRes, offersRes] = await Promise.all([
+      const [adv, dayRes, marksRes, leavesRes, alertsRes, grvRes, histRes, offersRes] = await Promise.all([
         supabase.from("profiles").select("full_name").eq("advisor_section", s.section ?? "").in("role", ["PROFESSOR", "HOD"]).limit(1),
-        supabase.from("day_attendance").select("date, part, status").eq("student_id", id).gte("date", from).order("date", { ascending: false }).limit(2000),
-        supabase.from("attendance").select("subject_id, status").eq("student_id", id).gte("date", from).limit(5000),
+        // every class hour this student was on the list for (hour-wise register)
+        supabase.from("attendance_sessions").select("date, period_no, subject_id, absent, on_duty").contains("roster", [id]).gte("date", from).order("date", { ascending: false }).order("period_no").range(0, 4999),
         supabase.from("marks").select("subject_id, exam_type, marks_obtained, max_marks").eq("student_id", id),
         supabase.from("leaves").select("*").eq("applicant_id", id).order("from_date", { ascending: false }),
         supabase.from("attendance_alerts").select("id, date, alert_type, missed_parts, met_hod, cleared_at").eq("student_id", id).order("date", { ascending: false }).limit(50),
@@ -80,15 +80,17 @@ export default function StudentProfilePage() {
         supabase.from("placement_offers").select("*").eq("student_id", id).order("offer_date", { ascending: false }),
       ])
       setAdvisor(adv.data?.[0]?.full_name ?? null)
-      setDay(dayRes.data ?? [])
-      setSubjAtt(subjRes.data ?? [])
+      const hours = ((dayRes.data ?? []) as { date: string; period_no: number; subject_id: string | null; absent: string[]; on_duty: string[] | null }[])
+        .map(h => ({ date: h.date, part: h.period_no, subject_id: h.subject_id, status: h.absent.includes(id) ? "ABSENT" : (h.on_duty ?? []).includes(id) ? "OD" : "PRESENT" }))
+      setDay(hours)
+      setSubjAtt(hours.filter(h => h.subject_id).map(h => ({ subject_id: h.subject_id!, status: h.status })))
       setMarks((marksRes.data ?? []) as Mark[])
       setLeaves(leavesRes.data ?? [])
       setAlerts((alertsRes.data ?? []) as Alert[])
       setGrievances(grvRes.data ?? [])
       setHistory(histRes.data ?? [])
       setOffers(offersRes.data ?? [])
-      const subjIds = [...new Set([...(subjRes.data ?? []).map(r => r.subject_id), ...(marksRes.data ?? []).map(r => r.subject_id)])]
+      const subjIds = [...new Set([...hours.flatMap(h => h.subject_id ? [h.subject_id] : []), ...(marksRes.data ?? []).map(r => r.subject_id)])]
       if (subjIds.length) {
         const { data: subs } = await supabase.from("subjects").select("id, code, name, semester").in("id", subjIds)
         setSubjects(Object.fromEntries((subs ?? []).map(x => [x.id, x as Subject])))
@@ -97,7 +99,7 @@ export default function StudentProfilePage() {
   }, [me, id])
 
   // ── Derived figures ──
-  const present = day.filter(d => d.status === "PRESENT" || d.status === "LATE").length
+  const present = day.filter(d => d.status !== "ABSENT").length
   const dayPct = day.length ? (100 * present) / day.length : null
   const absences = day.filter(d => d.status === "ABSENT")
   const absentDays = new Set(absences.map(a => a.date)).size
@@ -106,7 +108,7 @@ export default function StudentProfilePage() {
     const m = new Map<string, { total: number; present: number }>()
     for (const r of subjAtt) {
       const x = m.get(r.subject_id) ?? { total: 0, present: 0 }
-      x.total++; if (r.status === "PRESENT" || r.status === "LATE" || r.status === "EXCUSED") x.present++
+      x.total++; if (r.status !== "ABSENT") x.present++
       m.set(r.subject_id, x)
     }
     return [...m.entries()].map(([sid, v]) => ({ sid, ...v, pct: (100 * v.present) / v.total }))
@@ -198,7 +200,7 @@ export default function StudentProfilePage() {
 
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-        <Kpi label="Sessions this semester" value={day.length} sub={`${present} attended · ${absentDays} day${absentDays === 1 ? "" : "s"} with absence`} icon={CalendarCheck} meter={dayPct} />
+        <Kpi label="Hours this semester" value={day.length} sub={`${present} attended · ${absentDays} day${absentDays === 1 ? "" : "s"} with absence`} icon={CalendarCheck} meter={dayPct} />
         <Kpi label="Average marks" value={avgMarkPct == null ? "—" : `${Math.round(avgMarkPct)}%`} sub={`${marks.length} assessment${marks.length === 1 ? "" : "s"} recorded`} icon={Award} tone={avgMarkPct == null ? "default" : avgMarkPct >= 60 ? "good" : avgMarkPct >= 45 ? "warn" : "bad"} />
         <Kpi label="Leave applications" value={leaves.length} sub={`${leaves.filter(l => l.status === "PENDING").length} pending`} icon={CalendarMinus} />
         <Kpi label="Open alerts" value={openAlerts} sub={`${alerts.length} in total`} icon={AlertCircle} tone={openAlerts ? "bad" : "good"} />
@@ -230,7 +232,7 @@ export default function StudentProfilePage() {
               {absences.slice(0, 40).map(a => (
                 <li key={a.date + a.part} className="px-5 py-2.5 flex items-center justify-between text-[13px]">
                   <span>{fmtDate(a.date, true)}</span>
-                  <Pill tone="red">Part {["I", "II", "III"][a.part - 1] ?? a.part}</Pill>
+                  <Pill tone="red">Period {a.part}{a.subject_id && subjects[a.subject_id] ? ` · ${subjects[a.subject_id].code}` : ""}</Pill>
                 </li>
               ))}
             </ul>
