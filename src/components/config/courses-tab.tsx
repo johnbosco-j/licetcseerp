@@ -47,6 +47,7 @@ export function CoursesTab({ terms, verticals, groups }: { terms: Term[]; vertic
       code: r.code, name: r.name, short_name: r.short_name, semester: r.semester, section: r.section || null, cohort_grad_year: r.cohort_grad_year,
       audience: r.audience, audience_value: r.audience === 'VERTICAL' ? r.audience_value : null, group_id: r.audience === 'GROUP' ? r.group_id : null,
       credits: r.credits, faculty_names: r.faculty_names, is_active: r.is_active, course_type: r.course_type,
+      elective_slot: r.elective_slot?.trim() || null,
       faculty_id: links.find(l => l.subject_id === r.id && l.role === 'MAIN')?.faculty_id ?? null,
     }).eq('id', r.id)
     if (reportResult(error, `${r.code} saved`)) setDirty(d => { const n = new Set(d); n.delete(r.id); return n })
@@ -152,6 +153,7 @@ export function CoursesTab({ terms, verticals, groups }: { terms: Term[]; vertic
                       {verticals.map(v => <option key={v.code} value={`VERTICAL|${v.code}`}>{v.code} vertical</option>)}
                       {groups.map(g => <option key={g.id} value={`GROUP|${g.id}`}>{g.name}</option>)}
                     </select>
+                    <input value={r.elective_slot ?? ''} onChange={e => set(r.id, { elective_slot: e.target.value })} placeholder="Slot (PE1…)" title="Elective slot: options taught in the same hours share it, e.g. PE1 = POPL (FSD) / RL (AIML)" className="mt-1 block h-8 w-24 px-1 rounded border border-input text-[12px]" />
                   </td>
                   <td className="px-2 py-1.5">
                     <select multiple value={links.filter(l => l.subject_id === r.id).sort((a, b) => (a.role === 'MAIN' ? -1 : 1) - (b.role === 'MAIN' ? -1 : 1)).map(l => l.faculty_id)}

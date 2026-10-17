@@ -20,6 +20,7 @@ export interface Offering {
   cohort_grad_year: number | null; audience: 'ALL' | 'VERTICAL' | 'GROUP'; audience_value: string | null; group_id: string | null
   short_name: string | null; course_type: string | null; regulation: string | null; credits: number | null
   l: number | null; t: number | null; p: number | null; faculty_id: string | null; faculty_names: string | null; is_active: boolean
+  elective_slot?: string | null
 }
 export interface TimetableEntry {
   id: string; term_id: string; section: string; day_order: number; period_no: number
@@ -192,4 +193,35 @@ export async function loadCourseRoster(subject: Pick<Offering, 'id' | 'section' 
     list = [...list, ...((data ?? []) as P[])]
   }
   return list.sort((a, b) => (a.roll_number ?? a.full_name).localeCompare(b.roll_number ?? b.full_name))
+}
+
+/** "PE1 · POPL" for an elective option, else the short name / code. */
+export const offeringLabel = (o: { elective_slot?: string | null; short_name?: string | null; code: string }) =>
+  `${o.elective_slot ? `${o.elective_slot} · ` : ''}${o.short_name || o.code}`
+
+/**
+ * Courses a class takes in a term: its own section courses plus the combined courses of
+ * its batch (verticals, electives, honours). With a student given, only the options that
+ * student takes (their vertical / groups) are kept.
+ */
+export async function loadClassOfferings<T = Offering>(termId: string, section: string,
+  student?: { id: string; vertical?: string | null } | null): Promise<T[]> {
+  const { data: grad } = await supabase.rpc('section_grad_year', { p_section: section, p_term: termId })
+  const { data } = await supabase.from('subjects').select('*').eq('term_id', termId)
+    .or(`section.eq.${section},and(section.is.null,cohort_grad_year.eq.${Number(grad) || 0})`)
+    .order('elective_slot', { nullsFirst: true }).order('code')
+  let list = (data ?? []) as (Offering & { elective_slot?: string | null })[]
+  if (student) {
+    const { data: g } = await supabase.from('student_group_members').select('group_id').eq('student_id', student.id)
+    const groups = new Set(((g ?? []) as { group_id: string }[]).map(x => x.group_id))
+    list = list.filter(o => o.section || o.audience === 'ALL'
+      || (o.audience === 'VERTICAL' && o.audience_value === student.vertical)
+      || (o.audience === 'GROUP' && !!o.group_id && groups.has(o.group_id)))
+  }
+  return list as unknown as T[]
+}
+
+export async function currentTermId(): Promise<string | null> {
+  const { data } = await supabase.from('academic_terms').select('id').eq('is_current', true).maybeSingle()
+  return (data as { id: string } | null)?.id ?? null
 }

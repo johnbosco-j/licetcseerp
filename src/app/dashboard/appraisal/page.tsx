@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
+import { loadClassOfferings, currentTermId } from "@/lib/academic"
 import { isTier1 } from "@/lib/roles"
 import type { AuthUser } from "@/lib/auth"
 import { Star, CheckCircle2, Loader2, BarChart3, Users, Plus, X } from "lucide-react"
@@ -69,8 +70,12 @@ export default function AppraisalPage() {
       const { data: all } = await supabase.from('profiles').select('id, full_name, email').eq('role', 'PROFESSOR').eq('is_active', true).order('full_name')
       let list = all ?? []
       if (au.type === 'student' && (au.data as { section?: string }).section) {
-        const { data: subs } = await supabase.from('subjects').select('faculty_id').eq('section', (au.data as { section?: string }).section!).not('faculty_id', 'is', null)
-        const mine = new Set((subs ?? []).map(s => s.faculty_id))
+        // the teachers of the student's own courses this term, elective options included
+        const term = await currentTermId()
+        const { data: me } = await supabase.from('profiles').select('id, section, vertical').eq('id', au.data.id).single()
+        const subs = term && me?.section ? await loadClassOfferings<{ id: string; faculty_id: string | null }>(term, me.section, { id: me.id, vertical: me.vertical }) : []
+        const { data: links } = subs.length ? await supabase.from('subject_faculty').select('faculty_id').in('subject_id', subs.map(x => x.id)) : { data: [] }
+        const mine = new Set([...subs.map(x => x.faculty_id), ...((links ?? []) as { faculty_id: string }[]).map(l => l.faculty_id)].filter(Boolean))
         if (mine.size) list = list.filter(f => mine.has(f.id))
       }
       setFaculty(list)

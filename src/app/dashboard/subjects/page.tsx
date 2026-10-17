@@ -7,6 +7,7 @@ export const dynamic = "force-dynamic"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
+import { loadClassOfferings } from "@/lib/academic"
 import { isTier1 } from "@/lib/roles"
 import { courseType as regulationCourseType } from "@/lib/regulations"
 import type { AuthUser } from "@/lib/auth"
@@ -518,14 +519,15 @@ export default function SubjectsPage() {
       section = profile.section ?? (authUser.data as { section?: string })?.section ?? ''
     }
 
-    const sem = currentSem(section)
-    supabase.from('subjects').select('*')
-      .eq('section', section).eq('semester', sem)
-      .order('code')
-      .then(({ data, error }) => {
-        if (error) { console.error('Failed to load subjects for section', section, 'sem', sem, error); return }
-        if (data) setSubjects(data)
-      })
+    if (!section) return
+    // this term's courses of the class, with the batch's electives (a student sees their own options)
+    let cancelled = false
+    supabase.from('academic_terms').select('id').eq('is_current', true).maybeSingle().then(async ({ data: term }) => {
+      if (!term || cancelled) return
+      const list = await loadClassOfferings<Subject>(term.id, section, isStudent && profile ? { id: profile.id, vertical: profile.vertical } : null)
+      if (!cancelled) setSubjects(list)
+    })
+    return () => { cancelled = true }
   }, [authUser, profile, selectedSection, isStudent])
 
   // Faculty allotment is stored on the subject (it also decides who may enter marks/attendance).
@@ -652,6 +654,8 @@ export default function SubjectsPage() {
                         <span className="font-mono text-xs text-muted-foreground">{subject.code}</span>
                         <span className={`font-mono text-xs px-1.5 py-0.5 border rounded ${typeColor[ct]}`}>{ct}</span>
                         <span className="font-mono text-xs text-muted-foreground">{subject.credits} credits</span>
+                        {subject.elective_slot && <span className="text-[11px] font-bold px-1.5 py-0.5 rounded bg-licet-indigo text-white" title="Elective slot: students take one option of this slot">{subject.elective_slot}</span>}
+                        {!subject.section && subject.audience === 'VERTICAL' && <span className="text-[11px] px-1.5 py-0.5 rounded border border-licet-gold bg-licet-cream text-licet-indigo">{subject.audience_value === 'AIML' ? 'AI & ML vertical' : subject.audience_value === 'FSD' ? 'Full Stack vertical' : subject.audience_value} · both sections</span>}
                       </div>
                       <p className="font-medium text-sm mt-0.5">{subject.name}</p>
                       {assignedFaculty && (

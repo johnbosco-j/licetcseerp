@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
+import { currentTermId } from "@/lib/academic"
 import { isTier1 } from "@/lib/roles"
 import { attendanceStatus } from "@/lib/regulations"
 import { computeRisk, loadStudentStats, type RiskScore, type CGPAResult } from "@/lib/cgpa"
@@ -98,16 +99,17 @@ export default function AnalyticsPage() {
 
     const loadWorkloadData = async () => {
       setLoadingWorkload(true)
-      const { data: profs } = await supabase.from('profiles').select('*').in('role', ['PROFESSOR', 'HOD'])
-      const { data: subjs } = await supabase.from('subjects').select('*')
-      const { data: marks } = await supabase.from('marks').select('subject_id, faculty_id')
+      // this term's courses and who teaches them (course allotment, shared courses included)
+      const term = await currentTermId()
+      const { data: profs } = await supabase.from('profiles').select('*').in('role', ['PROFESSOR', 'HOD']).eq('is_active', true)
+      const { data: subjs } = term ? await supabase.from('subjects').select('*, subject_faculty(faculty_id)').eq('term_id', term) : { data: [] }
 
-      if (profs && subjs && marks) {
-        const assignments: Record<string, string> = {}
-        marks.forEach(m => { assignments[m.subject_id] = m.faculty_id })
+      if (profs && subjs) {
+        const teaches = (s: { faculty_id: string | null; subject_faculty?: { faculty_id: string }[] | null }, id: string) =>
+          s.faculty_id === id || (s.subject_faculty ?? []).some(f => f.faculty_id === id)
 
         const wl = profs.map(p => {
-          const assignedSubjects = subjs.filter(s => assignments[s.id] === p.id)
+          const assignedSubjects = subjs.filter(s => teaches(s, p.id))
           const totalCredits = assignedSubjects.reduce((sum, s) => sum + Number(s.credits), 0)
           return { profile: p, subjects: assignedSubjects, totalCredits }
         }).sort((a, b) => b.totalCredits - a.totalCredits)

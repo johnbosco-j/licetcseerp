@@ -43,7 +43,8 @@ export function MyAttendance({ terms, minPct, condPct, me }: { terms: Term[]; mi
     for (const h of hours) {
       const o = offerings.find(x => x.id === h.subject_id)
       const k = h.subject_id ?? 'L:' + h.label
-      const cur = m.get(k) ?? { name: o?.name ?? (h.label ?? '—').replace(/^Event: /, ''), code: o?.code ?? '', c: 0, a: 0 }
+      const slot = (o as { elective_slot?: string | null } | undefined)?.elective_slot
+      const cur = m.get(k) ?? { name: (slot ? `${slot} · ` : '') + (o?.name ?? (h.label ?? '—').replace(/^Event: /, '')), code: o?.code ?? '', c: 0, a: 0 }
       cur.c++; if (h.present) cur.a++
       m.set(k, cur)
     }

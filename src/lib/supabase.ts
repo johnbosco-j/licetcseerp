@@ -59,6 +59,7 @@ export type Database = {
           audience: 'ALL' | 'VERTICAL' | 'GROUP'; audience_value: string | null; group_id: string | null
           short_name: string | null; faculty_names: string | null
           co1: string | null; co2: string | null; co3: string | null; co4: string | null; co5: string | null; co6: string | null
+          elective_slot: string | null
         }
       }
       attendance: {

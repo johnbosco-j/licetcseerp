@@ -5,10 +5,10 @@ export const dynamic = "force-dynamic"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
+import { loadClassOfferings, currentTermId } from "@/lib/academic"
 import type { AuthUser } from "@/lib/auth"
 import type { Database } from "@/lib/supabase"
 import { MessageSquare, Star, Loader2, CheckCircle2 } from "lucide-react"
-import { getActiveSemester } from "@/lib/semester"
 
 type Subject = Database['public']['Tables']['subjects']['Row']
 type Profile = Database['public']['Tables']['profiles']['Row']
@@ -48,7 +48,6 @@ export default function FeedbackPage() {
   const isStaff   = authUser?.type === 'staff'
   const isStudent = authUser?.type === 'student'
   const SECTIONS  = ['I CSE-A','I CSE-B','II CSE-A','II CSE-B','III CSE-A','III CSE-B','IV CSE-A','IV CSE-B']
-  const currentSem = (s: string) => getActiveSemester(s)
 
   useEffect(() => {
     const stored = localStorage.getItem('excelsior_user') || localStorage.getItem('licet_user')
@@ -67,23 +66,24 @@ export default function FeedbackPage() {
   }, [isStudent, profile])
 
   useEffect(() => {
-    if (!authUser) return
-    if (isStudent) {
-      const section = (authUser.data as { section?: string })?.section ?? ''
-      supabase.from('subjects').select('*')
-        .eq('section', section).eq('semester', currentSem(section)).order('name')
-        .then(({ data }) => { if (data) setSubjects(data) })
-    }
-  }, [authUser, isStudent])
+    if (!authUser || !isStudent || !profile?.section) return
+    // this term's courses including the student's own elective options (PE1, PE2, …)
+    let cancelled = false
+    currentTermId().then(async term => {
+      if (!term || cancelled) return
+      const list = await loadClassOfferings<Subject>(term, profile.section!, { id: profile.id, vertical: profile.vertical })
+      if (!cancelled) setSubjects(list)
+    })
+    return () => { cancelled = true }
+  }, [authUser, isStudent, profile])
 
   useEffect(() => {
     if (!isStaff) return
     let cancelled = false
     const load = async () => {
       setLoadingStats(true)
-      const { data: subs } = await supabase.from('subjects').select('*')
-        .eq('section', selectedSection).eq('semester', currentSem(selectedSection)).order('name')
-      const list = subs ?? []
+      const term = await currentTermId()
+      const list = term ? await loadClassOfferings<Subject>(term, selectedSection) : []
       const { data: rows } = list.length
         ? await supabase.from('announcements').select('audience, body').in('audience', list.map(s => `FEEDBACK:${s.id}`))
         : { data: [] }

@@ -7,7 +7,7 @@ import { supabase } from "@/lib/supabase"
 import { reportResult } from "@/components/toaster"
 import {
   SECTIONS, type AttSession, type Offering, type Term, type ClassBlock, type TimetableEntry,
-  loadRosterStudents, type RosterStudent, DAY_SHORT, weekdayOf,
+  loadRosterStudents, type RosterStudent, DAY_SHORT, weekdayOf, offeringLabel,
 } from "@/lib/academic"
 import { MarkPanel } from "./mark-panel"
 
@@ -70,7 +70,7 @@ export function RegisterView({ term, isHod, me, defaultSection }: { term: Term; 
 
   const offName = (id: string | null, label: string | null) => {
     const o = offerings.find(x => x.id === id)
-    return o ? (o.short_name || o.code) : (label ?? '—')
+    return o ? offeringLabel(o) : (label ?? "—")
   }
   const cols = useMemo(() => {
     // One column per (date, period); a split hour has several sessions in one column.
@@ -135,7 +135,7 @@ export function RegisterView({ term, isHod, me, defaultSection }: { term: Term; 
         </select>
         <select value={subject} onChange={e => setSubject(e.target.value)} className="h-9 px-2 rounded-md border border-input bg-white text-[13.5px] max-w-[260px]">
           <option value="">All courses</option>
-          {offerings.map(o => <option key={o.id} value={o.id}>{o.short_name || o.code} — {o.name}</option>)}
+          {offerings.map(o => <option key={o.id} value={o.id}>{offeringLabel(o)} — {o.name}</option>)}
         </select>
         <div className="ml-auto flex gap-2">
           {isHod && <button onClick={verify} disabled={!dates.length} className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md border border-licet-violet text-licet-violet text-[13px] font-semibold hover:bg-licet-cream/50 disabled:opacity-50"><BadgeCheck className="w-4 h-4" /> Verify register</button>}

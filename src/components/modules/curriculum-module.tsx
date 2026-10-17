@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
+import { loadClassOfferings, currentTermId } from "@/lib/academic"
 import type { AuthUser } from "@/lib/auth"
 import { getCurrentSemParity } from "@/lib/semester"
 import {
@@ -17,6 +18,9 @@ interface Subject {
   id: string
   code: string
   name: string
+  elective_slot?: string | null
+  audience?: string
+  audience_value?: string | null
   semester: number
   credits: number
   section: string | null
@@ -158,12 +162,13 @@ export default function CurriculumModule({ initialSection = "II CSE-A" }: { init
   // ── Load subjects for section+semester ────────────────
   const loadSubjects = async () => {
     setLoading(true)
-    const { data, error } = await (supabase.from("subjects") as any)
-      .select("*")
-      .eq("section", section)
-      .eq("semester", currentSem)
-      .order("code")
-    if (!error) setSubjects((data as Subject[]) ?? [])
+    // this term's courses of the class, including the batch's electives (PE1, PE2, …)
+    const term = await currentTermId()
+    if (term) setSubjects(await loadClassOfferings<Subject>(term, section))
+    else {
+      const { data, error } = await (supabase.from("subjects") as any).select("*").eq("section", section).eq("semester", currentSem).order("code")
+      if (!error) setSubjects((data as Subject[]) ?? [])
+    }
     setLoading(false)
   }
 
@@ -748,7 +753,9 @@ export default function CurriculumModule({ initialSection = "II CSE-A" }: { init
 
                   {/* Name */}
                   <span style={{ fontSize: "13px", fontWeight: 500, color: "#1A0C4E", flex: 1 }}>
+                    {sub.elective_slot && <b style={{ marginRight: 6, padding: "1px 6px", borderRadius: 4, background: "#1A0C4E", color: "#fff", fontSize: 11 }}>{sub.elective_slot}</b>}
                     {sub.name}
+                    {!sub.section && sub.audience === "VERTICAL" && <span style={{ marginLeft: 6, fontSize: 11, color: "#6b6480" }}>· {sub.audience_value === "AIML" ? "AI & ML vertical" : sub.audience_value === "FSD" ? "Full Stack vertical" : sub.audience_value}, both sections</span>}
                   </span>
 
                   {/* CO indicator */}

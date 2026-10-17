@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { Download, Loader2 } from "lucide-react"
 import * as XLSX from "xlsx"
 import { supabase } from "@/lib/supabase"
-import { SECTIONS, type Offering, type Term, eligibility, TONE } from "@/lib/academic"
+import { SECTIONS, type Offering, type Term, eligibility, TONE, offeringLabel } from "@/lib/academic"
 
 type Row = { student_id: string; subject_id: string | null; label: string | null; conducted: number; attended: number; on_duty: number }
 type Cond = { student_id: string; status: string; reason_kind: string }
@@ -47,7 +47,7 @@ export function SummaryView({ term, minPct, condPct, defaultSection }: { term: T
 
   const courseCols = useMemo(() => {
     const keys = new Map<string, string>()
-    for (const o of offerings) keys.set(o.id, o.short_name || o.code)
+    for (const o of offerings) keys.set(o.id, offeringLabel(o))
     for (const r of rows) if (!r.subject_id && r.label) keys.set('L:' + r.label, r.label.replace(/^Event: /, ''))
     return [...keys.entries()]
   }, [offerings, rows])

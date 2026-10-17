@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
+import { loadClassOfferings, currentTermId } from "@/lib/academic"
 import { isTier1 } from "@/lib/roles"
 import { printHtml } from "@/lib/print"
 import { academicYear, semesterTerm } from "@/lib/utils"
@@ -19,7 +20,6 @@ import {
 import { toast, reportResult } from "@/components/toaster"
 import { FileUpload, FileList, type UploadedFile } from "@/components/file-upload"
 import * as XLSX from "xlsx"
-import { getActiveSemester } from "@/lib/semester"
 
 type Profile  = Database['public']['Tables']['profiles']['Row']
 type Subject  = Database['public']['Tables']['subjects']['Row']
@@ -94,7 +94,6 @@ export default function ExaminationPage() {
 
   const isHOD     = authUser?.type === 'staff' && isTier1(authUser.data)
   const isFaculty = authUser?.type === 'staff'
-  const currentSem = (s: string) => getActiveSemester(s)
 
   useEffect(() => {
     const stored = localStorage.getItem('excelsior_user') || localStorage.getItem('licet_user')
@@ -106,9 +105,15 @@ export default function ExaminationPage() {
   }, [router])
 
   useEffect(() => {
-    if (!authUser) return
-    supabase.from('subjects').select('*').eq('section', section).eq('semester', currentSem(section)).order('code')
-      .then(({ data }) => { if (data) setSubjects(data) })
+    if (!authUser || !section) return
+    // the class's courses this term, electives (PE1, PE2, …) included
+    let cancelled = false
+    currentTermId().then(async term => {
+      if (!term || cancelled) return
+      const list = await loadClassOfferings<Subject>(term, section)
+      if (!cancelled) setSubjects(list)
+    })
+    return () => { cancelled = true }
   }, [section, authUser])
 
   const loadData = async () => {
