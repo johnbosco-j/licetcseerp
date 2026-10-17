@@ -9,15 +9,16 @@ import {
 import { supabase } from "@/lib/supabase"
 import { courseType } from "@/lib/regulations"
 import {
-  SECTIONS, PERIODS, currentSemester, semesterStart, dayPhase, loadWeekTimetables, loadSectionAttendance,
-  loadStudentAttendance, loadUpcomingEvents, loadNotices, loadUpcomingExams, loadRecentDocuments, loadParentMobiles, todayName, fmtDate, fmtTime,
+  SECTIONS, PERIODS, semesterStart, dayPhase, loadWeekTimetables, loadTodayDays, loadSectionAttendance,
+  loadStudentAttendance, loadUpcomingEvents, loadNotices, loadUpcomingExams, loadRecentDocuments, loadParentMobiles, fmtDate, fmtTime,
   type SectionAttendance, type StudentAttendance, type EventItem, type NoticeItem, type ExamItem, type DocItem, type WeekTimetable,
 } from "@/lib/dashboard"
 import { academicYear, semesterTerm } from "@/lib/utils"
 import { Hero, HeroChip, HeroPanel, Kpi, KpiSkeleton, Panel, PanelEmpty, Bar, AttPct, Pill, Initials, ListRow, Schedule, phaseLabel, CallParent } from "./widgets"
 import { NoticesPanel, EventsPanel, ExamsPanel, DocumentsPanel, TodoPanel, WeekGrid, daysUntil, type Todo } from "./panels"
 
-type Subject = { id: string; code: string; name: string; semester: number; section: string; credits: number }
+/** `section` is a display name; combined courses (both sections of a year) list their sections in `sections`. */
+type Subject = { id: string; code: string; name: string; semester: number; section: string; sections: string[]; credits: number }
 export type FacultyMe = {
   id: string; full_name: string; email: string; advisor_section: string | null
   employee_id?: string | null; designation?: string | null; can_reset_passwords?: boolean | null
@@ -30,6 +31,9 @@ const TYPE_LABEL: Record<string, string> = { THEORY: 'Theory', LAB_INTEGRATED: '
 interface FacultyData {
   subjects: CourseRow[]
   week: Record<string, WeekTimetable>
+  todayDays: Record<string, string | null>
+  strength: Record<string, number>
+  taught: number
   sectionAtt: Record<string, SectionAttendance>
   lowInMyClasses: StudentAttendance[]
   classMobiles: Record<string, string>
@@ -44,21 +48,40 @@ interface FacultyData {
 }
 
 async function loadFaculty(me: FacultyMe): Promise<FacultyData> {
-  const { data: allMine } = await supabase.from('subjects').select('id, code, name, semester, section, credits').eq('faculty_id', me.id)
-  const subjects = (allMine ?? []).filter(s => SECTIONS.includes(s.section) && s.semester === currentSemester(s.section)) as Subject[]
+  // this term's courses where I am the instructor (alone or with colleagues)
+  const { data: term } = await supabase.from('academic_terms').select('id').eq('is_current', true).maybeSingle()
+  type Off = { id: string; code: string; name: string; semester: number; section: string | null; credits: number; cohort_grad_year: number | null; audience: string; audience_value: string | null }
+  const [{ data: own }, { data: shared }, { data: roll }] = await Promise.all([
+    term ? supabase.from('subjects').select('id, code, name, semester, section, credits, cohort_grad_year, audience, audience_value').eq('term_id', term.id).eq('faculty_id', me.id) : Promise.resolve({ data: [] }),
+    term ? supabase.from('subject_faculty').select('subjects!inner(id, code, name, semester, section, credits, cohort_grad_year, audience, audience_value, term_id)').eq('faculty_id', me.id).eq('subjects.term_id', term.id) : Promise.resolve({ data: [] }),
+    supabase.from('profiles').select('id, section, batch_year, vertical').eq('role', 'STUDENT').eq('is_active', true).range(0, 4999),
+  ])
+  const offs = new Map<string, Off>()
+  for (const o of (own ?? []) as Off[]) offs.set(o.id, o)
+  for (const r of (shared ?? []) as unknown as { subjects: Off }[]) offs.set(r.subjects.id, r.subjects)
+  const students = (roll ?? []) as { id: string; section: string | null; batch_year: number | null; vertical: string | null }[]
+  const inCourse = (o: Off) => students.filter(x => o.section ? x.section === o.section : x.batch_year === o.cohort_grad_year && (o.audience !== 'VERTICAL' || x.vertical === o.audience_value))
+  const taught = new Set([...offs.values()].flatMap(o => inCourse(o).map(x => x.id))).size
+  const subjects: (Subject & { strength: number })[] = [...offs.values()].map(o => {
+    if (o.section) return { ...o, section: o.section, sections: [o.section], strength: inCourse(o).length }
+    const cohort = inCourse(o)
+    const secs = [...new Set(cohort.map(x => x.section).filter(Boolean) as string[])].sort()
+    const year = secs[0]?.split(' ')[0] ?? ''
+    return { ...o, section: `${year} CSE${o.audience === 'VERTICAL' ? ` · ${o.audience_value}` : ''} (combined)`, sections: secs, strength: cohort.length }
+  })
   const ids = subjects.map(s => s.id)
-  const mySections = [...new Set(subjects.map(s => s.section))]
+  const mySections = [...new Set(subjects.flatMap(s => s.sections))]
   const sections = [...new Set([...mySections, ...(me.advisor_section ? [me.advisor_section] : [])])]
   const head = { count: 'exact' as const, head: true }
 
-  const [studentsRes, marksRes, locksRes, week, sectionAtt, allAtt, attRes, leavesRes, hodRes, notices, events, exams, docs, alertsRes, mustRes] = await Promise.all([
-    sections.length ? supabase.from('profiles').select('section').eq('role', 'STUDENT').eq('is_active', true).in('section', sections).range(0, 4999) : Promise.resolve({ data: [] as { section: string | null }[] }),
+  const [marksRes, locksRes, week, todayDays, sectionAtt, allAtt, attRes, leavesRes, hodRes, notices, events, exams, docs, alertsRes, mustRes] = await Promise.all([
     ids.length ? supabase.from('marks').select('subject_id, student_id, exam_type').in('subject_id', ids).range(0, 19999) : Promise.resolve({ data: [] as { subject_id: string; student_id: string; exam_type: string }[] }),
     ids.length ? supabase.from('subject_locks').select('subject_id, lock_type').in('subject_id', ids) : Promise.resolve({ data: [] as { subject_id: string; lock_type: string }[] }),
-    loadWeekTimetables(SECTIONS),
+    loadWeekTimetables(SECTIONS, { teacherId: me.id, subjectIds: ids }),
+    loadTodayDays(SECTIONS),
     loadSectionAttendance(),
     sections.length ? loadStudentAttendance() : Promise.resolve([] as StudentAttendance[]),
-    supabase.from('day_attendance').select('id', head).eq('marked_by', me.id).gte('date', semesterStart()),
+    supabase.from('attendance_sessions').select('id', head).eq('taken_by', me.id).eq('status', 'SUBMITTED').gte('date', semesterStart()),
     supabase.from('leaves').select('id, leave_type, from_date, to_date, status, created_at').eq('applicant_id', me.id).order('created_at', { ascending: false }).limit(4),
     supabase.from('profiles').select('full_name').eq('role', 'HOD').eq('is_active', true).limit(1).maybeSingle(),
     loadNotices(['ALL', 'PROFESSOR', 'FACULTY', ...SECTIONS], 5),
@@ -70,7 +93,7 @@ async function loadFaculty(me: FacultyMe): Promise<FacultyData> {
   ])
 
   const strength: Record<string, number> = {}
-  for (const r of studentsRes.data ?? []) if (r.section) strength[r.section] = (strength[r.section] ?? 0) + 1
+  for (const r of students) if (r.section) strength[r.section] = (strength[r.section] ?? 0) + 1
   const marks = marksRes.data ?? []
   const low = allAtt.filter(s => s.sessions > 0 && s.pct < 75).sort((a, b) => a.pct - b.pct)
   const advisees = me.advisor_section ? low.filter(s => s.section === me.advisor_section) : []
@@ -82,13 +105,12 @@ async function loadFaculty(me: FacultyMe): Promise<FacultyData> {
       const m = marks.filter(x => x.subject_id === s.id)
       return {
         ...s,
-        strength: strength[s.section] ?? 0,
         graded: new Set(m.map(x => x.student_id)).size,
         assessments: [...new Set(m.map(x => x.exam_type))],
         locked: (locksRes.data ?? []).filter(l => l.subject_id === s.id).map(l => l.lock_type),
       }
     }).sort((a, b) => a.section.localeCompare(b.section) || a.code.localeCompare(b.code)),
-    week, sectionAtt,
+    week, todayDays, sectionAtt, strength, taught,
     lowInMyClasses, classMobiles: mobiles,
     attendanceRecords: attRes.count ?? 0,
     advisor: me.advisor_section ? {
@@ -119,18 +141,19 @@ export default function FacultyDashboard({ me, name, greeting, embedded = false 
   }, [me])
 
   const ids = new Set(d?.subjects.map(s => s.id) ?? [])
-  const today = todayName(now)
-
-  // My slots across all section timetables
-  const mySlot = (day: string, period: number) => {
+  // My slots across all section timetables (the week is already filtered to my classes).
+  // `day` = a weekday's timetable; for today each section follows its own calendar day order.
+  const mySlot = (day: string | ((section: string) => string | null), period: number) => {
     if (!d) return null
-    for (const section of SECTIONS) {
-      const s = d.week[section]?.[day]?.[period]
-      if (s && ids.has(s.subjectId)) return { code: s.subjectCode, name: s.subjectName, section }
-    }
-    return null
+    const hits = SECTIONS.flatMap(section => {
+      const dn = typeof day === 'string' ? day : day(section)
+      const s = dn ? d.week[section]?.[dn]?.[period] : undefined
+      return s ? [{ s, section }] : []
+    })
+    if (!hits.length) return null
+    return { code: hits[0].s.subjectCode, name: hits[0].s.subjectName, section: hits.map(h => h.section).join(' + '), sections: hits.map(h => h.section), takes: hits.some(h => h.s.takesAttendance) }
   }
-  const todayItems = PERIODS.flatMap(p => { const s = mySlot(today, p.no); return s ? [{ period: p.no, code: s.code, name: s.name, meta: s.section }] : [] })
+  const todayItems = PERIODS.flatMap(p => { const s = mySlot(sec => d?.todayDays[sec] ?? null, p.no); return s ? [{ period: p.no, code: s.code, name: s.name, meta: s.section, sections: s.sections, takes: s.takes }] : [] })
   const weeklyLoad = d ? ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].reduce((a, day) => a + PERIODS.filter(p => mySlot(day, p.no)).length, 0) : 0
   const phase = dayPhase(now, d ? todayItems.length > 0 : true)
   const nextClass = todayItems.find(i => (phase.kind === 'period' && i.period >= phase.period.no) || (phase.kind === 'break' && i.period >= phase.next.no) || phase.kind === 'before')
@@ -138,10 +161,10 @@ export default function FacultyDashboard({ me, name, greeting, embedded = false 
   // Attendance still to be marked for my classes that have already started today
   const t = now.getHours() * 60 + now.getMinutes()
   const started = (no: number) => { const [h, m] = PERIODS[no - 1].start.split(':').map(Number); return t >= h * 60 + m }
-  const unmarked = d ? todayItems.filter(i => started(i.period) && !(d.sectionAtt[i.meta]?.today_parts ?? []).includes(PERIODS[i.period - 1].part)) : []
+  const unmarked = d ? todayItems.filter(i => started(i.period) && i.takes && i.sections.some(sec => !(d.sectionAtt[sec]?.today_parts ?? []).includes(i.period))) : []
 
-  const mySections = [...new Set(d?.subjects.map(s => s.section) ?? [])]
-  const students = mySections.reduce((a, s) => a + (d?.subjects.find(x => x.section === s)?.strength ?? 0), 0)
+  const mySections = [...new Set(d?.subjects.flatMap(s => s.sections) ?? [])].sort()
+  const students = d?.taught ?? 0
   const gradedPct = d && d.subjects.length ? Math.round(d.subjects.reduce((a, s) => a + (s.strength ? Math.min(1, s.graded / s.strength) : 0), 0) / d.subjects.length * 100) : null
   const noCia1 = d?.subjects.filter(s => !s.assessments.some(a => a.startsWith('CIA1'))) ?? []
   const partial = d?.subjects.filter(s => s.graded > 0 && s.graded < s.strength) ?? []
@@ -233,7 +256,7 @@ export default function FacultyDashboard({ me, name, greeting, embedded = false 
           <Kpi label="Marks entry" value={gradedPct == null ? '—' : `${gradedPct}%`} icon={Award} href="/dashboard/marks"
             tone={gradedPct != null && gradedPct < 100 ? 'warn' : 'default'} sub="Students with marks in your courses" />
           <Kpi label="Attendance marked" value={d.attendanceRecords.toLocaleString('en-IN')} icon={ClipboardCheck} href="/dashboard/attendance"
-            sub="Session records this semester" />
+            sub="Hours submitted this semester" />
         </>}
       </section>
 
@@ -320,12 +343,12 @@ export default function FacultyDashboard({ me, name, greeting, embedded = false 
                   <div key={section} className="rounded-lg border border-border p-3.5">
                     <div className="flex items-center justify-between">
                       <span className="text-[13px] font-bold text-licet-indigo">{section}</span>
-                      <span className="text-[11.5px] text-muted-foreground">{d.subjects.find(s => s.section === section)?.strength ?? 0} students</span>
+                      <span className="text-[11.5px] text-muted-foreground">{d.strength[section] ?? 0} students</span>
                     </div>
                     <div className="flex items-center gap-2 mt-3"><div className="flex-1"><Bar value={pct ?? 0} tone="att" /></div><AttPct value={pct} /></div>
                     <div className="flex items-center justify-between mt-2.5 text-[11.5px]">
                       <span className="text-muted-foreground">{a?.below_75 ? <span className="text-red-800 font-semibold">{a.below_75} below 75%</span> : 'None below 75%'}</span>
-                      <span className="flex gap-1">{[1, 2, 3].map(p => <span key={p} className={`w-6 h-5 rounded text-[9.5px] font-bold flex items-center justify-center ${a?.today_parts?.includes(p) ? 'bg-green-700 text-white' : 'bg-muted text-muted-foreground'}`}>P{p}</span>)}</span>
+                      <span className="flex gap-1">{todayItems.filter(i => i.takes && i.sections.includes(section)).map(({ period: p }) => <span key={p} title={`Today, period ${p}: ${a?.today_parts?.includes(p) ? 'marked' : 'not marked'}`} className={`w-6 h-5 rounded text-[9.5px] font-bold flex items-center justify-center ${a?.today_parts?.includes(p) ? 'bg-green-700 text-white' : 'bg-muted text-muted-foreground'}`}>P{p}</span>)}</span>
                     </div>
                   </div>
                 )
@@ -343,7 +366,7 @@ export default function FacultyDashboard({ me, name, greeting, embedded = false 
                   <Initials name={s.full_name} />
                   <div className="min-w-0 flex-1">
                     <p className="text-[13.5px] text-licet-indigo truncate">{s.full_name}</p>
-                    <p className="text-[11.5px] text-muted-foreground">{s.section} · {s.present}/{s.sessions} sessions</p>
+                    <p className="text-[11.5px] text-muted-foreground">{s.section} · {s.present}/{s.sessions} hours</p>
                   </div>
                   <Pill tone={s.pct < 65 ? 'red' : 'amber'}>{s.pct < 65 ? 'SA' : 'Condonation'}</Pill>
                   <span className="w-11 text-right"><AttPct value={s.pct} /></span>

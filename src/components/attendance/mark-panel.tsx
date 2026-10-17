@@ -39,6 +39,7 @@ export function MarkPanel({ date, block, dayOrder, isHod, onClose, onSaved }: {
   const [busy, setBusy] = useState(false)
   const [now, setNow] = useState(() => Date.now())
   const [dirty, setDirty] = useState(false)
+  const [refused, setRefused] = useState<string | null>(null)
 
   const open = useCallback(async () => {
     setLoading(true)
@@ -49,7 +50,7 @@ export function MarkPanel({ date, block, dayOrder, isHod, onClose, onSaved }: {
         p_date: date, p_period: p, p_section: ent.section, p_subject: ent.subject_id, p_label: ent.subject_id ? null : ent.label,
         p_audience: ent.audience, p_value: ent.audience_value, p_group: ent.group_id, p_entry: ent.id,
       })
-      if (error) { toast.error(error.message); setLoading(false); return }
+      if (error) { setRefused(error.message); setLoading(false); return }
       out.push(data as AttSession)
     }
     setSessions(out)
@@ -200,6 +201,12 @@ export function MarkPanel({ date, block, dayOrder, isHod, onClose, onSaved }: {
 
         {loading ? (
           <div className="flex-1 flex items-center justify-center py-20 text-muted-foreground"><Loader2 className="w-5 h-5 animate-spin mr-2" /> Opening the register…</div>
+        ) : refused ? (
+          <div className="flex-1 flex flex-col items-center justify-center gap-3 px-6 py-14 text-center">
+            <ShieldAlert className="w-7 h-7 text-amber-600" />
+            <p className="text-[14px] text-foreground max-w-md">{refused}</p>
+            <button onClick={onClose} className="h-9 px-4 rounded-md border border-border text-[13px] font-semibold hover:bg-muted">Close</button>
+          </div>
         ) : (
           <>
             <div className="px-5 py-3 border-b border-border space-y-2">

@@ -215,7 +215,7 @@ export function TakeAttendance({ term, me, isHod }: { term: Term; me: { id: stri
         </div>
       )}
 
-      {open && <MarkPanel date={date} block={open.block} dayOrder={open.dayOrder} isHod={isHod} onClose={() => { setOpen(null); loadDay() }} onSaved={loadDay} />}
+      {open && <MarkPanel key={`${date}|${open.block.entries.map(x => x.id).join()}|${open.block.periods.join()}`} date={date} block={open.block} dayOrder={open.dayOrder} isHod={isHod} onClose={() => { setOpen(null); loadDay() }} onSaved={loadDay} />}
     </div>
   )
 }

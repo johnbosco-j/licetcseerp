@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase"
 import { getActiveSemester, semesterStartDate } from "@/lib/semester"
+import { dayInfo, activeOn, entryTitle, type TimetableEntry } from "@/lib/academic"
 
 export const SECTIONS = ['I CSE-A', 'I CSE-B', 'II CSE-A', 'II CSE-B', 'III CSE-A', 'III CSE-B', 'IV CSE-A', 'IV CSE-B']
 export const YEARS = ['I', 'II', 'III', 'IV'] as const
@@ -57,41 +58,54 @@ export function dayPhase(now = new Date(), hasClasses = true): DayPhase {
   return { kind: 'after' }
 }
 
-export interface Slot { subjectId: string; subjectCode: string; subjectName: string }
-interface StoredTimetable {
-  timetable: Record<string, Record<string, Slot>>
-  satConfig?: { enabled: boolean; followsDay: string; halfDay: boolean }
+export interface Slot {
+  subjectId: string; subjectCode: string; subjectName: string
+  /** every course / teacher in the cell (a split lab cell has one per batch) */
+  subjectIds: string[]; facultyIds: string[]
+  takesAttendance: boolean
+}
+/** Who is looking: a student only sees the parts of a split cell meant for them; a teacher only their own classes. */
+export interface Viewer { lab_batch?: number | null; vertical?: string | null; groupIds?: string[]; teacherId?: string; subjectIds?: string[] }
+
+const WEEKDAY = ['', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+
+async function currentTermId(): Promise<string | null> {
+  const { data } = await supabase.from('academic_terms').select('id').eq('is_current', true).maybeSingle()
+  return (data as { id: string } | null)?.id ?? null
 }
 
-const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+const fits = (e: TimetableEntry, v?: Viewer) => !v
+  || (v.teacherId ? (e.faculty_ids ?? []).includes(v.teacherId) || (!!e.subject_id && (v.subjectIds ?? []).includes(e.subject_id)) : e.audience === 'ALL')
+  || (e.audience === 'BATCH' && String(v.lab_batch ?? '') === e.audience_value)
+  || (e.audience === 'VERTICAL' && v.vertical === e.audience_value)
+  || (e.audience === 'GROUP' && !!e.group_id && (v.groupIds ?? []).includes(e.group_id))
 
-/** Today's periods for each section, honouring the Saturday configuration. */
-export async function loadTodaysTimetables(sections: string[], now = new Date()): Promise<Record<string, { period: Period; slot: Slot }[]>> {
-  const out: Record<string, { period: Period; slot: Slot }[]> = {}
-  if (!sections.length) return out
-  const { data } = await supabase.from('announcements').select('audience, body, created_at')
-    .in('audience', sections.map(s => `TIMETABLE:${s}`))
-    .order('created_at', { ascending: false })
-  const day = DAY_NAMES[now.getDay()]
-  for (const section of sections) {
-    const row = data?.find(r => r.audience === `TIMETABLE:${section}`)
-    out[section] = []
-    if (!row) continue
-    try {
-      const tt = JSON.parse(row.body) as StoredTimetable
-      let source = day
-      let periods = PERIODS
-      if (day === 'Sunday') continue
-      if (day === 'Saturday') {
-        if (!tt.satConfig?.enabled) continue
-        source = tt.satConfig.followsDay
-        if (tt.satConfig.halfDay) periods = PERIODS.slice(0, 5)
-      }
-      const daySlots = tt.timetable?.[source] ?? {}
-      out[section] = periods.filter(p => daySlots[p.no]).map(p => ({ period: p, slot: daySlots[p.no] }))
-    } catch { /* malformed timetable: treat as empty */ }
+function slotOf(es: TimetableEntry[]): Slot {
+  const uniq = (xs: string[]) => [...new Set(xs.filter(Boolean))]
+  return {
+    subjectId: es.find(e => e.subject_id)?.subject_id ?? '',
+    subjectCode: uniq(es.map(e => entryTitle(e))).join(' / '),
+    subjectName: uniq(es.map(e => e.label && /lab/i.test(e.label) ? e.label : e.subjects?.name ?? e.label ?? '')).join(' / '),
+    subjectIds: uniq(es.map(e => e.subject_id ?? '')),
+    facultyIds: uniq(es.flatMap(e => e.faculty_ids ?? [])),
+    takesAttendance: es.some(e => e.takes_attendance),
   }
-  return out
+}
+
+/** Which weekday's timetable each section follows today (null = holiday), from the academic calendar. */
+export async function loadTodayDays(sections: string[], date = isoDate()): Promise<Record<string, string | null>> {
+  const infos = await Promise.all(sections.map(s => dayInfo(date, s)))
+  return Object.fromEntries(sections.map((s, i) => [s, infos[i].working && infos[i].dayOrder ? WEEKDAY[infos[i].dayOrder!] : null]))
+}
+
+/** Today's periods for each section, following the academic calendar (holidays, Saturday orders). */
+export async function loadTodaysTimetables(sections: string[], now = new Date()): Promise<Record<string, { period: Period; slot: Slot }[]>> {
+  const [week, days] = await Promise.all([loadWeekTimetables(sections), loadTodayDays(sections, isoDate(now))])
+  return Object.fromEntries(sections.map(section => {
+    const day = days[section]
+    const slots = day ? week[section]?.[day] ?? {} : {}
+    return [section, PERIODS.filter(p => slots[p.no]).map(p => ({ period: p, slot: slots[p.no] }))]
+  }))
 }
 
 // ── Attendance summaries (database functions, RLS applies) ─────────────────
@@ -179,30 +193,31 @@ export async function loadNotices(audiences: string[], limit = 6): Promise<Notic
 }
 
 export const WEEK_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 export const todayName = (d = new Date()) => DAY_NAMES[d.getDay()]
 
 export type WeekTimetable = Record<string, Record<number, Slot>>   // day -> period -> slot
 
-/** Full weekly timetable per section (Saturday resolved from its configuration). */
-export async function loadWeekTimetables(sections: string[]): Promise<Record<string, WeekTimetable>> {
-  const out: Record<string, WeekTimetable> = {}
-  if (!sections.length) return out
-  const { data } = await supabase.from('announcements').select('audience, body, created_at')
-    .in('audience', sections.map(s => `TIMETABLE:${s}`))
-    .order('created_at', { ascending: false })
-  for (const section of sections) {
-    out[section] = {}
-    const row = data?.find(r => r.audience === `TIMETABLE:${section}`)
-    if (!row) continue
-    try {
-      const tt = JSON.parse(row.body) as StoredTimetable
-      for (const day of WEEK_DAYS.slice(0, 5)) out[section][day] = { ...(tt.timetable?.[day] ?? {}) }
-      if (tt.satConfig?.enabled) {
-        const src = tt.timetable?.[tt.satConfig.followsDay] ?? {}
-        const limit = tt.satConfig.halfDay ? 5 : 8
-        out[section].Saturday = Object.fromEntries(Object.entries(src).filter(([p]) => Number(p) <= limit))
-      }
-    } catch { /* ignore malformed */ }
+/** Weekly timetable per section from the timetable editor (current term). */
+export async function loadWeekTimetables(sections: string[], viewer?: Viewer): Promise<Record<string, WeekTimetable>> {
+  const out: Record<string, WeekTimetable> = Object.fromEntries(sections.map(s => [s, {}]))
+  const term = sections.length ? await currentTermId() : null
+  if (!term) return out
+  const today = isoDate()
+  const { data } = await supabase.from('timetable_entries')
+    .select('*, subjects(id, code, name, short_name, section, cohort_grad_year, audience, audience_value)')
+    .eq('term_id', term).in('section', sections).range(0, 4999)
+  const cells = new Map<string, TimetableEntry[]>()
+  for (const e of (data ?? []) as TimetableEntry[]) {
+    if (!activeOn(e, today) || !fits(e, viewer)) continue
+    const k = `${e.section}|${e.day_order}|${e.period_no}`
+    cells.set(k, [...(cells.get(k) ?? []), e])
+  }
+  for (const [k, es] of cells) {
+    const [section, order, period] = k.split('|')
+    const day = WEEKDAY[Number(order)]
+    if (!day) continue
+    out[section][day] = { ...(out[section][day] ?? {}), [Number(period)]: slotOf(es) }
   }
   return out
 }

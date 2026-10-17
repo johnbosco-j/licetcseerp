@@ -10,7 +10,7 @@ import {
 import { supabase } from "@/lib/supabase"
 import { loadDepartmentTotals, type DepartmentTotals } from "@/lib/cgpa"
 import {
-  SECTIONS, currentSemester, isFinalYear, isoDate, dayPhase, loadTodaysTimetables, loadSectionAttendance,
+  SECTIONS, PERIODS, currentSemester, isFinalYear, isoDate, dayPhase, loadTodaysTimetables, loadSectionAttendance,
   loadStudentAttendance, loadUpcomingEvents, loadNotices, loadUpcomingExams, loadRecentDocuments, loadParentMobiles, timeAgo, fmtDate, inr,
   type SectionAttendance, type StudentAttendance, type EventItem, type NoticeItem, type ExamItem, type DocItem, type Period, type Slot,
 } from "@/lib/dashboard"
@@ -22,7 +22,7 @@ import {
 import { NoticesPanel, EventsPanel, ExamsPanel, DocumentsPanel } from "./panels"
 
 type Staff = { id: string; full_name: string; role: string; advisor_section: string | null; designation: string | null }
-type Subject = { id: string; code: string; name: string; semester: number; section: string; faculty_id: string | null; credits: number }
+type Subject = { id: string; code: string; name: string; semester: number; section: string | null; faculty_id: string | null; credits: number; teachers: string[] }
 type Leave = { id: string; leave_type: string; from_date: string; to_date: string; created_at: string; applicant_id: string; status: string }
 type Grievance = { id: string; subject_line: string; category: string; status: string; created_at: string; student_id: string }
 type Placement = { id: string; company_name: string; role_title: string; package_lpa: number | null; visit_date: string | null }
@@ -54,6 +54,7 @@ interface HodData {
 async function loadHod(): Promise<HodData> {
   const today = isoDate()
   const head = { count: 'exact' as const, head: true }
+  const { data: term } = await supabase.from('academic_terms').select('id').eq('is_current', true).maybeSingle()
   const [
     studentsRes, mustChangeRes, staffRes, subjectsRes, sectionAtt, allAtt, totals, leavesRes, onLeaveRes,
     grievRes, alertsRes, events, notices, placementsRes, financeRes, inventoryRes, todayTT, exams, docs,
@@ -61,7 +62,8 @@ async function loadHod(): Promise<HodData> {
     supabase.from('profiles').select('section').eq('role', 'STUDENT').eq('is_active', true).range(0, 4999),
     supabase.from('profiles').select('id', head).eq('role', 'STUDENT').eq('must_change_password', true),
     supabase.from('profiles').select('id, full_name, role, advisor_section, designation').in('role', ['HOD', 'PROFESSOR']).eq('is_active', true).order('full_name'),
-    supabase.from('subjects').select('id, code, name, semester, section, faculty_id, credits').range(0, 4999),
+    // this term's offerings, including combined (both-section) vertical and elective courses
+    term ? supabase.from('subjects').select('id, code, name, semester, section, faculty_id, credits, subject_faculty(faculty_id)').eq('term_id', term.id).range(0, 4999) : Promise.resolve({ data: [] }),
     loadSectionAttendance(),
     loadStudentAttendance(),
     loadDepartmentTotals().catch(() => null),
@@ -115,7 +117,9 @@ async function loadHod(): Promise<HodData> {
     strength,
     mustChange: mustChangeRes.count ?? 0,
     staff,
-    subjects: (subjectsRes.data ?? []) as Subject[],
+    subjects: ((subjectsRes.data ?? []) as (Omit<Subject, 'teachers'> & { subject_faculty: { faculty_id: string }[] | null })[]).map(({ subject_faculty, ...x }) => ({
+      ...x, teachers: [...new Set([x.faculty_id, ...(subject_faculty ?? []).map(f => f.faculty_id)].filter(Boolean) as string[])],
+    })),
     sectionAtt,
     lowStudents, parentMobiles,
     totals,
@@ -154,22 +158,22 @@ export default function HodDashboard({ name, greeting, designation }: { name: st
   const totalStudents = d ? Object.values(d.strength).reduce((a, b) => a + b, 0) : 0
   const faculty = d?.staff.filter(s => s.role === 'PROFESSOR') ?? []
   const advisors = new Map((d?.staff ?? []).filter(s => s.advisor_section).map(s => [s.advisor_section!, s.full_name]))
-  const currentSubjects = (d?.subjects ?? []).filter(s => SECTIONS.includes(s.section) && !isFinalYear(s.section) && s.semester === currentSemester(s.section))
-  const unallotted = currentSubjects.filter(s => !s.faculty_id)
+  const currentSubjects = d?.subjects ?? []
+  const unallotted = currentSubjects.filter(s => !s.teachers.length)
   const semAtt = d ? Object.values(d.sectionAtt).reduce((acc, s) => ({ n: acc.n + s.sessions, p: acc.p + s.present }), { n: 0, p: 0 }) : { n: 0, p: 0 }
   const semAttPct = semAtt.n ? Math.round(semAtt.p / semAtt.n * 100) : null
   const below65 = d ? Object.values(d.sectionAtt).reduce((a, s) => a + s.below_65, 0) : 0
   const todayMarked = d ? Object.values(d.sectionAtt).reduce((acc, s) => ({ n: acc.n + s.today_sessions, p: acc.p + s.today_present }), { n: 0, p: 0 }) : { n: 0, p: 0 }
 
-  // Parts whose teaching has already started today, per section (from its timetable)
+  // Periods that have started today and need a register, per section (from its timetable and the calendar)
   const t = now.getHours() * 60 + now.getMinutes()
   const started = (p: Period) => { const [h, m] = p.start.split(':').map(Number); return t >= h * 60 + m }
-  const partsDue = (section: string) => [...new Set((d?.today[section] ?? []).map(x => x.period).filter(started).map(p => p.part))].sort()
-  const sectionsUnmarked = d ? SECTIONS.filter(s => partsDue(s).some(p => !(d.sectionAtt[s]?.today_parts ?? []).includes(p))) : []
+  const periodsDue = (section: string) => (d?.today[section] ?? []).filter(x => x.slot.takesAttendance && started(x.period)).map(x => x.period.no)
+  const sectionsUnmarked = d ? SECTIONS.filter(s => periodsDue(s).some(p => !(d.sectionAtt[s]?.today_parts ?? []).includes(p))) : []
 
   const workload = faculty.map(f => {
-    const subs = currentSubjects.filter(s => s.faculty_id === f.id)
-    return { ...f, courses: subs.length, credits: subs.reduce((a, s) => a + Number(s.credits || 0), 0), sections: [...new Set(subs.map(s => s.section))] }
+    const subs = currentSubjects.filter(s => s.teachers.includes(f.id))
+    return { ...f, courses: subs.length, credits: subs.reduce((a, s) => a + Number(s.credits || 0), 0), sections: [...new Set(subs.map(s => s.section ?? 'combined'))] }
   }).sort((a, b) => b.courses - a.courses || a.full_name.localeCompare(b.full_name))
 
   const attention = d ? [
@@ -276,13 +280,13 @@ export default function HodDashboard({ name, greeting, designation }: { name: st
           )}
         </Panel>
 
-        <Panel kicker={`${new Date().toLocaleDateString('en-IN', { weekday: 'long' })} · three-part attendance`} title="Today’s attendance by section" href="/dashboard/attendance-analysis" hrefLabel="Analysis">
+        <Panel kicker={`${new Date().toLocaleDateString('en-IN', { weekday: 'long' })} · hour-wise attendance`} title="Today’s attendance by section" href="/dashboard/attendance-analysis" hrefLabel="Analysis">
           {!d ? <div className="p-5 grid grid-cols-2 gap-3">{Array.from({ length: 8 }).map((_, i) => <div key={i} className="h-20 rounded-lg bg-muted animate-pulse" />)}</div> : (
             <div className="p-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
               {SECTIONS.map(section => {
                 const a = d.sectionAtt[section]
-                const scheduled = [...new Set((d.today[section] ?? []).map(x => x.period.part))]
-                const due = partsDue(section)
+                const scheduled = (d.today[section] ?? []).filter(x => x.slot.takesAttendance).map(x => x.period.no)
+                const due = periodsDue(section)
                 const pct = a?.today_sessions ? Math.round(a.today_present / a.today_sessions * 100) : null
                 return (
                   <Link key={section} href="/dashboard/attendance" prefetch
@@ -291,15 +295,15 @@ export default function HodDashboard({ name, greeting, designation }: { name: st
                       <span className="text-[12.5px] font-bold text-licet-indigo">{section}</span>
                       <AttPct value={pct} />
                     </div>
-                    <div className="flex gap-1 mt-2.5">
-                      {([1, 2, 3] as const).map(part => {
-                        const marked = a?.today_parts?.includes(part)
-                        const isDue = due.includes(part)
-                        const hasClass = scheduled.includes(part)
+                    <div className="flex gap-0.5 mt-2.5">
+                      {PERIODS.map(({ no }) => {
+                        const marked = a?.today_parts?.includes(no)
+                        const isDue = due.includes(no)
+                        const hasClass = scheduled.includes(no)
                         return (
-                          <span key={part} title={`Part ${part}: ${marked ? 'marked' : isDue ? 'pending' : hasClass ? 'later today' : 'no class'}`}
-                            className={`flex-1 h-6 rounded text-[10px] font-bold flex items-center justify-center border ${marked ? 'bg-green-700 border-green-700 text-white' : isDue ? 'bg-amber-50 border-amber-300 text-amber-800' : hasClass ? 'bg-white border-border text-muted-foreground' : 'bg-muted border-transparent text-muted-foreground/50'}`}>
-                            P{part}
+                          <span key={no} title={`Period ${no}: ${marked ? 'marked' : isDue ? 'pending' : hasClass ? 'later today' : 'no class'}`}
+                            className={`flex-1 h-6 rounded text-[9.5px] font-bold flex items-center justify-center border ${marked ? 'bg-green-700 border-green-700 text-white' : isDue ? 'bg-amber-50 border-amber-300 text-amber-800' : hasClass ? 'bg-white border-border text-muted-foreground' : 'bg-muted border-transparent text-muted-foreground/50'}`}>
+                            {no}
                           </span>
                         )
                       })}
@@ -386,7 +390,7 @@ export default function HodDashboard({ name, greeting, designation }: { name: st
                   <Initials name={s.full_name} />
                   <div className="min-w-0 flex-1">
                     <p className="text-[13.5px] font-medium text-licet-indigo truncate">{s.full_name}</p>
-                    <p className="text-[11.5px] text-muted-foreground">{s.section} · {s.present}/{s.sessions} sessions</p>
+                    <p className="text-[11.5px] text-muted-foreground">{s.section} · {s.present}/{s.sessions} hours</p>
                   </div>
                   <Pill tone={s.pct < 65 ? 'red' : 'amber'}>{s.pct < 65 ? 'SA' : 'Condonation'}</Pill>
                   <span className="w-12 text-right"><AttPct value={s.pct} /></span>

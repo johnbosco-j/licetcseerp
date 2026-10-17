@@ -195,7 +195,7 @@ export function RegisterView({ term, isHod, me, defaultSection }: { term: Term; 
         </div>
       )}
       <p className="text-[12px] text-muted-foreground">P = present · OD = present on duty · A = absent · · = not in that class (other batch or vertical). Excel export uses 1 / 2 (OD) / 0 like the department register. Click a period number to open that hour.</p>
-      {edit && <MarkPanel date={edit.date} block={blockFor(edit)} dayOrder={null} isHod={isHod} onClose={() => { setEdit(null); load() }} onSaved={load} />}
+      {edit && <MarkPanel key={edit.id} date={edit.date} block={blockFor(edit)} dayOrder={null} isHod={isHod} onClose={() => { setEdit(null); load() }} onSaved={load} />}
     </div>
   )
 }

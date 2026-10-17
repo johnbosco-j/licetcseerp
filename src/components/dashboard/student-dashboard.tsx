@@ -9,8 +9,8 @@ import { supabase } from "@/lib/supabase"
 import { cgpaFromMarks, type CGPAResult } from "@/lib/cgpa"
 import { courseType, markSplit, internalMarks, attendanceStatus, type MarkMap } from "@/lib/regulations"
 import {
-  PERIODS, currentSemester, isoDate, semesterStart, isFinalYear, dayPhase, loadWeekTimetables, loadUpcomingEvents, loadNotices,
-  loadUpcomingExams, loadRecentDocuments, attendanceHeadroom, timeAgo, fmtDate, todayName,
+  PERIODS, currentSemester, isoDate, isFinalYear, dayPhase, loadWeekTimetables, loadTodayDays, loadUpcomingEvents, loadNotices,
+  loadUpcomingExams, loadRecentDocuments, attendanceHeadroom, timeAgo, fmtDate,
   type EventItem, type NoticeItem, type ExamItem, type DocItem, type WeekTimetable,
 } from "@/lib/dashboard"
 import { academicYear, semesterTerm } from "@/lib/utils"
@@ -22,11 +22,14 @@ type Course = { id: string; code: string; name: string; credits: number; faculty
 type Leave = { id: string; leave_type: string; from_date: string; to_date: string; status: string }
 type Grievance = { id: string; subject_line: string; category: string; status: string; created_at: string }
 type Placement = { id: string; company_name: string; role_title: string; package_lpa: number | null; visit_date: string | null }
-type DayRecord = { date: string; parts: Record<number, string> }
+type HourStatus = 'PRESENT' | 'ABSENT' | 'OD'
+type DayRecord = { date: string; hours: Record<number, HourStatus> }
+type Hour = { date: string; period_no: number; subject_id: string | null; present: boolean; on_duty: boolean }
 
 interface StudentData {
   sessions: number; present: number
-  todayParts: Record<number, string>
+  todayHours: Record<number, HourStatus>
+  todayDay: string | null
   recent: DayRecord[]
   cgpa: CGPAResult
   courses: Course[]
@@ -45,22 +48,29 @@ interface StudentData {
 
 const TYPE_LABEL: Record<string, string> = { THEORY: 'Theory', LAB_INTEGRATED: 'Theory + Lab', LAB: 'Laboratory', PROJECT: 'Project', FORMATION: 'Formation' }
 const COMPONENTS: [string, string][] = [['CIA1', 'CIA 1'], ['CIA2', 'CIA 2'], ['SEM_END', 'SEE']]
-const present = (s?: string) => s === 'PRESENT' || s === 'LATE'
+const hourStatus = (h: Hour): HourStatus => !h.present ? 'ABSENT' : h.on_duty ? 'OD' : 'PRESENT'
 
 async function loadStudent(me: StudentMe): Promise<StudentData> {
   const section = me.section ?? ''
-  const sem = currentSemester(section)
-  const from = semesterStart()
   const head = { count: 'exact' as const, head: true }
-  const [dayAtt, marksRes, subjectsRes, advisorRes, hodRes, alertsRes, subjAttRes, weekRes, feedbackRes, leavesRes, grievRes, notices, events, exams, docs, placementsRes] = await Promise.all([
-    supabase.from('day_attendance').select('date, part, status').eq('student_id', me.id).gte('date', from).order('date', { ascending: false }).range(0, 9999),
+  // batch / vertical / groups decide which half of a split timetable cell and which combined courses are mine
+  const [{ data: prof }, { data: groups }, { data: term }] = await Promise.all([
+    supabase.from('profiles').select('lab_batch, vertical, batch_year').eq('id', me.id).maybeSingle(),
+    supabase.from('student_group_members').select('group_id').eq('student_id', me.id),
+    supabase.from('academic_terms').select('id').eq('is_current', true).maybeSingle(),
+  ])
+  const viewer = { lab_batch: prof?.lab_batch ?? null, vertical: prof?.vertical ?? null, groupIds: (groups ?? []).map(g => g.group_id as string) }
+  const [hoursRes, marksRes, subjectsRes, advisorRes, hodRes, alertsRes, weekRes, todayDays, feedbackRes, leavesRes, grievRes, notices, events, exams, docs, placementsRes] = await Promise.all([
+    supabase.rpc('my_attendance', { p_term: term?.id ?? null }),
     supabase.from('marks').select('*, subjects(id, code, name, credits, semester, section)').eq('student_id', me.id).range(0, 4999),
-    supabase.from('subjects').select('id, code, name, credits, faculty_id').eq('section', section).eq('semester', sem).order('code'),
+    term ? supabase.from('subjects').select('id, code, name, credits, faculty_id, section, cohort_grad_year, audience, audience_value, group_id')
+      .eq('term_id', term.id).or(`section.eq.${section},and(section.is.null,cohort_grad_year.eq.${Number(prof?.batch_year) || 0})`).order('code')
+      : Promise.resolve({ data: [] }),
     supabase.from('profiles').select('full_name').eq('advisor_section', section).maybeSingle(),
     supabase.from('profiles').select('full_name').eq('role', 'HOD').eq('is_active', true).limit(1).maybeSingle(),
     supabase.from('attendance_alerts').select('id', head).eq('student_id', me.id).is('cleared_at', null),
-    supabase.from('attendance').select('subject_id, status').eq('student_id', me.id).gte('date', from).range(0, 9999),
-    loadWeekTimetables([section]),
+    loadWeekTimetables([section], viewer),
+    loadTodayDays([section]),
     supabase.from('announcements').select('audience').eq('created_by', me.id).like('audience', 'FEEDBACK:%'),
     supabase.from('leaves').select('id, leave_type, from_date, to_date, status').eq('applicant_id', me.id).order('created_at', { ascending: false }).limit(3),
     supabase.from('grievances').select('id, subject_line, category, status, created_at').eq('student_id', me.id).order('created_at', { ascending: false }).limit(3),
@@ -71,12 +81,15 @@ async function loadStudent(me: StudentMe): Promise<StudentData> {
     supabase.from('placements').select('id, company_name, role_title, package_lpa, visit_date').eq('is_active', true).order('visit_date', { ascending: true, nullsFirst: false }).limit(4),
   ])
 
-  const att = dayAtt.data ?? []
-  const byDate = new Map<string, Record<number, string>>()
-  for (const a of att) { const m = byDate.get(a.date) ?? {}; m[a.part] = a.status; byDate.set(a.date, m) }
+  const hours = (hoursRes.data ?? []) as Hour[]
+  const byDate = new Map<string, Record<number, HourStatus>>()
+  for (const h of hours) { const m = byDate.get(h.date) ?? {}; m[h.period_no] = hourStatus(h); byDate.set(h.date, m) }
   const today = isoDate()
 
-  const subjects = subjectsRes.data ?? []
+  type Sub = { id: string; code: string; name: string; credits: number; faculty_id: string | null; section: string | null; audience: string; audience_value: string | null; group_id: string | null }
+  const subjects = ((subjectsRes.data ?? []) as Sub[]).filter(s => s.section || s.audience === 'ALL'
+    || (s.audience === 'VERTICAL' && s.audience_value === viewer.vertical)
+    || (s.audience === 'GROUP' && !!s.group_id && viewer.groupIds.includes(s.group_id)))
   const facultyIds = [...new Set(subjects.map(s => s.faculty_id).filter(Boolean))] as string[]
   const facultyNames = new Map<string, string>()
   if (facultyIds.length) {
@@ -84,24 +97,24 @@ async function loadStudent(me: StudentMe): Promise<StudentData> {
     for (const f of data ?? []) facultyNames.set(f.id, f.full_name)
   }
   const marks = marksRes.data ?? []
-  const subjAtt = subjAttRes.data ?? []
   const feedbackDone = new Set((feedbackRes.data ?? []).map(r => r.audience.slice('FEEDBACK:'.length)))
 
   return {
-    sessions: att.length,
-    present: att.filter(a => present(a.status)).length,
-    todayParts: byDate.get(today) ?? {},
-    recent: [...byDate.entries()].slice(0, 12).map(([date, parts]) => ({ date, parts })).reverse(),
+    sessions: hours.length,
+    present: hours.filter(h => h.present).length,
+    todayHours: byDate.get(today) ?? {},
+    todayDay: todayDays[section] ?? null,
+    recent: [...byDate.entries()].sort((a, b) => a[0].localeCompare(b[0])).slice(-12).map(([date, hours]) => ({ date, hours })),
     cgpa: cgpaFromMarks(marks),
     courses: subjects.map(s => {
       const mine = marks.filter(m => m.subject_id === s.id)
-      const sa = subjAtt.filter(a => a.subject_id === s.id)
+      const sa = hours.filter(h => h.subject_id === s.id)
       return {
         id: s.id, code: s.code, name: s.name, credits: Number(s.credits),
         faculty: s.faculty_id ? facultyNames.get(s.faculty_id) ?? null : null,
         marks: Object.fromEntries(mine.map(m => [m.exam_type, Number(m.marks_obtained)])),
         entered: mine.map(m => m.exam_type),
-        subjectAtt: { n: sa.length, p: sa.filter(a => present(a.status)).length },
+        subjectAtt: { n: sa.length, p: sa.filter(h => h.present).length },
         feedbackDone: feedbackDone.has(s.id),
       }
     }),
@@ -131,12 +144,12 @@ export default function StudentDashboard({ me, name, greeting }: { me: StudentMe
   const section = me?.section ?? ''
   const sem = currentSemester(section)
   const final = isFinalYear(section)
-  const today = todayName(now)
-  const todayItems = d ? PERIODS.flatMap(p => { const s = d.week[today]?.[p.no]; return s ? [{ period: p.no, code: s.subjectCode, name: s.subjectName }] : [] }) : []
+  const today = d?.todayDay ?? null
+  const todayItems = d && today ? PERIODS.flatMap(p => { const s = d.week[today]?.[p.no]; return s ? [{ period: p.no, code: s.subjectCode, name: s.subjectName }] : [] }) : []
   const phase = dayPhase(now, d ? todayItems.length > 0 : true)
   const pct = d?.sessions ? d.present / d.sessions * 100 : null
   const status = pct == null ? null : attendanceStatus(pct)
-  const head = d ? attendanceHeadroom(d.present, d.sessions) : { canMiss: 0, mustAttend: 0 }
+  const head = d ? attendanceHeadroom(d.present, d.sessions, 0.745) : { canMiss: 0, mustAttend: 0 }   // Reg. 7.2 rounds to the nearest integer
   const pendingLeaves = d?.leaves.filter(l => l.status === 'PENDING').length ?? 0
   const openGrievances = d?.grievances.filter(g => g.status === 'OPEN' || g.status === 'IN_PROGRESS').length ?? 0
   const feedbackDue = d?.courses.filter(c => !c.feedbackDone) ?? []
@@ -146,9 +159,9 @@ export default function StudentDashboard({ me, name, greeting }: { me: StudentMe
   const todos: Todo[] = d ? [
     pct == null
       ? { label: 'No attendance recorded yet this semester', href: '/dashboard/attendance', icon: ClipboardCheck, tone: 'done' }
-      : pct < 75
-        ? { label: `Attendance below 75% — attend the next ${head.mustAttend} session${head.mustAttend === 1 ? '' : 's'}`, detail: pct < 65 ? 'Below 65%: not eligible for the semester-end exam' : '65–74%: condonation needed for the semester-end examination', count: Math.round(pct), href: '/dashboard/attendance', icon: ClipboardCheck, tone: pct < 65 ? 'bad' : 'warn' }
-        : { label: 'Attendance is at or above 75%', detail: `You can miss up to ${head.canMiss} more session${head.canMiss === 1 ? '' : 's'}`, href: '/dashboard/attendance', icon: ClipboardCheck, tone: 'done' },
+      : Math.round(pct) < 75
+        ? { label: `Attendance below 75% — attend the next ${head.mustAttend} hour${head.mustAttend === 1 ? "" : "s"}`, detail: Math.round(pct) < 65 ? 'Below 65%: not eligible for the semester-end exam' : '65–74%: condonation needed for the semester-end examination', count: Math.round(pct), href: '/dashboard/attendance', icon: ClipboardCheck, tone: Math.round(pct) < 65 ? "bad" : "warn" }
+        : { label: 'Attendance is at or above 75%', detail: `You can miss up to ${head.canMiss} more hour${head.canMiss === 1 ? "" : "s"}`, href: '/dashboard/attendance', icon: ClipboardCheck, tone: 'done' },
     d.alerts
       ? { label: 'Attendance alerts to clear with your HOD', count: d.alerts, href: '/dashboard/alerts', icon: BellRing, tone: 'warn' }
       : { label: 'No pending attendance alerts', href: '/dashboard/alerts', icon: BellRing, tone: 'done' },
@@ -181,21 +194,25 @@ export default function StudentDashboard({ me, name, greeting }: { me: StudentMe
         ]}
         aside={
           <HeroPanel title="Today’s attendance">
-            {!d ? <div className="h-[64px] animate-pulse rounded bg-white/10" /> : (
-              <div className="grid grid-cols-3 gap-2">
-                {[1, 2, 3].map(p => {
-                  const s = d.todayParts[p]
-                  const Icon = !s ? MinusCircle : s === 'ABSENT' ? XCircle : CheckCircle2
-                  return (
-                    <div key={p} className={`rounded-lg px-2 py-2.5 text-center border ${!s ? 'border-white/15 text-licet-cream/70' : s === 'ABSENT' ? 'border-red-300/40 bg-red-500/15 text-red-100' : 'border-emerald-300/40 bg-emerald-500/15 text-emerald-100'}`}>
-                      <Icon size={16} className="mx-auto" />
-                      <p className="text-[11px] font-semibold mt-1">Part {['I', 'II', 'III'][p - 1]}</p>
-                      <p className="text-[10.5px] opacity-80">{s ? s.charAt(0) + s.slice(1).toLowerCase() : 'Not marked'}</p>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
+            {!d ? <div className="h-[64px] animate-pulse rounded bg-white/10" /> : (() => {
+              const periods = [...new Set([...todayItems.map(i => i.period), ...Object.keys(d.todayHours).map(Number)])].sort((a, b) => a - b)
+              if (!periods.length) return <p className="text-[12.5px] text-licet-cream/80 py-3">{today ? 'No classes today.' : 'Holiday — no classes today.'}</p>
+              return (
+                <div className="grid grid-cols-4 gap-1.5">
+                  {periods.map(p => {
+                    const s = d.todayHours[p]
+                    const Icon = !s ? MinusCircle : s === 'ABSENT' ? XCircle : CheckCircle2
+                    return (
+                      <div key={p} className={`rounded-lg px-1 py-2 text-center border ${!s ? 'border-white/15 text-licet-cream/70' : s === 'ABSENT' ? 'border-red-300/40 bg-red-500/15 text-red-100' : 'border-emerald-300/40 bg-emerald-500/15 text-emerald-100'}`}>
+                        <Icon size={15} className="mx-auto" />
+                        <p className="text-[11px] font-semibold mt-1">P{p}</p>
+                        <p className="text-[10px] opacity-80">{!s ? 'Not marked' : s === 'OD' ? 'On duty' : s === 'ABSENT' ? 'Absent' : 'Present'}</p>
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })()}
           </HeroPanel>
         }
       />
@@ -210,7 +227,7 @@ export default function StudentDashboard({ me, name, greeting }: { me: StudentMe
         {!d ? <KpiSkeleton count={6} /> : <>
           <Kpi label="Attendance" value={pct == null ? '—' : `${Math.round(pct)}%`} icon={ClipboardCheck} href="/dashboard/attendance" meter={pct}
             tone={status ? ({ good: 'good', warn: 'warn', bad: 'bad' } as const)[status.tone] : 'default'}
-            sub={d.sessions ? `${d.present} of ${d.sessions} sessions this semester` : 'No attendance recorded yet'} />
+            sub={d.sessions ? `${d.present} of ${d.sessions} hours this semester` : 'No attendance recorded yet'} />
           <Kpi label="CGPA" value={d.cgpa.totalCredits ? d.cgpa.cgpa.toFixed(2) : '—'} icon={Award} href="/dashboard/analytics"
             sub={d.cgpa.totalCredits ? `${d.cgpa.totalCredits} credits earned` : 'Published after semester results'} />
           <Kpi label="Courses" value={final ? '—' : d.courses.length} icon={BookOpen} href="/dashboard/subjects"
@@ -239,9 +256,9 @@ export default function StudentDashboard({ me, name, greeting }: { me: StudentMe
                       <span className="text-[12.5px] text-muted-foreground">{status.label}</span>
                     </div>
                     <p className="text-[14px] text-licet-indigo leading-relaxed">
-                      {pct! >= 75
-                        ? head.canMiss > 0 ? <>You can miss up to <b>{head.canMiss}</b> more session{head.canMiss === 1 ? '' : 's'} and still stay at 75% or above.</> : <>You are right at the limit. Missing the next session takes you below 75%.</>
-                        : <>Attend the next <b>{head.mustAttend}</b> session{head.mustAttend === 1 ? '' : 's'} without absence to reach 75%.</>}
+                      {Math.round(pct!) >= 75
+                        ? head.canMiss > 0 ? <>You can miss up to <b>{head.canMiss}</b> more hour{head.canMiss === 1 ? "" : "s"} and still stay at 75% or above.</> : <>You are right at the limit. Missing the next hour takes you below 75%.</>
+                        : <>Attend the next <b>{head.mustAttend}</b> hour{head.mustAttend === 1 ? "" : "s"} without absence to reach 75%.</>}
                     </p>
                   </>
                 ) : <p className="text-[13.5px] text-muted-foreground">Attendance for this semester has not been recorded yet.</p>}
@@ -268,13 +285,13 @@ export default function StudentDashboard({ me, name, greeting }: { me: StudentMe
               <div className="overflow-x-auto">
                 <table className="border-separate border-spacing-1 text-[11px]">
                   <tbody>
-                    {[1, 2, 3].map(part => (
-                      <tr key={part} className="!bg-transparent">
-                        <td className="!p-0 pr-2 text-[11px] font-semibold text-muted-foreground whitespace-nowrap">Part {['I', 'II', 'III'][part - 1]}</td>
+                    {PERIODS.filter(p => d.recent.some(r => r.hours[p.no])).map(({ no }) => (
+                      <tr key={no} className="!bg-transparent">
+                        <td className="!p-0 pr-2 text-[11px] font-semibold text-muted-foreground whitespace-nowrap">P{no}</td>
                         {d.recent.map(r => {
-                          const s = r.parts[part]
-                          return <td key={r.date} title={`${fmtDate(r.date)} · Part ${part}: ${s ?? 'not marked'}`}
-                            className={`!p-0 w-7 h-7 rounded ${!s ? 'bg-muted' : s === 'ABSENT' ? 'bg-red-700' : s === 'LATE' ? 'bg-amber-500' : 'bg-green-700'}`} />
+                          const s = r.hours[no]
+                          return <td key={r.date} title={`${fmtDate(r.date)} · Period ${no}: ${s === 'OD' ? 'on duty' : s?.toLowerCase() ?? 'no class'}`}
+                            className={`!p-0 w-7 h-6 rounded ${!s ? 'bg-muted' : s === 'ABSENT' ? 'bg-red-700' : s === 'OD' ? 'bg-licet-violet' : 'bg-green-700'}`} />
                         })}
                       </tr>
                     ))}
@@ -287,9 +304,9 @@ export default function StudentDashboard({ me, name, greeting }: { me: StudentMe
               </div>
               <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground mt-3">
                 <span className="inline-flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-green-700" />Present</span>
-                <span className="inline-flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-amber-500" />Late</span>
+                <span className="inline-flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-licet-violet" />On duty</span>
                 <span className="inline-flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-red-700" />Absent</span>
-                <span className="inline-flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-muted" />Not marked</span>
+                <span className="inline-flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-muted" />No class</span>
               </div>
             </div>
           )}

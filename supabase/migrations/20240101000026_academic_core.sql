@@ -50,7 +50,7 @@ create unique index if not exists academic_terms_one_current on public.academic_
 -- so a Saturday that "follows Monday's order" gets day_order 1.
 create table if not exists public.calendar_days (
   date        date not null,
-  scope       text not null default 'ALL' check (scope in ('ALL', 'FY', 'HS')),
+  scope       text not null default 'ALL' check (scope in ('ALL', 'FY', 'HS', 'IV')),
   term_id     uuid references public.academic_terms(id) on delete cascade,
   is_working  boolean not null default true,
   day_order   smallint check (day_order between 1 and 6),
