@@ -20,6 +20,7 @@
     "repair:promotion": "node scripts/repair-promotion.mjs",
     "sync:site": "node scripts/sync-cse-site.mjs",
     "autosync": "node scripts/autosync.mjs --commit --push",
+    "test:e2e": "bash tests/e2e/run.sh",
     "test:db": "node scripts/test-db.mjs"
   },
   "dependencies": {
