@@ -29,15 +29,19 @@ export function DelegationsButton({ me, termId }: { me: string; termId: string }
   const [form, setForm] = useState({ to: '', subject: '', from: isoToday(), until: isoToday(), note: '' })
   const [busy, setBusy] = useState(false)
 
+  const [ids, setIds] = useState<string[]>([me])   // + the HOD in person on the HOD office account
   const load = useCallback(async () => {
+    const { data: t } = await supabase.rpc('my_teaching_ids')
+    const teach = ((t ?? [me]) as string[]).filter(Boolean)
+    setIds(teach)
     const [st, links, dl] = await Promise.all([
       supabase.from('profiles').select('id, full_name, email').neq('role', 'STUDENT').eq('is_active', true).neq('id', me).order('full_name'),
-      supabase.from('subject_faculty').select('subject_id, subjects(id, code, short_name, name, section, term_id)').eq('faculty_id', me),
-      supabase.from('attendance_delegations').select('*').eq('from_faculty', me).gte('valid_to', isoToday()).order('valid_from'),
+      supabase.from('subject_faculty').select('subject_id, subjects(id, code, short_name, name, section, term_id)').in('faculty_id', teach),
+      supabase.from('attendance_delegations').select('*').in('from_faculty', teach).gte('valid_to', isoToday()).order('valid_from'),
     ])
     setStaff((st.data ?? []) as Staff[])
     type Link = { subjects: (Course & { term_id: string }) | null }
-    setCourses(((links.data ?? []) as unknown as Link[]).map(l => l.subjects).filter((c): c is Course & { term_id: string } => !!c && c.term_id === termId))
+    setCourses(((links.data ?? []) as unknown as Link[]).map(l => l.subjects).filter((c, i, all): c is Course & { term_id: string } => !!c && c.term_id === termId && all.findIndex(x => x?.id === c.id) === i))
     setMine((dl.data ?? []) as Delegation[])
   }, [me, termId])
   useEffect(() => { if (open) load() }, [open, load])
@@ -45,7 +49,8 @@ export function DelegationsButton({ me, termId }: { me: string; termId: string }
   const save = async () => {
     setBusy(true)
     const { error } = await supabase.from('attendance_delegations').insert({
-      from_faculty: me, to_faculty: form.to, subject_id: form.subject || null, valid_from: form.from, valid_to: form.until, note: form.note || null,
+      // the HOD office account hands over the classes of the HOD in person
+      from_faculty: ids[ids.length - 1] ?? me, to_faculty: form.to, subject_id: form.subject || null, valid_from: form.from, valid_to: form.until, note: form.note || null,
     })
     setBusy(false)
     if (reportResult(error, 'Class handed over — your colleague now sees it under My classes and gets an email')) {

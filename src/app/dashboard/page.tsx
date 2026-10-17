@@ -34,6 +34,19 @@ export default function DashboardPage() {
       .then(({ data }) => { if (data) setMe(data as Me) })
   }, [router])
 
+  // HOD office account: also show the classes of the HOD in person (Configuration → Head of Department)
+  const [hodPerson, setHodPerson] = useState<Me | null>(null)
+  useEffect(() => {
+    if (me?.role !== 'HOD') return
+    supabase.rpc('hod_person').then(async ({ data: id }) => {
+      if (!id) return
+      const { data } = await supabase.from('profiles')
+        .select('id, full_name, email, role, section, advisor_section, register_number, roll_number, employee_id, designation, access_tier, can_reset_passwords, parent_mobile')
+        .eq('id', id as string).single()
+      if (data) setHodPerson(data as Me)
+    })
+  }, [me?.role])
+
   if (!authUser) return null
   // Tier from the live profile once loaded (the stored copy may predate a change).
   const tier = tierOf(me ?? (authUser.data as { role?: string; access_tier?: number | null }))
@@ -45,6 +58,7 @@ export default function DashboardPage() {
         <>
           <HodDashboard name={name} greeting={greeting} designation={me?.designation} />
           {me?.role === 'PROFESSOR' && <FacultyDashboard me={me} name={name} greeting={greeting} embedded />}
+          {me?.role === 'HOD' && hodPerson && <FacultyDashboard me={hodPerson} name={name} greeting={greeting} embedded />}
         </>
       ) : tier === 2 ? <FacultyDashboard me={me} name={name} greeting={greeting} />
         : <StudentDashboard me={me} name={name} greeting={greeting} />}

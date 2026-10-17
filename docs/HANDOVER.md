@@ -171,16 +171,19 @@ Test accounts `hod@test.local`, `faculty1@test.local`, `advisor@test.local`,
 ## Open items
 
 - 10 lateral-entry students have no account yet (25CS023–026, 25CS134–138, 24CS031).
-- Eight printed teachers have no account: Ms A Jerlin (ECE — not the *aruljerlin*
-  account, a different person), Ms E Preesha, Rev. Dr. Justine, Mr Rex, Ms J Christina,
+- Seven printed teachers have no account: Ms E Preesha, Rev. Dr. Justine, Mr Rex, Ms J Christina,
   Mr Martin Mahimai Doss, Dr Krishnan, Mr Clinton — their hours can still be taken by
   the class advisor or the HOD.
 - **Two accounts for the HOD, on purpose.** `hodcse@` is the HOD *office* account: it
   holds the HOD role and passes to the next HOD. `sharmila.vj@` is Dr. Sharmila VJ's
-  personal faculty account and carries her own courses (CS24501, CCS342). Never merge
-  them; when the HOD changes, hand over `hodcse@` (reset its password and two-step) and
-  the outgoing HOD keeps teaching from her personal account. Courses are never
-  auto-linked to the office account (migration 40).
+  personal faculty account and carries her own courses (CS24501, CCS342). Configuration
+  → Attendance rules → **Head of Department** names the person (now Dr. Sharmila VJ):
+  their courses also appear under the office account's My classes and dashboard, so
+  they can teach from either account; HOD powers stay with the office account. When
+  the HOD changes: pick the new person there, reset the office account's password and
+  two-step for them. Courses are never auto-linked to the office account (migration 40).
+- Staff of other departments are marked *Other* (`profiles.home_department`) and are
+  left out of the Head of Department list.
 - III CSE-A timetable: only Tue P4 and Fri P7 of a lab swap were edited (II CSE-A was
   swapped fully) — check whether the other hours should change too.
 - Past IA workbooks are not imported yet: use Assessments & Marks → Import from Excel

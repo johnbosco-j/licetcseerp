@@ -48,6 +48,18 @@ export function TakeAttendance({ term, me, isHod }: { term: Term; me: { id: stri
   const [open, setOpen] = useState<{ block: ClassBlock; dayOrder: number | null } | null>(null)
   const [loading, setLoading] = useState(true)
   const [now, setNow] = useState(() => Date.now())
+  // my account, plus the HOD in person when this is the HOD office account; and the courses they teach
+  const [teach, setTeach] = useState<{ ids: string[]; courses: Set<string> }>({ ids: [me.id], courses: new Set() })
+  useEffect(() => {
+    let off = false
+    ;(async () => {
+      const { data } = await supabase.rpc('my_teaching_ids')
+      const ids = ((data ?? [me.id]) as string[]).filter(Boolean)
+      const { data: links } = await supabase.from('subject_faculty').select('subject_id').in('faculty_id', ids)
+      if (!off) setTeach({ ids, courses: new Set(((links ?? []) as { subject_id: string }[]).map(l => l.subject_id)) })
+    })()
+    return () => { off = true }
+  }, [me.id])
 
   useEffect(() => { const iv = setInterval(() => setNow(Date.now()), 15000); return () => clearInterval(iv) }, [])
   useEffect(() => {
@@ -81,13 +93,14 @@ export function TakeAttendance({ term, me, isHod }: { term: Term; me: { id: stri
     const seen = new Set<string>()
     for (const sec of SECTIONS) for (const b of blocksFor(sec)) {
       const handedToMe = covering.some(d => (d.subject_id && d.subject_id === b.entry.subject_id) || (!d.subject_id && b.entry.faculty_ids.includes(d.from_faculty)))
-      if (!b.entry.faculty_ids.includes(me.id) && !handedToMe) continue
+      const mine = teach.ids.some(id => b.entry.faculty_ids.includes(id)) || (!!b.entry.subject_id && teach.courses.has(b.entry.subject_id))
+      if (!mine && !handedToMe) continue
       const k = b.entry.subjects?.section === null ? `${b.entry.subject_id}|${b.entry.audience_value}|${b.periods[0]}` : b.key
       if (seen.has(k)) continue
       seen.add(k); out.push(b)
     }
     return out.sort((a, b) => a.periods[0] - b.periods[0])
-  }, [blocksFor, me.id, covering])
+  }, [blocksFor, teach, covering])
 
   const shift = (n: number) => {
     const d = new Date(date + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n)

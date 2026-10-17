@@ -97,6 +97,8 @@ export function RulesTab({ settings, reload }: { settings: Record<string, unknow
     if (reportResult(error, 'Saved')) reload()
   }
   return (
+    <div className="space-y-4">
+    <HodPersonCard current={typeof settings['hod.person'] === 'string' ? settings['hod.person'] as string : ''} reload={reload} />
     <div className="rounded-lg border border-border bg-white divide-y divide-border">
       {RULES.map(r => (
         <div key={r.key} className="flex flex-wrap items-center gap-3 px-4 py-3">
@@ -107,6 +109,7 @@ export function RulesTab({ settings, reload }: { settings: Record<string, unknow
           <button onClick={() => save(r.key)} className={ghostCls}><Save className="w-4 h-4" /> Save</button>
         </div>
       ))}
+    </div>
     </div>
   )
 }
@@ -282,6 +285,34 @@ export function DataEditorTab() {
           <button onClick={addRow} disabled={!newJson.trim()} className={btnCls}><Plus className="w-4 h-4" /> Add</button>
         </details>
       )}
+    </div>
+  )
+}
+
+/** Head of Department in person: their own courses also show under the HOD office account. */
+function HodPersonCard({ current, reload }: { current: string; reload: () => void }) {
+  const [staff, setStaff] = useState<{ id: string; full_name: string; email: string }[]>([])
+  const [pick, setPick] = useState(current)
+  useEffect(() => setPick(current), [current])
+  useEffect(() => {
+    supabase.from('profiles').select('id, full_name, email').eq('role', 'PROFESSOR').eq('is_active', true).is('home_department', null).order('full_name')
+      .then(({ data }) => setStaff((data ?? []) as { id: string; full_name: string; email: string }[]))
+  }, [])
+  const save = async () => {
+    const { error } = await supabase.from('app_settings').upsert({ key: 'hod.person', value: pick || null, updated_at: new Date().toISOString() })
+    if (reportResult(error, pick ? 'Head of Department set — their classes now also show under the HOD account' : 'Head of Department cleared')) reload()
+  }
+  return (
+    <div className="rounded-lg border border-licet-gold bg-licet-cream/40 px-4 py-3 flex flex-wrap items-center gap-3">
+      <div className="flex-1 min-w-[260px]">
+        <p className="font-semibold text-[14px]">Head of Department (in person)</p>
+        <p className="text-[12.5px] text-muted-foreground">The HOD account passes to each new HOD. Choose who holds it now: their own courses (on their personal account) also appear under the HOD account&apos;s My classes and dashboard, so they can teach from either. HOD powers stay with the HOD account.</p>
+      </div>
+      <select value={pick} onChange={e => setPick(e.target.value)} className={inputCls}>
+        <option value="">— not set —</option>
+        {staff.map(s => <option key={s.id} value={s.id}>{s.full_name} ({s.email})</option>)}
+      </select>
+      <button onClick={save} disabled={pick === current} className={btnCls}><Save className="w-4 h-4" /> Save</button>
     </div>
   )
 }
