@@ -9,6 +9,7 @@ import { getAccessToken } from "@/lib/auth"
 import { createStaffAdmin, type StaffRowResult } from "@/app/actions"
 import { toast } from "@/components/toaster"
 import { parseStaffList } from "@/lib/staff-list"
+import { AiPaste } from "@/components/ai-paste"
 
 export function AddStaff({ onDone }: { onDone: () => void }) {
   const [text, setText] = useState('')
@@ -41,6 +42,8 @@ export function AddStaff({ onDone }: { onDone: () => void }) {
         <button onClick={create} disabled={busy || !rows.length} className="inline-flex items-center gap-1.5 h-9 px-4 rounded-md bg-licet-indigo text-white text-[13px] font-semibold disabled:opacity-50">
           {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />} Create {rows.length || ''} account{rows.length === 1 ? '' : 's'}
         </button>
+        <AiPaste columns={['Name', 'Email', 'Department']} hint="Faculty of LICET; emails end with @licet.ac.in; Department empty for CSE"
+          onRows={rs => setText(rs.map(r => [r.Name, r.Email, r.Department].filter(Boolean).join(', ')).join('\n'))} />
         {rows.length > 0 && <span className="text-[12px] text-muted-foreground">{rows.map(r => r.full_name || r.email).slice(0, 4).join(', ')}{rows.length > 4 ? '…' : ''}</span>}
       </div>
       {results && (

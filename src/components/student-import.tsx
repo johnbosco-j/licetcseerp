@@ -8,6 +8,7 @@ import { getAccessToken } from "@/lib/auth"
 import { normalizeMobile, graduationYear, needsVertical } from "@/lib/utils"
 import { SECTIONS } from "@/lib/dashboard"
 import { toast } from "@/components/toaster"
+import { AiPaste } from "@/components/ai-paste"
 
 // Bulk admission from an Excel / CSV sheet. Columns are matched by header name,
 // so the order does not matter. Nothing is written until the HOD confirms.
@@ -25,6 +26,8 @@ const COLUMNS: { key: keyof NewStudent; label: string; aliases: RegExp }[] = [
   { key: "parent_mobile",   label: "Parent mobile",   aliases: /parent|guardian|father|mother/i },
 ]
 
+const toCsv = (cols: string[], rows: Record<string, string>[]) =>
+  [cols, ...rows.map(r => cols.map(c => r[c] ?? ''))].map(l => l.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n')
 type Parsed = NewStudent & { _row: number; _problems: string[] }
 const CHUNK = 25
 
@@ -145,6 +148,8 @@ export function StudentImport({ onClose, onDone, existingEmails }: { onClose: ()
             <input type="file" accept=".xlsx,.xls,.csv" className="sr-only" disabled={running}
               onChange={e => { const f = e.target.files?.[0]; if (f) readFile(f); e.target.value = "" }} />
           </label>
+          <AiPaste columns={COLUMNS.map(c => c.label)} hint="Students of LICET CSE; section like 'III CSE-A'; register numbers are 12 digits"
+            onRows={rows => readFile(new File([toCsv(COLUMNS.map(c => c.label), rows)], 'pasted-with-ai.csv', { type: 'text/csv' }))} />
           <button onClick={downloadTemplate} className="inline-flex items-center gap-2 px-3 py-2 border border-border rounded-md text-[13px] font-semibold text-licet-indigo hover:bg-licet-cream/60">
             <Download size={14} /> Download template
           </button>

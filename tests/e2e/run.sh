@@ -12,6 +12,7 @@ trap 'kill $STATION_PID 2>/dev/null || true' EXIT
 sleep 2
 node tests/e2e/station.mjs | tee /tmp/licet-e2e.out
 node tests/e2e/two-step.mjs | tee -a /tmp/licet-e2e.out
+npx --yes tsx tests/e2e/ai-tools.mts | tee -a /tmp/licet-e2e.out
 fails=$(grep -c ' FAIL ' /tmp/licet-e2e.out || true)
 echo; echo "$(grep -c ' PASS ' /tmp/licet-e2e.out) passed, $fails failed"
 [ "$fails" = 0 ]

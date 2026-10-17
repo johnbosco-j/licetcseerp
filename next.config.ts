@@ -34,6 +34,8 @@ const csp = [
 const nextConfig: NextConfig = {
   // Self-contained server bundle for the on-premise Docker image (deploy/Dockerfile).
   output: "standalone",
+  // the assistant answers "how do I" questions from the user guide
+  outputFileTracingIncludes: { "/api/assistant": ["./docs/USER-GUIDE.md"] },
   poweredByHeader: false,
   async headers() {
     return [

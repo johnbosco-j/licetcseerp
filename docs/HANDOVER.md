@@ -104,6 +104,23 @@ nothing in the app reads them any more except the audit page.
 `nav.hidden` (menus per role) · `obe.target_percent` 60 · `obe.level3/2/1_percent`
 70/60/50 · `obe.direct_weight` 80 · `marks.objection_days` 7.
 
+### Electives, staff, AI and the desktop app (migrations 41–43)
+
+- **Elective plan** (Configuration → Verticals & groups): per batch, the course each
+  vertical takes in PE1–PE6 (R2024 catalogue of the six verticals in `src/lib/verticals.ts`,
+  from the approved regulation dated 05.10.2026). *Create this term's elective courses*
+  makes the combined offerings; Start next term uses the plan automatically.
+- **Add staff** (User Accounts, HOD): paste `Name, email[, department]` lines.
+- **LICET AI** (`/api/assistant`): an *Ask AI* panel for every role and *Paste anything
+  (AI)* in staff / student / marks imports. It reads only through the asker's own session
+  (row level security), never writes, and is limited per person per day
+  (`ai.enabled`, `ai.daily_limit`). Needs `ANTHROPIC_API_KEY` (and optionally
+  `ANTHROPIC_MODEL`, default `claude-sonnet-5-5`) in the server environment.
+- **Desktop app** (`desktop/`, releases on GitHub): Windows updates itself in the
+  background; the Mac app offers new versions. Release: bump `desktop/package.json`
+  version, `npm run dist:mac && npm run dist:win`, then
+  `gh release create vX.Y.Z desktop/dist/LICET-Things-Staff-* desktop/dist/latest*.yml`.
+
 ## Security
 
 - Row-level security on every table; signed-out visitors have no table or function
@@ -165,8 +182,14 @@ Test accounts `hod@test.local`, `faculty1@test.local`, `advisor@test.local`,
 4. Hand out the default passwords (files in `~/Downloads/CSE_Staff/`, not in the repo)
    and ask everyone to sign in once. The HOD should then turn on two-step sign-in.
 5. Raise the minimum password length in Supabase → Authentication (it is 6).
-6. Decide the college-server details listed in the runbook (domain, campus-only or
+6. For LICET AI: create an API key at console.anthropic.com and add `ANTHROPIC_API_KEY`
+   to the Vercel environment (and `deploy/.env` on the college server).
+7. Decide the college-server details listed in the runbook (domain, campus-only or
    internet, off-site backup).
+
+Test data from the March–June trials (2 test student accounts, test notices, grievances,
+a leave, 29 marks and the old part-wise attendance rows) was removed on 17 Oct 2026; a
+copy is in `~/Downloads/CSE_Student_Lists/backups/test_data_removed_2026-10-17.json`.
 
 ## Open items
 

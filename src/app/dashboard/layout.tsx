@@ -13,6 +13,7 @@ import {
 import type { AuthUser } from "@/lib/auth"
 import { signOut } from "@/lib/auth"
 import { TwoStepGate } from "@/components/two-step"
+import { Assistant } from "@/components/assistant"
 import { supabase } from "@/lib/supabase"
 import { getAllowedModules } from "@/lib/roles"
 import { setAcademicState } from "@/lib/semester"
@@ -544,6 +545,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </main>
       </div>
       <Toaster />
+      {ready && !mustChange && role && <Assistant role={role === 'STUDENT' ? 'STUDENT' : bellUser?.tier1 ? 'HOD' : 'STAFF'} />}
       <CommandPalette open={paletteOpen} onClose={() => setPalette(false)} searchStudents={!!role && role !== "STUDENT" && !mustChange}
         modules={mustChange ? [] : NAV_GROUPS.flatMap(g => g.items.filter(i => allowed.includes(i.id)).map(i => ({ id: i.id, label: i.label, href: hrefFor(i.id), icon: i.icon, group: g.title })))} />
     </div>

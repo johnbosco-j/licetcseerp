@@ -121,6 +121,14 @@ export default function MyProfilePage() {
 
       {!student && <TwoStepSettings recommended={tierOf(me) === 1} />}
 
+      {!student && (
+        <a href="https://github.com/johnbosco-j/licetcseerp/releases/latest" target="_blank" rel="noopener noreferrer"
+          className="block bg-card border border-border rounded-xl p-5 hover:border-licet-gold hover:shadow-sm">
+          <span className="block font-semibold text-licet-indigo">Desktop app for staff (Windows / Mac)</span>
+          <span className="block text-[12.5px] text-muted-foreground mt-0.5">The ERP with the Attendance Station built in for QR self check-in. It updates itself. Download the .exe (Windows) or the .dmg for your Mac (Apple silicon: arm64, Intel: x64).</span>
+        </a>
+      )}
+
       <section className="grid sm:grid-cols-2 gap-4">
         <Link href="/dashboard/change-password" className="flex items-center gap-3 bg-card border border-border rounded-xl p-5 hover:border-licet-gold hover:shadow-sm">
           <Key className="w-9 h-9 p-2 rounded-lg bg-licet-cream text-licet-indigo" />

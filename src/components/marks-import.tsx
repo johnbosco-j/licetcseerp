@@ -10,9 +10,13 @@ import { Loader2, FileSpreadsheet, X, AlertTriangle } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { reportResult, toast } from "@/components/toaster"
 import { COMPONENT_MAX, COMPONENT_NAMES as NAMES, guessComponent } from "@/lib/marks-columns"
+import { AiPaste } from "@/components/ai-paste"
 
 type Student = { id: string; full_name: string; register_number: string | null; roll_number: string | null }
 
+const AI_COLS = ['Register number', 'Name', 'CIA 1 class test', 'CIA 1 CAT', 'CIA 1 activity', 'CIA 2 class test', 'CIA 2 CAT', 'CIA 2 activity', 'Semester-end']
+const toCsv = (cols: string[], rows: Record<string, string>[]) =>
+  [cols, ...rows.map(r => cols.map(c => r[c] ?? ''))].map(l => l.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n')
 const norm = (v: unknown) => String(v ?? '').trim().toUpperCase().replace(/\s+/g, '')
 
 export function MarksImport({ subjectId, students, onDone }: { subjectId: string; students: Student[]; onDone: () => void }) {
@@ -82,6 +86,8 @@ export function MarksImport({ subjectId, students, onDone }: { subjectId: string
         <FileSpreadsheet className="w-3.5 h-3.5" /> Import from Excel
         <input type="file" accept=".xlsx,.xls,.csv" className="sr-only" onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) read(f).catch(() => toast.error('Could not read that file')) }} />
       </label>
+      <AiPaste label="Paste marks (AI)" columns={AI_COLS} hint="Internal assessment marks of one course; register numbers are 12 digits; AB means absent"
+        onRows={rows => read(new File([toCsv(AI_COLS, rows)], 'pasted-with-ai.csv', { type: 'text/csv' })).catch(() => toast.error('Could not read those rows'))} />
       {rows && (
         <div className="fixed inset-0 z-[80] bg-black/40 flex items-center justify-center p-4" onClick={() => setRows(null)}>
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>

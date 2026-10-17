@@ -89,6 +89,8 @@ const RULES: { key: string; label: string; help: string; kind: 'number' | 'bool'
   { key: 'alerts.weekly_enabled', label: 'Weekly attendance alerts (Monday morning email)', help: 'Students below the alert level get one email a week, copied to the class advisor.', kind: 'bool' },
   { key: 'alerts.threshold_percent', label: 'Alert when attendance falls below (%)', help: 'Higher than the minimum so students are warned in time (default 80).', kind: 'number' },
   { key: 'alerts.parents', label: 'Copy alerts to parents (if a parent email is on file)', help: 'Parent emails are added on the student record or by Excel import.', kind: 'bool' },
+  { key: 'ai.enabled', label: 'LICET AI assistant', help: 'The "Ask AI" panel and "Paste anything (AI)". Questions and the records needed to answer them are sent to Anthropic\'s Claude API; it reads only what the person may see and never changes data.', kind: 'bool' },
+  { key: 'ai.daily_limit', label: 'AI questions per person per day', help: 'Keeps the API cost predictable (default 40).', kind: 'number' },
   { key: 'attendance.allow_any_staff', label: 'Any staff may take any class', help: 'Off (recommended): only the course instructor, class advisor, a colleague the instructor handed the class to, or the HOD.', kind: 'bool' },
 ]
 export function RulesTab({ settings, reload }: { settings: Record<string, unknown>; reload: () => void }) {
