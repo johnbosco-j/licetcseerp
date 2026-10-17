@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { aiConfigured, claude, extractJsonArray } from '@/lib/ai/claude'
+import { aiConfigured, aiChat, extractJsonArray, replyText } from '@/lib/ai/llm'
 import { askerFrom } from '@/lib/ai/session'
 
 // Bulk entry helper (staff): turns pasted text (a mail, a PDF copy, a messy sheet) into rows
@@ -16,12 +16,12 @@ export async function POST(req: Request) {
   if (!Array.isArray(columns) || !columns.length || columns.length > 40 || typeof text !== 'string' || !text.trim()) return NextResponse.json({ error: 'Give the columns and the text' }, { status: 400 })
   if (text.length > 60000) return NextResponse.json({ error: 'Too long — paste at most about 60,000 characters at a time' }, { status: 413 })
   try {
-    const r = await claude({
+    const r = await aiChat({
       max_tokens: 8000,
       system: 'You convert pasted text into table rows for a college ERP. Output ONLY a JSON array of objects, nothing else. Use exactly the given keys. Copy values exactly as written; do not invent, guess, correct or compute anything. Use "" when a value is missing. Keep register numbers and emails exactly. One object per person/record, in the order they appear.',
       messages: [{ role: 'user', content: `Columns: ${JSON.stringify(columns.map(c => String(c).slice(0, 60)))}\n${hint ? `Note: ${String(hint).slice(0, 300)}\n` : ''}Text:\n${text}` }],
     })
-    const rows = extractJsonArray(r.content.filter(b => b.type === 'text').map(b => (b as { text: string }).text).join(''))
+    const rows = extractJsonArray(replyText(r))
     if (!rows) return NextResponse.json({ error: 'Could not read a table from that text' }, { status: 422 })
     const clean = rows.filter((x): x is Record<string, unknown> => !!x && typeof x === 'object')
       .map(x => Object.fromEntries(columns.map(c => [c, String(x[c] ?? '').trim()])))

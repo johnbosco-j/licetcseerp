@@ -99,3 +99,18 @@ Everything faculty do, plus:
 - **Start next term** also copies last year's elective / vertical courses and timetable
   for the same semester; review teachers and *elective slots* (Configuration → Courses).
 - **Attendance rules** — includes the optional 2-digit projector code for self check-in.
+
+## LICET AI (everyone)
+
+*Ask AI* (bottom right) answers from the ERP with your own access — attendance, timetable,
+marks, notices, calendar, how to do something. It can also **do** things for you: it
+prepares a draft (e.g. "mark 24CS005 and 24CS017 absent for my class now", "enter these
+CIA 1 CAT marks", "apply for medical leave tomorrow", "hand over my class on Friday to
+Dr. X") and shows it with **Confirm**. Nothing is saved until you press Confirm; check the
+names and figures first.
+
+Staff can attach a file with the paper clip — an Excel or CSV sheet, a Word document, a PDF
+or a photo of a marks list (up to 3 files, 2.5 MB each) — and say what to fill in. The HOD
+can also add students and staff, declare holidays, correct a student's record and link
+teachers to courses this way. For a whole IA workbook, Assessments & Marks → Import from
+Excel is still the quickest.

@@ -3,7 +3,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import fs from 'node:fs'
 import path from 'node:path'
-import type { ToolDef } from './claude'
+import type { ToolDef } from './llm'
 
 export type Asker = { id: string; role: 'HOD' | 'PROFESSOR' | 'STUDENT'; tier1: boolean; full_name: string; section: string | null; advisor_section: string | null }
 type Tool = ToolDef & { for: 'all' | 'staff' | 'student' | 'hod'; run: (db: SupabaseClient, me: Asker, input: Record<string, unknown>) => Promise<unknown> }
@@ -116,6 +116,82 @@ const TOOLS: Tool[] = [
     description: 'Attendance % of every course in every class this term.',
     input_schema: { type: 'object', properties: {} },
     run: async db => { const t = await term(db); return t ? (await db.rpc('ana_course_matrix', { p_term: t.id })).data : 'No current term.' },
+  },
+  {
+    name: 'my_courses', for: 'staff',
+    description: 'Courses the user teaches this term (code, name, class, elective slot), with how many marks are entered per component.',
+    input_schema: { type: 'object', properties: {} },
+    run: async db => {
+      const t = await term(db); if (!t) return 'No current term.'
+      const { data: ids } = await db.rpc('my_teaching_ids')
+      const mine = (ids ?? []) as string[]
+      const [{ data: links }, { data: own }] = await Promise.all([
+        db.from('subject_faculty').select('subject_id').in('faculty_id', mine),
+        db.from('subjects').select('id').in('faculty_id', mine).eq('term_id', t.id),
+      ])
+      const sid = [...new Set([...(links ?? []).map((l: { subject_id: string }) => l.subject_id), ...(own ?? []).map((s: { id: string }) => s.id)])]
+      if (!sid.length) return 'No courses are linked to you this term (the HOD links them in Configuration → Courses).'
+      const [{ data: subs }, { data: marks }] = await Promise.all([
+        db.from('subjects').select('id, code, name, short_name, section, cohort_grad_year, audience_value, elective_slot').eq('term_id', t.id).in('id', sid),
+        db.from('marks').select('subject_id, exam_type').in('subject_id', sid).range(0, 9999),
+      ])
+      return (subs ?? []).map((s: { id: string }) => {
+        const c: Record<string, number> = {}
+        for (const m of (marks ?? []) as { subject_id: string; exam_type: string }[]) if (m.subject_id === s.id) c[m.exam_type] = (c[m.exam_type] ?? 0) + 1
+        return { ...s, marks_entered: c }
+      })
+    },
+  },
+  {
+    name: 'course_marks', for: 'staff',
+    description: 'Marks entered for one course (by code) this term or a named past term: each student and component.',
+    input_schema: { type: 'object', properties: { course: { type: 'string' }, section: { type: 'string' }, term: { type: 'string', description: 'e.g. "2025-26 Even"' } }, required: ['course'] },
+    run: async (db, _me, i) => {
+      const lbl = str(i.term, 40).replace(/[%,]/g, '')
+      const { data: terms } = lbl ? await db.from('academic_terms').select('id, label').ilike('label', `%${lbl}%`) : await db.from('academic_terms').select('id, label').eq('is_current', true)
+      const t = (terms ?? [])[0] as { id: string; label: string } | undefined; if (!t) return 'No such term.'
+      let q = db.from('subjects').select('id, code, name, section').eq('term_id', t.id).ilike('code', str(i.course, 20).replace(/[%,]/g, ''))
+      if (str(i.section)) q = q.eq('section', str(i.section, 20))
+      const { data: subs } = await q
+      if (!subs?.length) return `No course ${str(i.course)} in ${t.label}.`
+      const { data } = await db.from('marks').select('exam_type, marks_obtained, max_marks, subject_id, profiles!marks_student_id_fkey(roll_number, full_name)').in('subject_id', subs.map((s: { id: string }) => s.id)).range(0, 4999)
+      return { term: t.label, courses: subs, marks: data }
+    },
+  },
+  {
+    name: 'notices', for: 'all',
+    description: 'Current notices (announcements) the user can see.',
+    input_schema: { type: 'object', properties: {} },
+    run: async (db, me) => {
+      const aud = me.role === 'STUDENT' ? ['ALL', 'STUDENTS', me.section ?? ''] : ['ALL', 'PROFESSOR', 'FACULTY', 'STUDENTS', 'I CSE-A', 'I CSE-B', 'II CSE-A', 'II CSE-B', 'III CSE-A', 'III CSE-B', 'IV CSE-A', 'IV CSE-B']
+      const { data } = await db.from('announcements').select('title, body, audience, is_urgent, created_at, expires_at').in('audience', aud).order('created_at', { ascending: false }).limit(20)
+      return (data ?? []).filter((n: { expires_at: string | null }) => !n.expires_at || n.expires_at > new Date().toISOString())
+    },
+  },
+  {
+    name: 'calendar', for: 'all',
+    description: 'Academic calendar between two dates (default the next 30 days): holidays, working Saturdays, which weekday each day follows. Scope FY (first year), HS (II–III), IV.',
+    input_schema: { type: 'object', properties: { from: { type: 'string' }, to: { type: 'string' }, scope: { type: 'string' } } },
+    run: async (db, me, i) => {
+      const from = /^\d{4}-\d{2}-\d{2}$/.test(str(i.from)) ? str(i.from) : ist()
+      const to = /^\d{4}-\d{2}-\d{2}$/.test(str(i.to)) ? str(i.to) : new Date(Date.parse(from) + 30 * 864e5).toISOString().slice(0, 10)
+      const own = me.section ? (me.section.startsWith('I ') ? 'FY' : me.section.startsWith('IV') ? 'IV' : 'HS') : 'HS'
+      const scope = ['FY', 'HS', 'IV'].includes(str(i.scope).toUpperCase()) ? str(i.scope).toUpperCase() : own
+      const { data } = await db.from('calendar_days').select('date, is_working, day_order, label').eq('scope', scope).gte('date', from).lte('date', to).order('date')
+      return { scope, days: (data ?? []).map((d: { date: string; is_working: boolean; day_order: number | null; label: string | null }) => ({ ...d, follows: d.day_order ? ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.day_order] : null })) }
+    },
+  },
+  {
+    name: 'find_staff', for: 'staff',
+    description: 'Find a staff member by name or email: designation, department (blank = CSE), class they advise.',
+    input_schema: { type: 'object', properties: { query: { type: 'string' } }, required: ['query'] },
+    run: async (db, _me, i) => {
+      const q = str(i.query, 40).replace(/[%,()]/g, '')
+      if (q.length < 3) return 'Give at least 3 characters.'
+      const { data } = await db.from('profiles').select('full_name, email, designation, home_department, advisor_section, is_active').in('role', ['PROFESSOR', 'HOD'])
+        .or(`full_name.ilike.%${q}%,email.ilike.%${q}%`).limit(10)
+      return data
+    },
   },
   {
     name: 'faculty_load', for: 'hod',

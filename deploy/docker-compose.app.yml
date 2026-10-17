@@ -31,6 +31,10 @@ services:
       CRON_SECRET: ${CRON_SECRET:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-}
+      AI_PROVIDER: ${AI_PROVIDER:-}
+      AI_ACTION_SECRET: ${AI_ACTION_SECRET:-}
       TZ: ${TZ:-Asia/Kolkata}
     expose:
       - "3000"

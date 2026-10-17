@@ -21,6 +21,7 @@ are exported for the CoE rather than sent to them.
 | Courses this term | 70 offerings (incl. electives PE1 = POPL / RL, PE2 = UI/UX / NN&DL, Honours), 56 linked to an ERP account |
 | Timetable | 376 hour-cells this term, with batch / vertical splits; 307 carry their teacher's account |
 | Attendance | 5,071 class hours, 275,654 student-hour marks (totals match the Excel registers) |
+| Internal marks | 19,908 component marks from the IA workbooks (2025-26 Even, 2026-27 Odd) |
 | Academic calendar | 1,005 day entries (first year, II–III, IV scopes) |
 
 ## How it is built
@@ -111,11 +112,20 @@ nothing in the app reads them any more except the audit page.
   from the approved regulation dated 05.10.2026). *Create this term's elective courses*
   makes the combined offerings; Start next term uses the plan automatically.
 - **Add staff** (User Accounts, HOD): paste `Name, email[, department]` lines.
-- **LICET AI** (`/api/assistant`): an *Ask AI* panel for every role and *Paste anything
-  (AI)* in staff / student / marks imports. It reads only through the asker's own session
-  (row level security), never writes, and is limited per person per day
-  (`ai.enabled`, `ai.daily_limit`). Needs `ANTHROPIC_API_KEY` (and optionally
-  `ANTHROPIC_MODEL`, default `claude-sonnet-5-5`) in the server environment.
+- **LICET AI** (`/api/assistant`, `src/lib/ai/`): an *Ask AI* panel for every role.
+  - Looks things up only through the asker's own session (row level security), within a
+    daily limit per person (`ai.enabled`, `ai.daily_limit`).
+  - **Drafts changes** the person confirms (`lib/ai/actions.ts`): marks of a component,
+    attendance of an hour, notices, course outcomes, class hand-over, leave, grievance
+    (students); for the HOD also new students / staff, calendar holidays, student record
+    corrections and course–teacher links. The confirmed draft is signed (HMAC, 30 minutes,
+    tied to the person) and runs with that person's session (`/api/assistant/act`).
+  - **Files** (staff): Excel / CSV / Word are turned into text on the server; PDFs and
+    pictures go to the model as they are (up to 3 files, 2.5 MB each).
+  - **Provider**: `ANTHROPIC_API_KEY` (Claude, `ANTHROPIC_MODEL`, default `claude-sonnet-5-5`)
+    or `GEMINI_API_KEY` (`GEMINI_MODEL`, default `gemini-flash-latest`); `AI_PROVIDER`
+    picks one when both are set. Local test: `erp-local-ai` in `.claude/launch.json` with a
+    mock model on port 8787; `tests/e2e/ai-actions.mts` checks every kind of draft.
 - **Desktop app** (`desktop/`, releases on GitHub): Windows updates itself in the
   background; the Mac app offers new versions. Release: bump `desktop/package.json`
   version, `npm run dist:mac && npm run dist:win`, then
@@ -182,8 +192,10 @@ Test accounts `hod@test.local`, `faculty1@test.local`, `advisor@test.local`,
 4. Hand out the default passwords (files in `~/Downloads/CSE_Staff/`, not in the repo)
    and ask everyone to sign in once. The HOD should then turn on two-step sign-in.
 5. Raise the minimum password length in Supabase → Authentication (it is 6).
-6. For LICET AI: create an API key at console.anthropic.com and add `ANTHROPIC_API_KEY`
-   to the Vercel environment (and `deploy/.env` on the college server).
+6. For LICET AI: add ONE key to the Vercel environment (and `deploy/.env` on the college
+   server): `ANTHROPIC_API_KEY` (console.anthropic.com) or `GEMINI_API_KEY`
+   (aistudio.google.com — use a billing-enabled project; Google's free tier may use prompts,
+   i.e. student records, to improve its models).
 7. Decide the college-server details listed in the runbook (domain, campus-only or
    internet, off-site backup).
 
@@ -209,6 +221,13 @@ copy is in `~/Downloads/CSE_Student_Lists/backups/test_data_removed_2026-10-17.j
   left out of the Head of Department list.
 - III CSE-A timetable: only Tue P4 and Fri P7 of a lab swap were edited (II CSE-A was
   swapped fully) — check whether the other hours should change too.
-- Past IA workbooks are not imported yet: use Assessments & Marks → Import from Excel
-  course by course (it maps the columns and shows problems before saving).
+- IA workbooks in the source folder are imported (17 Oct 2026): 19,908 component marks,
+  255 students, 53 offerings (AY 2025-26 Even: I–II year; AY 2026-27 Odd: II CSE-B and
+  III year incl. PE1/PE2). Workbook scales were converted to the app's (CT/30, CAT/60,
+  activity/10; lab performance /75 split over experiments, record and viva); a special test
+  (SP) replaces an absent CAT, as in the sheets. Not imported: Soft Skills of semester 3 for
+  the 2024–28 batch (that term is not in the system), Logical Reasoning (CIA-1 only, no
+  maximum given), and the 9 lateral-entry students of II year who have no account yet.
+  Nine students' sheet totals differ from their own components (hand-edited cells) —
+  the class advisors should check them on the Marks page.
 - Course outcomes and CO–PO matrices are empty until each teacher fills them in.
