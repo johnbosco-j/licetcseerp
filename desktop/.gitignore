@@ -1,0 +1,6 @@
+node_modules/
+dist/
+station/
+config.json
+build/icon.png
+.env

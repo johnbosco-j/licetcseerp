@@ -26,6 +26,7 @@ docs/*.pdf
 # not part of the web app
 deploy
 station
+desktop
 supabase
 **/*.zip
 .DS_Store

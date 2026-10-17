@@ -1,0 +1,20 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>ERP address</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
+<style>
+ body { font: 14px -apple-system, Segoe UI, sans-serif; margin: 22px; color: #1A0C4E; }
+ label { display: block; margin: 10px 0 4px; font-weight: 600; } input { width: 100%; box-sizing: border-box; padding: 7px 8px; border: 1px solid #ccc; border-radius: 6px; }
+ p { color: #6b6480; font-size: 12.5px; } button { margin-top: 14px; padding: 8px 16px; background: #1A0C4E; color: #fff; border: 0; border-radius: 6px; font-weight: 600; }
+ #msg { color: #b3261e; }
+</style></head>
+<body>
+ <p>Change these only when the ERP moves (for example to the college server). The app restarts.</p>
+ <label>ERP address<input id="erp" placeholder="https://erp.example.ac.in"></label>
+ <label>Database (API) address<input id="api" placeholder="https://api.example.ac.in"></label>
+ <label>Public (anon) key — leave empty to keep the current one<input id="anon" placeholder="eyJ…"></label>
+ <button id="save">Save and restart</button> <span id="msg"></span>
+<script>
+ window.licetDesktop.getSettings().then(s => { erp.value = s.erpUrl || ''; api.value = s.supabaseUrl || '' })
+ save.onclick = async () => { const r = await window.licetDesktop.saveSettings({ erpUrl: erp.value, supabaseUrl: api.value, supabaseAnonKey: anon.value }); if (r && r.error) msg.textContent = r.error }
+</script>
+</body></html>

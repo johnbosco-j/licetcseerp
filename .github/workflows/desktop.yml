@@ -1,0 +1,48 @@
+# Builds the staff desktop app: Windows installer (.exe) and macOS disk images (.dmg).
+# Run it from GitHub → Actions → "Desktop app" → Run workflow. The installers appear as
+# downloadable artifacts of the run (kept 30 days).
+#
+# Needs two repository *variables* (Settings → Secrets and variables → Actions → Variables),
+# both public values that the website already ships: NEXT_PUBLIC_SUPABASE_URL and
+# NEXT_PUBLIC_SUPABASE_ANON_KEY. Optional variable ERP_URL (default https://cseerp.vercel.app).
+name: Desktop app
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            script: dist:win
+            files: desktop/dist/*.exe
+          - os: macos-latest
+            script: dist:mac
+            files: desktop/dist/*.dmg
+    runs-on: ${{ matrix.os }}
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      ERP_URL: ${{ vars.ERP_URL || 'https://cseerp.vercel.app' }}
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install
+        working-directory: desktop
+        run: npm ci --no-audit --no-fund && node node_modules/electron/install.js
+      - name: Build installers
+        working-directory: desktop
+        run: npm run ${{ matrix.script }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: licet-things-staff-${{ matrix.os }}
+          path: ${{ matrix.files }}
+          retention-days: 30

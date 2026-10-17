@@ -1,0 +1,72 @@
+{
+  "name": "licet-things-staff",
+  "productName": "LICET Things Staff",
+  "version": "1.0.0",
+  "description": "LICET Things for staff: the department ERP with the Attendance Station built in.",
+  "author": "Department of CSE, Loyola-ICAM College of Engineering and Technology",
+  "private": true,
+  "main": "main.js",
+  "scripts": {
+    "prepare-app": "node scripts/prepare.mjs",
+    "start": "npm run prepare-app && electron .",
+    "dist:mac": "npm run prepare-app && electron-builder --mac dmg --arm64 --x64",
+    "dist:win": "npm run prepare-app && electron-builder --win nsis --x64"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.108.1",
+    "qrcode": "^1.5.4"
+  },
+  "build": {
+    "appId": "in.ac.licet.cse.things.staff",
+    "productName": "LICET Things Staff",
+    "copyright": "Department of CSE, LICET",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "settings.html",
+      "config.json",
+      "station/**",
+      "build/icon.png",
+      "node_modules/**",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "station/windows/**"
+    ],
+    "mac": {
+      "category": "public.app-category.education",
+      "icon": "build/icon.png",
+      "target": [
+        "dmg"
+      ]
+    },
+    "dmg": {
+      "title": "LICET Things Staff"
+    },
+    "win": {
+      "icon": "build/icon.png",
+      "target": [
+        "nsis"
+      ],
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "LICET Things Staff"
+    },
+    "toolsets": {
+      "nsis": "1.2.1",
+      "winCodeSign": "1.1.0"
+    }
+  },
+  "devDependencies": {
+    "electron": "^44.9.0",
+    "electron-builder": "^26.15.3"
+  }
+}

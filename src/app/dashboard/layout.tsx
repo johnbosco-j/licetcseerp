@@ -135,6 +135,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         await supabase.auth.signOut()
         return goLogin()
       }
+      // The LICET Things Staff desktop app is for staff only.
+      if (profile.role === "STUDENT" && typeof window !== "undefined" && (window as { licetDesktop?: { app?: string } }).licetDesktop?.app === "staff") {
+        window.alert("The LICET Things Staff app is for staff. Students: sign in on the website or your phone.")
+        await supabase.auth.signOut()
+        return goLogin()
+      }
       // Academic state (latest promotion) drives the odd/even semester everywhere.
       const { data: academic } = await supabase.rpc("current_academic_state" as never)
       const ac = (academic ?? {}) as { academic_year?: string; promoted_at?: string; term_parity?: 'ODD' | 'EVEN'; term_starts?: string; term_label?: string; term_ends?: string }
