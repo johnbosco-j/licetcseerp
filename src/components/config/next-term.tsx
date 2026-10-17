@@ -54,6 +54,10 @@ export function NextTermWizard({ terms, onClose, onDone }: { terms: Term[]; onCl
   const [promote, setPromote] = useState(suggest.parity === 'ODD')
   const [courses, setCourses] = useState(true)
   const [calendar, setCalendar] = useState<File | null>(null)
+  // the latest earlier term of the same kind (odd → odd): its timetable and combined courses fit the new term
+  const sameKind = terms.filter(t => t.parity === parity && t.academic_year !== year).sort((a, b) => b.academic_year.localeCompare(a.academic_year))
+  const [copyFrom, setCopyFrom] = useState<string>('')
+  const source = copyFrom === 'none' ? null : terms.find(t => t.id === (copyFrom || sameKind[0]?.id)) ?? null
   const [counts, setCounts] = useState<Record<string, number>>({})
   const [alreadyPromoted, setAlreadyPromoted] = useState(false)
   const [steps, setSteps] = useState<Step[]>([])
@@ -81,6 +85,7 @@ export function NextTermWizard({ terms, onClose, onDone }: { terms: Term[]; onCl
       { label: promote ? `Promote students for ${year} (I→II→III→IV, IV graduate)` : 'Year promotion', state: promote ? 'todo' : 'skip', note: promote ? undefined : 'not needed' },
       { label: `Create ${year} ${parity === 'ODD' ? 'odd' : 'even'} term and make it current (period timings copied)`, state: 'todo' },
       { label: 'Add R2024 curriculum courses for each class', state: courses ? 'todo' : 'skip' },
+      { label: source ? `Copy elective / vertical courses and the timetable from ${source.label}` : 'Copy the timetable', state: source ? 'todo' : 'skip', note: source ? undefined : 'no earlier term of this kind' },
       { label: 'Import academic calendar', state: calendar ? 'todo' : 'skip', note: calendar ? calendar.name : 'do it later in the calendar below' },
     ]
     setSteps(plan); setRunning(true)
@@ -116,15 +121,33 @@ export function NextTermWizard({ terms, onClose, onDone }: { terms: Term[]; onCl
         }
         set(2, { state: 'ok', note: `${added} courses added${skipped.length ? `; skipped ${skipped.join(', ')}` : ''}. Add electives / vertical courses in Courses.` })
       }
-      if (calendar && term) {
+      if (source) {
         set(3, { state: 'run' })
+        // combined courses move to the batch now in that year (same code, cohort + years between the terms)
+        const years = Number(year.split('-')[0]) - Number(source.academic_year.split('-')[0])
+        const { data: combined } = await supabase.from('subjects').select('*').eq('term_id', source.id).is('section', null)
+        const { data: haveNow } = await supabase.from('subjects').select('code, cohort_grad_year').eq('term_id', termId).is('section', null)
+        const exists = new Set(((haveNow ?? []) as { code: string; cohort_grad_year: number | null }[]).map(r => `${r.code}|${r.cohort_grad_year}`))
+        const drop = new Set(['id', 'created_at', 'updated_at', 'group_id'])
+        const add = ((combined ?? []) as Record<string, unknown>[])
+          .map(c => ({ ...Object.fromEntries(Object.entries(c).filter(([k]) => !drop.has(k))), term_id: termId, academic_year: year, cohort_grad_year: Number(c.cohort_grad_year) + years }) as Record<string, unknown>)
+          .filter(c => !exists.has(`${c.code}|${c.cohort_grad_year}`))
+        if (add.length) { const { error } = await supabase.from('subjects').insert(add); if (error) throw Object.assign(new Error(error.message), { step: 3 }) }
+        const { data: copied, error: cErr } = await supabase.rpc('copy_timetable', { p_from: source.id, p_to: termId, p_sections: null })
+        if (cErr) throw Object.assign(new Error(cErr.message), { step: 3 })
+        const rows = (copied ?? []) as { section: string; copied: number; skipped: number }[]
+        const hours = rows.reduce((a, r) => a + r.copied, 0), skipped = rows.reduce((a, r) => a + r.skipped, 0)
+        set(3, { state: 'ok', note: `${add.length} combined courses, ${hours} timetable hours copied${skipped ? `; ${skipped} hours skipped (course not offered this term)` : ''}. Check teachers and changes in the timetable editor.` })
+      }
+      if (calendar && term) {
+        set(4, { state: 'run' })
         const n = await importCalendarFile(calendar, term as Term)
-        set(3, { state: 'ok', note: `${n} days` })
+        set(4, { state: 'ok', note: `${n} days` })
       }
       toast.success(`${year} ${parity === 'ODD' ? 'odd' : 'even'} term started. Next: timetable, faculty for each course, advisors.`)
       onDone()
     } catch (e) {
-      const step = (e as { step?: number }).step ?? 3
+      const step = (e as { step?: number }).step ?? 4
       set(step, { state: 'err', note: e instanceof Error ? e.message : 'failed' })
       toast.error(e instanceof Error ? e.message : 'Could not start the term')
     }
@@ -155,6 +178,13 @@ export function NextTermWizard({ terms, onClose, onDone }: { terms: Term[]; onCl
           <label className="flex items-start gap-2">
             <input type="checkbox" checked={courses} onChange={e => setCourses(e.target.checked)} className="mt-1 accent-licet-indigo" />
             <span><b>Add the R2024 courses</b> of the new semester to every class on R2024 (batches graduating 2028 onwards). Older batches and electives / verticals are added by hand in Courses.</span>
+          </label>
+          <label className="flex items-start gap-2">
+            <span className="mt-0.5"><b>Copy the timetable</b> and elective / vertical courses from</span>
+            <select value={copyFrom || sameKind[0]?.id || ''} onChange={e => setCopyFrom(e.target.value)} className={inputCls}>
+              {sameKind.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+              <option value="none">— do not copy —</option>
+            </select>
           </label>
           <label className="flex items-center gap-2">
             <CalendarPlus className="w-4 h-4 text-licet-violet" />

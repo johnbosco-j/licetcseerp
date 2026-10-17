@@ -58,7 +58,7 @@
 
   <section class="card" id="live">
     <div class="qrwrap">
-      <div><img id="qr" alt="Check-in QR code"><p class="muted" id="link"></p></div>
+      <div><img id="qr" alt="Check-in QR code"><p id="code" style="display:none;font-size:64px;font-weight:800;letter-spacing:.12em;text-align:center;margin:12px 0 0;color:#1A0C4E"></p><p class="muted" id="link"></p></div>
       <div>
         <p class="muted" id="title"></p>
         <p class="big"><span id="present">0</span><span style="font-size:28px;color:#6b6680"> / <span id="total">0</span></span></p>
@@ -103,6 +103,7 @@
     const s = await api('/api/status')
     if (!s.open) return
     qr.src = s.qr; link.textContent = s.link; rot.textContent = s.rotate
+    const codeEl = document.getElementById('code'); codeEl.style.display = s.code ? '' : 'none'; codeEl.textContent = s.code ? 'Code ' + s.code : ''
     present.textContent = s.present ?? '–'; total.textContent = s.total ?? '–'; title.textContent = s.title
     recent.innerHTML = s.recent.map(n => `<li>${n}</li>`).join('')
     pending.textContent = (s.pending ? `${s.pending} check-in(s) waiting for internet — they will sync automatically. ` : '')

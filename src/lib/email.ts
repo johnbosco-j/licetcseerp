@@ -88,6 +88,15 @@ export const emailTemplates = {
     }
   },
 
+  classHandover: (toName: string, fromName: string, course: string, from: string, until: string, note?: string) => ({
+    subject: `Class handed over to you — ${course}`,
+    html: layout('Attendance · class hand-over', `
+  <p>Dear <strong>${esc(toName)}</strong>,</p>
+  <p><strong>${esc(fromName)}</strong> has handed over <strong>${esc(course)}</strong> to you.</p>
+  ${panel(INDIGO, '#F9F7F5', `<p style="margin:0"><strong>From:</strong> ${esc(from)}</p><p style="margin:4px 0 0"><strong>Until:</strong> ${esc(until)}</p>${note ? `<p style="margin:4px 0 0"><strong>Note:</strong> ${esc(note)}</p>` : ''}`)}
+  <p>The class appears under <strong>Attendance &rarr; Take attendance &rarr; My classes</strong> on those days. Please take attendance for the hours you cover.</p>`)
+  }),
+
   grievanceUpdate: (studentName: string, subject: string, status: string, resolution?: string) => ({
     subject: `Grievance Update — ${status.replace(/_/g, ' ')}`,
     html: layout('Grievance Status Update', `

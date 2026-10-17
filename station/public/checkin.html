@@ -31,6 +31,7 @@
   <form id="f">
     <label>Register number<input id="reg" inputmode="numeric" autocomplete="off" maxlength="12" required></label>
     <label>Attendance PIN<input id="pin" type="password" inputmode="numeric" maxlength="6" required></label>
+    <label id="codeRow" style="display:none">Code on the screen<input id="code" inputmode="numeric" maxlength="2" autocomplete="off"></label>
     <button id="b" type="submit">Check in</button>
   </form>
   <div id="m"></div>
@@ -48,7 +49,7 @@
   let ticket = ''
   fetch('/api/ticket', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nonce }) })
     .then(r => r.json()).then(j => {
-      if (j.ok) { ticket = j.ticket; if (j.title) document.querySelector('h1').textContent = j.title }
+      if (j.ok) { ticket = j.ticket; if (j.title) document.querySelector('h1').textContent = j.title; if (j.needCode) { document.getElementById('codeRow').style.display = ''; document.getElementById('code').required = true } }
       else { show('err', j.error); document.getElementById('b').disabled = true }
     }).catch(() => show('err', 'Join the class Wi-Fi shown on the screen, then scan again.'))
   const show = (cls, text) => { const m = document.getElementById('m'); m.className = 'msg ' + cls; m.textContent = text }
@@ -57,7 +58,7 @@
     const reg = document.getElementById('reg').value.trim(), pin = document.getElementById('pin').value.trim()
     const b = document.getElementById('b'); b.disabled = true; b.textContent = 'Checking in…'
     try {
-      const r = await fetch('/api/checkin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reg, pin, device, ticket }) })
+      const r = await fetch('/api/checkin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reg, pin, device, ticket, code: document.getElementById('code').value.trim() }) })
       const j = await r.json()
       if (j.ok) { try { localStorage.setItem('licet_reg', reg) } catch (e) {} ; show('ok', (j.already ? 'Already marked: ' : 'Present ✓ ') + (j.name || '')); document.getElementById('f').style.display = 'none' }
       else show('err', j.error || 'Not accepted')

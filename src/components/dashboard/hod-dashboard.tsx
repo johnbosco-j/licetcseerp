@@ -8,6 +8,7 @@ import {
   AlertTriangle, CalendarCheck,
 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
+import { hasVerifiedFactor } from "@/components/two-step"
 import { loadDepartmentTotals, type DepartmentTotals } from "@/lib/cgpa"
 import {
   SECTIONS, PERIODS, currentSemester, isFinalYear, isoDate, dayPhase, loadTodaysTimetables, loadSectionAttendance,
@@ -189,11 +190,18 @@ export default function HodDashboard({ name, greeting, designation }: { name: st
   const openItems = attention.filter(a => a.count > 0).length
 
   const ac = getAcademicState()
+  const [twoStep, setTwoStep] = useState<boolean | null>(null)
+  useEffect(() => { hasVerifiedFactor().then(setTwoStep) }, [])
   const today = new Date().toISOString().slice(0, 10)
   const daysLeft = ac?.termEnds ? Math.round((Date.parse(ac.termEnds) - Date.parse(today)) / 86400000) : null
 
   return (
     <div className="space-y-6">
+      {twoStep === false && (
+        <Link href="/dashboard/profile" className="block rounded-lg border border-amber-300 bg-amber-50 text-amber-900 px-4 py-3 text-[13.5px]">
+          <b>Protect HOD access with two-step sign-in.</b> With it on, changing locked attendance, marks, terms or settings needs your phone as well as your password. Set it up on My Profile (2 minutes).
+        </Link>
+      )}
       {daysLeft !== null && daysLeft <= 14 && (
         <Link href="/dashboard/config?tab=terms" className={`block rounded-lg border px-4 py-3 text-[13.5px] ${daysLeft < 0 ? 'border-amber-300 bg-amber-50 text-amber-900' : 'border-licet-gold bg-licet-cream/60 text-licet-indigo'}`}>
           {daysLeft < 0

@@ -3,6 +3,7 @@
 export const dynamic = "force-dynamic"
 
 import { useCallback, useEffect, useState } from "react"
+import { useUnsavedGuard } from "@/lib/use-unsaved-guard"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Loader2, CalendarRange, Library, Users, Layers, ShieldCheck, Menu as MenuIcon, Database, Clock } from "lucide-react"
@@ -30,6 +31,7 @@ export default function ConfigPage() {
   const router = useRouter()
   const [ok, setOk] = useState(false)
   const [tab, setTab] = useState<TabId>('terms')
+  const guard = useUnsavedGuard()
   const [terms, setTerms] = useState<Term[]>([])
   const [verticals, setVerticals] = useState<Vertical[]>([])
   const [groups, setGroups] = useState<StudentGroup[]>([])
@@ -58,12 +60,14 @@ export default function ConfigPage() {
       </div>
       <div className="flex flex-wrap gap-1.5">
         {TABS.map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)}
+          <button key={t.id} onClick={() => { if (t.id !== tab && guard.confirmLeave()) setTab(t.id) }}
             className={`inline-flex items-center gap-1.5 text-[13px] font-semibold px-3 py-2 rounded-md border ${tab === t.id ? 'bg-licet-indigo text-white border-licet-indigo' : 'bg-white border-border hover:bg-muted'}`}>
             <t.icon className="w-4 h-4" />{t.label}
           </button>
         ))}
       </div>
+      {guard.dirty && <p role="status" className="text-[12.5px] text-amber-800">Unsaved changes — press Save on the row you edited.</p>}
+      <div {...guard.bind} className="contents">
       {tab === 'terms' && <TermsTab terms={terms} reload={reload} />}
       {tab === 'courses' && <CoursesTab terms={terms} verticals={verticals} groups={groups} />}
       {tab === 'timetable' && (
@@ -77,6 +81,7 @@ export default function ConfigPage() {
       {tab === 'rules' && <RulesTab settings={settings} reload={reload} />}
       {tab === 'menus' && <MenusTab settings={settings} labels={NAV_LABELS} reload={reload} />}
       {tab === 'data' && <DataEditorTab />}
+      </div>
     </div>
   )
 }

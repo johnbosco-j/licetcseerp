@@ -4,13 +4,14 @@ import { useCallback, useEffect, useState } from "react"
 import { UserPlus, X, Trash2, Loader2 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { reportResult } from "@/components/toaster"
+import { notifyClassHandover } from "@/lib/send-notification"
 import { isoToday } from "@/lib/academic"
 
 export interface Delegation {
   id: string; from_faculty: string; to_faculty: string; subject_id: string | null
   valid_from: string; valid_to: string; note: string | null
 }
-type Staff = { id: string; full_name: string }
+type Staff = { id: string; full_name: string; email: string | null }
 type Course = { id: string; code: string; short_name: string | null; name: string; section: string | null }
 
 /** Delegations that let *me* take someone's class on a date. */
@@ -30,7 +31,7 @@ export function DelegationsButton({ me, termId }: { me: string; termId: string }
 
   const load = useCallback(async () => {
     const [st, links, dl] = await Promise.all([
-      supabase.from('profiles').select('id, full_name').neq('role', 'STUDENT').eq('is_active', true).neq('id', me).order('full_name'),
+      supabase.from('profiles').select('id, full_name, email').neq('role', 'STUDENT').eq('is_active', true).neq('id', me).order('full_name'),
       supabase.from('subject_faculty').select('subject_id, subjects(id, code, short_name, name, section, term_id)').eq('faculty_id', me),
       supabase.from('attendance_delegations').select('*').eq('from_faculty', me).gte('valid_to', isoToday()).order('valid_from'),
     ])
@@ -47,7 +48,14 @@ export function DelegationsButton({ me, termId }: { me: string; termId: string }
       from_faculty: me, to_faculty: form.to, subject_id: form.subject || null, valid_from: form.from, valid_to: form.until, note: form.note || null,
     })
     setBusy(false)
-    if (reportResult(error, 'Class handed over — your colleague now sees it under My classes')) { setForm(f => ({ ...f, to: '', note: '' })); load() }
+    if (reportResult(error, 'Class handed over — your colleague now sees it under My classes and gets an email')) {
+      const sub = staff.find(s => s.id === form.to)
+      if (sub?.email) {
+        const { data: mine } = await supabase.from('profiles').select('full_name').eq('id', me).single()
+        notifyClassHandover(sub.email, sub.full_name, mine?.full_name ?? 'A colleague', course(form.subject || null), form.from, form.until, form.note || undefined)
+      }
+      setForm(f => ({ ...f, to: '', note: '' })); load()
+    }
   }
   const remove = async (id: string) => {
     const { error } = await supabase.from('attendance_delegations').delete().eq('id', id)

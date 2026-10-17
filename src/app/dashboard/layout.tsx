@@ -12,6 +12,7 @@ import {
 } from "lucide-react"
 import type { AuthUser } from "@/lib/auth"
 import { signOut } from "@/lib/auth"
+import { TwoStepGate } from "@/components/two-step"
 import { supabase } from "@/lib/supabase"
 import { getAllowedModules } from "@/lib/roles"
 import { setAcademicState } from "@/lib/semester"
@@ -97,6 +98,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [tip, setTip]             = useState<{ label: string; top: number } | null>(null)
   const [section, setSection]     = useState<string | null>(null)
   const [mustChange, setMustChange] = useState(false)
+  const [needCode, setNeedCode]   = useState(false)   // account has an authenticator; session not confirmed yet
   const [expanded, setExpanded]   = useState(true)
   const [mobileOpen, setMobile]   = useState(false)
   const [query, setQuery]         = useState("")
@@ -153,6 +155,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       setSection(profile.section ?? null)
       setMustChange(!!profile.must_change_password)
       setBellUser({ id: profile.id, role: profile.role, tier1: isTier1(profile), advisorSection: profile.advisor_section ?? null, section: profile.section ?? null })
+      const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+      if (!active) return
+      setNeedCode(aal?.nextLevel === 'aal2' && aal.currentLevel !== 'aal2')
       setReady(true)
     }
     init()
@@ -247,6 +252,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const roleLine = `${designation ?? ROLE_LABEL[role] ?? role}${role === "STUDENT" && section ? ` · ${section}` : ""}`
   const openSearch = () => { setExpanded(true); setMobile(true); setTimeout(() => searchRef.current?.focus(), 60) }
 
+  if (ready && needCode) return <TwoStepGate onDone={() => { setNeedCode(false); window.location.reload() }} />
   if (!ready) {
     return (
       <div className="h-screen w-full flex items-center justify-center bg-licet-indigo bg-[radial-gradient(80%_60%_at_50%_0%,#41317E_0%,transparent_70%)]">

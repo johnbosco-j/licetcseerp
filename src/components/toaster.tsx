@@ -24,8 +24,11 @@ export function friendlyError(message: string): string {
   return message
 }
 
+// A successful save anywhere tells unsaved-changes guards (useUnsavedGuard) that the edits are stored.
+const saved = () => { if (typeof window !== "undefined") window.dispatchEvent(new Event("licet:saved")) }
+
 export const toast = {
-  success: (text: string) => push("success", text),
+  success: (text: string) => { saved(); push("success", text) },
   error: (text: string) => push("error", friendlyError(text)),
   info: (text: string) => push("info", text),
 }
@@ -33,7 +36,7 @@ export const toast = {
 /** Shows an error toast when a Supabase call failed, else the success text. Returns true on success. */
 export function reportResult(error: { message: string } | null | undefined, success?: string): boolean {
   if (error) { toast.error(error.message); return false }
-  if (success) toast.success(success)
+  if (success) toast.success(success); else saved()
   return true
 }
 

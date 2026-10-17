@@ -54,3 +54,10 @@ export async function notifyGrievanceUpdate(
   const tmpl = emailTemplates.grievanceUpdate(studentName, subject, status, resolution)
   return postEmail({ to: studentEmail, ...tmpl })
 }
+
+export async function notifyClassHandover(
+  toEmail: string, toName: string, fromName: string, course: string, from: string, until: string, note?: string
+) {
+  const tmpl = emailTemplates.classHandover(toName, fromName, course, from, until, note)
+  return postEmail({ to: toEmail, ...tmpl })
+}

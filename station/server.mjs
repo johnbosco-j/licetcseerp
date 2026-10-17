@@ -45,6 +45,8 @@ const state = {
   title: '',
   rotate: 15,             // seconds; read from ERP settings after sign-in
   nonces: [],             // current + previous QR codes
+  codes: [],              // 2-digit codes shown on the projector with each QR (optional)
+  useCode: false,         // attendance.projector_code, read from ERP settings after sign-in
   marked: new Map(),      // register no → { name, at, ip }
   byIp: new Map(),        // ip → register no (one student per phone per class)
   queue: [],              // check-ins waiting for the internet to come back (memory only: they hold PINs)
@@ -57,6 +59,7 @@ try { fs.unlinkSync(path.join(DIR, 'queue.json')) } catch { /* none */ }
 
 function rotate() {
   state.nonces = [crypto.randomBytes(6).toString('base64url'), ...state.nonces].slice(0, 2)
+  state.codes = [String(crypto.randomInt(10, 100)), ...state.codes].slice(0, 2)
 }
 rotate()
 let rotTimer = setInterval(rotate, state.rotate * 1000)
@@ -138,7 +141,7 @@ const server = http.createServer(async (req, res) => {
       const now = Date.now()
       for (const [k, v] of state.tickets) if (v.exp < now) state.tickets.delete(k)
       state.tickets.set(t, { ip: clientIp(req), exp: now + 180_000 })
-      return send(res, 200, { ok: true, ticket: t, title: state.title })
+      return send(res, 200, { ok: true, ticket: t, title: state.title, needCode: state.useCode })
     }
     if (u.pathname === '/api/checkin' && req.method === 'POST') {
       const b = await readBody(req)
@@ -150,6 +153,7 @@ const server = http.createServer(async (req, res) => {
       if (!/^\d{12}$|^\d{2}CS\d{3}$/.test(reg)) return send(res, 400, { ok: false, error: 'Enter your 12-digit register number' })
       if (!/^\d{4,6}$/.test(pin)) return send(res, 400, { ok: false, error: 'Enter your 4–6 digit attendance PIN' })
       if (!device) return send(res, 400, { ok: false, error: 'Your browser blocked storage; open the link in Chrome or Safari normally (not private mode)' })
+      if (state.useCode && !state.codes.includes(String(b.code || '').trim())) return send(res, 400, { ok: false, error: 'Enter the 2-digit code shown on the screen right now' })
       const prior = state.byIp.get(ip)
       if (prior && prior !== reg) return send(res, 429, { ok: false, error: 'This phone already checked in another student' })
       if (state.marked.has(reg)) return send(res, 200, { ok: true, name: state.marked.get(reg).name, already: true })
@@ -180,8 +184,10 @@ const server = http.createServer(async (req, res) => {
       const { data: p } = await sb.from('profiles').select('id, full_name, role').eq('id', data.user.id).single()
       if (!p || p.role === 'STUDENT') { await sb.auth.signOut(); return send(res, 403, { error: 'Only staff can run the Attendance Station' }) }
       state.staff = { id: p.id, name: p.full_name }
-      const { data: st } = await sb.from('app_settings').select('value').eq('key', 'attendance.qr_rotate_seconds').maybeSingle()
-      state.rotate = Math.max(5, Number(st?.value ?? 15)); clearInterval(rotTimer); rotTimer = setInterval(rotate, state.rotate * 1000)
+      const { data: st } = await sb.from('app_settings').select('key, value').in('key', ['attendance.qr_rotate_seconds', 'attendance.projector_code'])
+      const setting = k => (st ?? []).find(x => x.key === k)?.value
+      state.rotate = Math.max(5, Number(setting('attendance.qr_rotate_seconds') ?? 15)); clearInterval(rotTimer); rotTimer = setInterval(rotate, state.rotate * 1000)
+      state.useCode = String(setting('attendance.projector_code')) === 'true'
       return send(res, 200, { ok: true, name: p.full_name })
     }
     if (u.pathname === '/api/logout' && req.method === 'POST') { await sb.auth.signOut(); state.staff = null; state.sessions = []; return send(res, 200, { ok: true }) }
@@ -209,6 +215,7 @@ const server = http.createServer(async (req, res) => {
       }
       return send(res, 200, {
         staff: state.staff, open: state.sessions.length > 0, title: state.title, qr, link, rotate: state.rotate,
+        code: state.useCode && state.sessions.length ? state.codes[0] : null,
         present, total, recent: [...state.marked.values()].sort((a, b) => b.at - a.at).slice(0, 12).map(m => m.name),
         pending: state.queue.length, lastError: state.lastError,
         failed: state.failed.map(f => `${f.reg}: ${f.error}`),

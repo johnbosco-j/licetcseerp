@@ -78,6 +78,7 @@ const RULES: { key: string; label: string; help: string; kind: 'number' | 'bool'
   { key: 'attendance.condonation_percent', label: 'Condonation floor (%)', help: 'Regulation 7.2 — between this and the minimum only with medical / sports documents. Below it: SA.', kind: 'number' },
   { key: 'attendance.self_mark_enabled', label: 'Allow self check-in (QR + Attendance Station)', help: 'Staff can open a 10-minute self check-in from the marking screen.', kind: 'bool' },
   { key: 'attendance.qr_rotate_seconds', label: 'QR code changes every (seconds)', help: 'Used by the Attendance Station; shorter makes forwarding a photo of the QR useless.', kind: 'number' },
+  { key: 'attendance.projector_code', label: 'Ask for a 2-digit code shown on the projector', help: 'Optional extra check for self check-in: the station shows a code with each QR and phones must type it, so a QR photo sent outside the room is not enough.', kind: 'bool' },
   { key: 'attendance.require_headcount', label: 'Head count required to submit a self check-in', help: 'The teacher counts heads; the ERP refuses more “present” than counted.', kind: 'bool' },
   { key: 'attendance.backdate_days', label: 'Staff may enter attendance up to (days back)', help: 'Older hours can only be entered by the HOD.', kind: 'number' },
   { key: 'attendance.open_before_minutes', label: 'An hour can be opened this many minutes before it starts', help: 'Stops attendance being marked in advance.', kind: 'number' },

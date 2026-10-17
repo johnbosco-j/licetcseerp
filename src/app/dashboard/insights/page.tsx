@@ -73,7 +73,7 @@ export default function InsightsPage() {
       return (data ?? []) as Rec[]
     }
     const range = { p_from: from || null, p_to: to || null }
-    const [kpis, trend, matrix, missing, load_, defaulters, streaks, groups, cohorts] = await Promise.all([
+    const [kpis, trend, matrix, missing, load_, defaulters, streaks, groups, cohorts, topics, selfci] = await Promise.all([
       rpc('ana_section_kpis', { p_term: termId }),
       rpc('ana_weekly_trend', { p_term: termId }),
       rpc('ana_course_matrix', { p_term: termId }),
@@ -83,9 +83,12 @@ export default function InsightsPage() {
       rpc('ana_absence_streaks', { p_term: termId, p_min_days: 3 }),
       rpc('ana_groups', { p_term: termId }),
       rpc('ana_cohort_terms', {}),
+      rpc('ana_topics', { p_term: termId, p_section: mySection, p_subject: null }),
+      rpc('ana_self_checkin', { p_term: termId }),
     ])
     const only = (rows: Rec[]) => mySection ? rows.filter(r => r.section === mySection || r.section === 'Combined') : rows
-    setData({ kpis: only(kpis), trend: only(trend), matrix: only(matrix), missing: only(missing), load: load_, defaulters: only(defaulters), streaks: only(streaks), groups: only(groups), cohorts })
+    setData({ kpis: only(kpis), trend: only(trend), matrix: only(matrix), missing: only(missing), load: load_, defaulters: only(defaulters), streaks: only(streaks), groups: only(groups), cohorts,
+      topics, selfci: mySection ? selfci.filter(r => r.class === mySection || r.class === 'Combined') : selfci })
     const { data: offs } = await supabase.from('subjects').select('*').eq('term_id', termId).order('code')
     setOfferings((offs ?? []) as Offering[])
     setLoading(false)
@@ -189,6 +192,21 @@ export default function InsightsPage() {
         </Panel>
         <Panel title="Absent for 3+ class days in a row" note="Every recorded hour missed on consecutive class days." rows={data.streaks} exportName="Absence_streaks" loading={loading}>
           <ul className="text-[13px] divide-y divide-border max-h-72 overflow-y-auto">{(data.streaks ?? []).map((r, i) => <li key={i} className="py-1.5 flex justify-between gap-2"><span>{r.full_name} <span className="text-muted-foreground text-[11.5px]">{r.section}</span></span><span className="tabular-nums text-[12.5px]">{r.days} days · {String(r.from_date).slice(5)} → {String(r.to_date).slice(5)}</span></li>)}</ul>
+        </Panel>
+      </div>
+
+      <div className="grid xl:grid-cols-2 gap-5">
+        <Panel title="Topics covered" note="Topic entered with each hour (newest first) — the course-coverage log for course files and audits." rows={data.topics} exportName="Topics_covered" loading={loading}>
+          {(data.topics ?? []).some(r => r.topic) ? (
+            <ul className="text-[13px] divide-y divide-border max-h-80 overflow-y-auto">{(data.topics ?? []).filter(r => r.topic).slice(0, 300).map((r, i) => (
+              <li key={i} className="py-1.5"><span className="text-muted-foreground text-[11.5px] tabular-nums">{String(r.date).slice(5)} P{r.period_no} · {r.class} · {r.course}</span><span className="block">{r.topic}</span></li>))}</ul>
+          ) : <p className="text-[13px] text-muted-foreground">No topics entered yet. Teachers can add the topic when they take attendance.</p>}
+        </Panel>
+        <Panel title="Self check-in and head counts" note="Every hour taken by QR self check-in: how many checked in, how many were present, the head count the teacher entered, and any excess over it." rows={data.selfci} exportName="Self_checkin" loading={loading}>
+          {(data.selfci ?? []).length ? (
+            <table className="w-full text-[12.5px]"><thead><tr className="text-left text-muted-foreground border-b border-border">{['Date', 'Class', 'Course', 'Teacher', 'Checked in', 'Present', 'Head count', 'Over'].map(h => <th key={h} className="py-1.5 pr-2 font-medium">{h}</th>)}</tr></thead>
+              <tbody>{(data.selfci ?? []).slice(0, 200).map((r, i) => <tr key={i} className="border-b border-border/60"><td className="pr-2 tabular-nums">{String(r.date).slice(5)} P{r.period_no}</td><td className="pr-2">{r.class}</td><td className="pr-2">{r.course}</td><td className="pr-2">{r.teacher}</td><td className="pr-2 tabular-nums">{r.checked_in}/{r.on_list}</td><td className="pr-2 tabular-nums">{r.present}</td><td className="pr-2 tabular-nums">{r.headcount ?? '—'}</td><td className={`pr-2 tabular-nums ${Number(r.more_than_counted) ? 'text-red-700 font-semibold' : ''}`}>{Number(r.more_than_counted) || ''}</td></tr>)}</tbody></table>
+          ) : <p className="text-[13px] text-muted-foreground">No hour was taken by self check-in in this term.</p>}
         </Panel>
       </div>
 

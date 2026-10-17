@@ -2,6 +2,7 @@
 
 export const dynamic = "force-dynamic"
 
+import { useUnsavedGuard } from "@/lib/use-unsaved-guard"
 import { useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Loader2, Pencil, Plus, Trash2, X, Printer, Check } from "lucide-react"
@@ -198,6 +199,8 @@ function CellEditor({ term, section, day, period, entries, dayEntries, offerings
   term: Term; section: string; day: number; period: number; entries: TimetableEntry[]; dayEntries: TimetableEntry[]; offerings: Offering[]
   verticals: Vertical[]; groups: StudentGroup[]; staff: Staff[]; onClose: () => void; onSaved: () => void
 }) {
+  const guard = useUnsavedGuard()
+  const close = () => { if (guard.confirmLeave()) onClose() }
   const [drafts, setDrafts] = useState<Draft[]>(entries.map(e => ({ ...e, key: e.id })))
   const [busy, setBusy] = useState(false)
   const [span, setSpan] = useState(1)
@@ -243,18 +246,18 @@ function CellEditor({ term, section, day, period, entries, dayEntries, offerings
     }
     setBusy(false)
     reportResult(null, 'Timetable updated')
-    onSaved(); onClose()
+    guard.markSaved(); onSaved(); onClose()
   }
 
   return (
-    <div className="fixed inset-0 z-[80] bg-black/40 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[80] bg-black/40 flex items-center justify-center p-4" onClick={close}>
+      <div {...guard.bind} className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
         <div className="px-5 py-4 border-b border-border flex items-center justify-between">
           <div>
             <p className="eyebrow">{section} · {DAY_NAMES[day]} · Period {period}</p>
             <h2 className="font-display text-xl font-bold text-licet-indigo mt-1">Edit this hour</h2>
           </div>
-          <button onClick={onClose} className="p-2 rounded-md hover:bg-muted"><X className="w-5 h-5" /></button>
+          <button onClick={close} className="p-2 rounded-md hover:bg-muted"><X className="w-5 h-5" /></button>
         </div>
         <div className="flex-1 overflow-y-auto p-5 space-y-4">
           <p className="text-[12.5px] text-muted-foreground">Add more than one entry to split the hour — e.g. Batch 1 in one lab and Batch 2 in another, or each vertical in its own course. Attendance is then taken separately for each.</p>
@@ -326,7 +329,7 @@ function CellEditor({ term, section, day, period, entries, dayEntries, offerings
           </div>
         </div>
         <div className="px-5 py-3 border-t border-border flex justify-end gap-2">
-          <button onClick={onClose} className="h-9 px-4 rounded-md border border-border text-[13px] font-semibold">Cancel</button>
+          <button onClick={close} className="h-9 px-4 rounded-md border border-border text-[13px] font-semibold">Cancel</button>
           <button onClick={save} disabled={busy} className="h-9 px-5 rounded-md bg-licet-indigo text-white text-[13px] font-semibold inline-flex items-center gap-1.5 disabled:opacity-50">{busy && <Loader2 className="w-4 h-4 animate-spin" />} Save</button>
         </div>
       </div>

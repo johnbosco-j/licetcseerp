@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Check, X, Loader2, Lock, Unlock, QrCode, RefreshCw, Search, Users, Timer, ShieldAlert } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { toast, reportResult } from "@/components/toaster"
@@ -39,6 +39,8 @@ export function MarkPanel({ date, block, dayOrder, isHod, onClose, onSaved }: {
   const [sessions, setSessions] = useState<AttSession[]>([])
   const [students, setStudents] = useState<RosterStudent[]>([])
   const [absent, setAbsent] = useState<Set<string>>(new Set())
+  // the absent list as last loaded from the server: the teacher's own changes are the difference
+  const [baseAbsent, setBaseAbsent] = useState<Set<string>>(new Set())
   const [onDuty, setOnDuty] = useState<Set<string>>(new Set())
   const [onLeave, setOnLeave] = useState<Set<string>>(new Set())
   const [periods, setPeriods] = useState<number[]>(block.periods)
@@ -50,6 +52,9 @@ export function MarkPanel({ date, block, dayOrder, isHod, onClose, onSaved }: {
   const [busy, setBusy] = useState(false)
   const [now, setNow] = useState(() => Date.now())
   const [dirty, setDirty] = useState(false)
+  // bumped on every edit, so a save that finishes after a newer tap does not mark that tap as saved
+  const edits = useRef(0)
+  const touch = () => { edits.current++; setDirty(true) }
   const [refused, setRefused] = useState<string | null>(null)
   const [savedAt, setSavedAt] = useState<number | null>(null)
 
@@ -68,7 +73,7 @@ export function MarkPanel({ date, block, dayOrder, isHod, onClose, onSaved }: {
     setSessions(out)
     const ids = [...new Set(out.flatMap(s => s.roster))]
     setStudents(await loadRosterStudents(ids))
-    setAbsent(new Set(out[0]?.absent ?? []))
+    setAbsent(new Set(out[0]?.absent ?? [])); setBaseAbsent(new Set(out[0]?.absent ?? []))
     setOnDuty(new Set(out[0]?.on_duty ?? []))
     // approved leave covering this date (shown as a hint; the teacher still marks)
     const { data: lv } = await supabase.from('leaves').select('applicant_id').in('applicant_id', ids.slice(0, 300))
@@ -96,7 +101,7 @@ export function MarkPanel({ date, block, dayOrder, isHod, onClose, onSaved }: {
       const { data } = await supabase.from('attendance_sessions').select('*').in('id', sessions.map(s => s.id))
       if (data) {
         const fresh = block.periods.map(p => (data as AttSession[]).find(s => s.period_no === p)).filter(Boolean) as AttSession[]
-        setSessions(fresh); setAbsent(new Set(fresh[0]?.absent ?? []))
+        setSessions(fresh); setAbsent(new Set(fresh[0]?.absent ?? [])); setBaseAbsent(new Set(fresh[0]?.absent ?? []))
       }
     }, 4000)
     return () => clearInterval(iv)
@@ -113,36 +118,54 @@ export function MarkPanel({ date, block, dayOrder, isHod, onClose, onSaved }: {
   const toggleOd = (id: string) => {
     if (!canEdit || absent.has(id)) return
     setOnDuty(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n })
-    setDirty(true)
+    touch()
   }
   const toggle = (id: string) => {
     setOnDuty(prev => { if (!prev.has(id)) return prev; const n = new Set(prev); n.delete(id); return n })
     if (!canEdit) return
     setAbsent(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n })
-    setDirty(true)
+    touch()
   }
-  const setAll = (present: boolean) => { if (!canEdit) return; setAbsent(present ? new Set() : new Set(students.map(s => s.id))); if (!present) setOnDuty(new Set()); setDirty(true) }
+  const setAll = (present: boolean) => { if (!canEdit) return; setAbsent(present ? new Set() : new Set(students.map(s => s.id))); if (!present) setOnDuty(new Set()); touch() }
 
   const save = async (submit: boolean, silent = false) => {
     if (!chosen.length) { if (!silent) toast.error('Choose at least one period'); return }
     if (locked && isHod && !reason.trim()) { if (!silent) toast.error('Give a reason for changing a locked hour'); return }
     if (!silent) setBusy(true)
+    const startedAt = edits.current
     let ok = true
-    for (const s of chosen) {
-      const ab = [...absent].filter(id => s.roster.includes(id))
+    // During self check-in students keep turning present while the teacher edits. Apply only
+    // the teacher's own changes on top of the latest list so no check-in is undone.
+    const self = chosen.some(s => s.mode === 'SELF')
+    const latest = new Map<string, AttSession>()
+    if (self) {
+      const { data } = await supabase.from('attendance_sessions').select('*').in('id', chosen.map(s => s.id))
+      for (const x of (data ?? []) as AttSession[]) latest.set(x.id, x)
+    }
+    const nowPresent = [...baseAbsent].filter(id => !absent.has(id)), nowAbsent = [...absent].filter(id => !baseAbsent.has(id))
+    for (const c of chosen) {
+      const s = latest.get(c.id) ?? c
+      const ab = self
+        ? [...new Set([...s.absent.filter(id => !nowPresent.includes(id)), ...nowAbsent])].filter(id => s.roster.includes(id))
+        : [...absent].filter(id => s.roster.includes(id))
       const { data, error } = await supabase.rpc('att_save', {
         p_session: s.id, p_absent: ab, p_topic: topic || null, p_submit: submit, p_reason: locked ? reason.trim() : null,
         p_headcount: headcount.trim() ? Number(headcount) : null,
         p_on_duty: [...onDuty].filter(id => s.roster.includes(id) && !absent.has(id)),
+        p_expected: s.updated_at,   // refuse to overwrite a colleague's newer save
       })
-      if (error) { if (!silent) reportResult(error); ok = false; break }
+      // a conflict is shown even during autosave: these marks were not saved
+      if (error) { if (!silent || error.code === '40001') reportResult(error); ok = false; break }
       setSessions(prev => prev.map(x => x.id === s.id ? (data as AttSession) : x))
+      if (c === chosen[0] && edits.current === startedAt) { setAbsent(new Set((data as AttSession).absent)); setBaseAbsent(new Set((data as AttSession).absent)) }
     }
     if (!silent) setBusy(false)
-    if (ok) {
+    if (ok && edits.current === startedAt) {
       setDirty(false)
       setSavedAt(Date.now())
       writeBackup(sessions.map(x => x.id), null)
+    }
+    if (ok) {
       if (!silent) {
         toast.success(submit ? `Submitted · ${presentCount}/${students.length} present. You can still correct it for a few minutes.` : 'Saved as draft')
         onSaved?.()
@@ -190,7 +213,7 @@ export function MarkPanel({ date, block, dayOrder, isHod, onClose, onSaved }: {
       const { data, error } = await supabase.rpc('att_self_open', { p_session: s.id, p_minutes: 10 })
       if (!reportResult(error)) { setBusy(false); return }
       setSessions(prev => prev.map(x => x.id === s.id ? (data as AttSession) : x))
-      if (s === chosen[0]) setAbsent(new Set((data as AttSession).absent))
+      if (s === chosen[0]) { setAbsent(new Set((data as AttSession).absent)); setBaseAbsent(new Set((data as AttSession).absent)) }
     }
     setBusy(false)
     setDirty(false)
@@ -313,12 +336,12 @@ export function MarkPanel({ date, block, dayOrder, isHod, onClose, onSaved }: {
                 <Users className="w-4 h-4 text-muted-foreground" />
                 <span><b className="text-green-800">{presentCount}</b> present{onDuty.size ? <> (incl. <b className="text-licet-violet">{[...onDuty].filter(id => !absent.has(id)).length}</b> OD)</> : null} · <b className="text-red-700">{students.length - presentCount}</b> absent · {students.length} on list</span>
               </div>
-              <input value={topic} onChange={ev => { setTopic(ev.target.value); setDirty(true) }} disabled={!canEdit}
+              <input value={topic} onChange={ev => { setTopic(ev.target.value); touch() }} disabled={!canEdit}
                 placeholder="Topic covered (for the course register)" className="w-full h-9 px-3 rounded-md border border-input text-[13.5px] focus:outline-none focus:border-licet-violet disabled:bg-muted/40" />
               {(selfOpen || sessions.some(x => x.mode === 'SELF')) && (
                 <label className="flex items-center gap-2 text-[13px]">
                   <span className="text-muted-foreground">Head count in the room</span>
-                  <input value={headcount} onChange={ev => { setHeadcount(ev.target.value.replace(/\D/g, '').slice(0, 3)); setDirty(true) }} inputMode="numeric" disabled={!canEdit}
+                  <input value={headcount} onChange={ev => { setHeadcount(ev.target.value.replace(/\D/g, '').slice(0, 3)); touch() }} inputMode="numeric" disabled={!canEdit}
                     className="w-20 h-9 px-2 rounded-md border border-input text-[13.5px] focus:outline-none focus:border-licet-violet" />
                   {headcount && presentCount - [...onDuty].filter(id => !absent.has(id)).length > Number(headcount) && <span className="text-red-700 text-[12.5px]">{presentCount - [...onDuty].filter(id => !absent.has(id)).length - Number(headcount)} more present than counted — check the list</span>}
                 </label>

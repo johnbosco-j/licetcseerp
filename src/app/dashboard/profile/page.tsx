@@ -9,6 +9,7 @@ import { Mail, Phone, Key, Loader2, Save, ShieldCheck, UserRound, Download } fro
 import { supabase } from "@/lib/supabase"
 import type { Database } from "@/lib/supabase"
 import { tierOf } from "@/lib/roles"
+import { TwoStepSettings } from "@/components/two-step"
 import { formatMobile, normalizeMobile } from "@/lib/utils"
 import { toast, reportResult } from "@/components/toaster"
 
@@ -117,6 +118,8 @@ export default function MyProfilePage() {
           </button>
         </div>
       </section>
+
+      {!student && <TwoStepSettings recommended={tierOf(me) === 1} />}
 
       <section className="grid sm:grid-cols-2 gap-4">
         <Link href="/dashboard/change-password" className="flex items-center gap-3 bg-card border border-border rounded-xl p-5 hover:border-licet-gold hover:shadow-sm">
