@@ -18,8 +18,8 @@ are exported for the CoE rather than sent to them.
 | Staff accounts | 72 active (CSE faculty and faculty of other departments who teach CSE classes) |
 | Class advisors | all 8 sections |
 | Terms | AY 2025-26 Even (complete register imported), AY 2026-27 Odd (current) |
-| Courses this term | 70 offerings, 56 linked to an ERP account |
-| Timetable | 376 hour-cells this term, with batch / vertical splits |
+| Courses this term | 70 offerings (incl. electives PE1 = POPL / RL, PE2 = UI/UX / NN&DL, Honours), 56 linked to an ERP account |
+| Timetable | 376 hour-cells this term, with batch / vertical splits; 307 carry their teacher's account |
 | Attendance | 5,071 class hours, 275,654 student-hour marks (totals match the Excel registers) |
 | Academic calendar | 1,005 day entries (first year, II–III, IV scopes) |
 
@@ -27,7 +27,7 @@ are exported for the CoE rather than sent to them.
 
 - **Next.js 16** (App Router, React, TypeScript, Tailwind) — `src/`.
 - **Supabase** — Postgres with row-level security on every table, Supabase Auth,
-  private storage buckets. All schema is in `supabase/migrations/` (35 files, applied
+  private storage buckets. All schema is in `supabase/migrations/` (39 files, applied
   in order; the live database records each in `supabase_migrations.schema_migrations`).
 - The browser talks to Supabase directly **as the signed-in person**; rules live in
   the database, so a hidden menu item is never the only protection. Server routes
@@ -36,14 +36,14 @@ are exported for the CoE rather than sent to them.
 - **Attendance Station** (`station/`) — a small Node app the teacher runs on a
   laptop for QR self check-in over the laptop's own Wi-Fi.
 
-### The academic core (migrations 26–35)
+### The academic core (migrations 26–39)
 
 | Table | Holds |
 | --- | --- |
 | `academic_terms` | One row per term; exactly one `is_current`. `start_term()` opens the next one. |
 | `calendar_days` | Working day / holiday and which weekday's timetable a day follows, per scope (FY, HS = II–III, IV). |
 | `period_slots` | Period timings per term. |
-| `subjects` | Course **offerings** per term. Section courses have `section`; combined courses (verticals, electives) have `section = null` + `cohort_grad_year`. |
+| `subjects` | Course **offerings** per term. Section courses have `section`; combined courses (verticals, electives, honours) have `section = null` + `cohort_grad_year`; alternatives taught in the same hours share an `elective_slot` (PE1, PE2, Honours). Also the CO1–CO6 statements. |
 | `subject_faculty` | Teachers of an offering (MAIN / ASSISTANT). |
 | `timetable_entries` | One row per class per hour; several rows in one cell = a split hour (`audience` ALL / BATCH / VERTICAL / GROUP). |
 | `attendance_sessions` | **One row per class hour**: `roster`, `absent`, `on_duty` (uuid arrays), status, lock time, who took it. Present = on the roster and not absent; on-duty counts as present. |
@@ -51,6 +51,8 @@ are exported for the CoE rather than sent to them.
 | `attendance_delegations` | An instructor hands a class to a colleague for given dates. |
 | `attendance_pins`, `attendance_devices`, `attendance_self_marks` | Self check-in: PIN (bcrypt), one phone per student, what each phone marked. |
 | `pending_staff_links` | People without an account yet; when it is created they take their advisor post and printed courses. |
+| `co_po_map`, `assessment_co_map` | CO × PO/PSO correlation (1–3) of a course, and which marks components measure each CO. |
+| `marks_publications`, `mark_objections` | A marks component released to students opens a 7-day objection window; objections are answered by the course teacher / HOD. |
 | `app_settings` | Every rule the HOD can change (below). |
 
 Older tables (`day_attendance`, `attendance`, part-wise) are kept read-only for history;
@@ -74,6 +76,23 @@ nothing in the app reads them any more except the audit page.
   medical/sports condonation; < 65 SA. On-duty hours count as attended.
 - **Autosave**: an unsubmitted register is saved as a draft 3 s after the last tap and
   also kept in the browser until saved.
+- **No overwriting**: a save made from a copy older than a colleague's newer save is
+  refused ("changed by … — open it again"); during self check-in only the teacher's own
+  changes are applied on top of the live check-ins.
+- **Substitution**: handing a class over emails the colleague.
+
+### Marks and outcomes (migration 38)
+
+- Marks can be typed or **imported from Excel** one course at a time; the import shows
+  unmatched rows, duplicates and out-of-range values before anything is saved.
+- **Publishing** a component (Outcomes page) tells students it is final and opens a
+  `marks.objection_days` (7) day window; students object from their Marks page and the
+  course teacher / HOD answers.
+- **CO attainment**: the share of students scoring ≥ `obe.target_percent` (60) in the
+  components mapped to the CO → level 3 / 2 / 1 at 70 / 60 / 50 %.
+  **PO attainment** = Σ(CO level × correlation) / Σ correlation (direct), combined
+  80 / 20 with course-end feedback scaled to 3 (indirect). The HOD's term report is the
+  NAAC 2.6.2 / NBA programme-outcome table.
 
 ### Settings the HOD can change (Configuration → Attendance rules)
 
@@ -81,7 +100,9 @@ nothing in the app reads them any more except the audit page.
 `backdate_days` 2 · `open_before_minutes` 10 · `self_mark_enabled` on ·
 `require_headcount` on · `pin_max_attempts` 5 · `pin_lock_minutes` 15 ·
 `qr_rotate_seconds` 10 · `allow_any_staff` off · `alerts.weekly_enabled` on ·
-`alerts.parents` on · `alerts.threshold_percent` 80 · `nav.hidden` (menus per role).
+`alerts.parents` on · `alerts.threshold_percent` 80 · `projector_code` off ·
+`nav.hidden` (menus per role) · `obe.target_percent` 60 · `obe.level3/2/1_percent`
+70/60/50 · `obe.direct_weight` 80 · `marks.objection_days` 7.
 
 ## Security
 
@@ -95,13 +116,22 @@ nothing in the app reads them any more except the audit page.
 - Graduates are archived (complete records to private storage) and their sign-in is
   blocked; nothing is deleted.
 - Default passwords must be changed at first sign-in.
+- **Two-step sign-in** (authenticator app): anyone can turn it on in My Profile. Once the
+  HOD (or another tier-1 account) has it, the database grants HOD powers only to
+  sessions confirmed with the code. Lost phone: `node scripts/reset-two-step.mjs <email>`.
+- Grievances are visible only to the student and tier 1. Every role's access is
+  checked by `tests/db/06_access_matrix.sql`.
+- Supabase security advisor (17 Oct 2026): only expected warnings remain (signed-in
+  users may call the API functions, which all check the caller; leaked-password
+  protection is the owner's switch).
 
 ## Tests
 
 | Command | What |
 | --- | --- |
-| `npm test` | 254 unit tests (regulations, eligibility, roles, calendar parsing, timetable blocks) |
-| `npm run test:db` | 63 database tests in `tests/db/*.sql` — attendance authority, timing, lock, OD, self check-in, term lifecycle, privacy of analysis, staff linking. Each runs in a transaction and rolls back. Needs `DATABASE_URL` (psql) or `SUPABASE_ACCESS_TOKEN` + `SUPABASE_PROJECT_REF`. |
+| `npm test` | 270 unit tests (regulations, eligibility, roles, calendar parsing, timetable blocks, marks import) |
+| `npm run test:db` | 136 database checks in `tests/db/*.sql` — attendance authority, timing, lock, OD, self check-in, term lifecycle, analysis privacy, staff linking, conflicts, timetable copy, two-step, the full access matrix per role, CO/PO attainment and objections. Each runs in a transaction and rolls back (safe on production). Needs `DATABASE_URL` (psql) or `SUPABASE_ACCESS_TOKEN` + `SUPABASE_PROJECT_REF`. |
+| `npm run test:e2e` | 31 end-to-end checks on the local stack: the Attendance Station from QR to submit, and two-step sign-in. |
 | `npm run build` | Must pass before every push (Vercel builds the same). |
 
 CI (`.github/workflows/ci.yml`) runs the typecheck, the unit tests and the build on every push.
@@ -119,7 +149,9 @@ Test accounts `hod@test.local`, `faculty1@test.local`, `advisor@test.local`,
 | Each hour | Take attendance | Attendance → Take attendance |
 | Each week (automatic, Mon 07:00 IST) | Shortage emails to students below 80% (parents and advisor copied) | `/api/cron/attendance-alerts` |
 | End of term | Verify registers (Insights → hours not recorded), export eligibility for the CoE | Attendance → Summary & eligibility |
-| Start of term | Configuration → Terms → **Start next term** (copies periods), import the calendar Excel, add courses (or copy from a previous term), link faculty, build timetables, set batches / verticals | Configuration |
+| Start of term | Configuration → Terms → **Start next term**: promotion (odd term), periods, R2024 courses, elective / vertical courses and the timetable copied from the same term last year, calendar Excel. Then check teachers, elective slots, batches / verticals | Configuration |
+| After each assessment | Enter or import marks, then publish the component (7-day objection window) | Assessments & Marks, Outcomes |
+| End of term (outcomes) | Map COs → POs and assessments → COs; export CO / PO attainment and the term report | Outcomes (CO–PO) |
 | June | Year promotion, then archive graduates | Year Promotion |
 | New staff | `node scripts/create-staff.mjs list.json --apply --out <file outside the repo>` (default password `licet@<name>`) | terminal |
 
@@ -131,8 +163,9 @@ Test accounts `hod@test.local`, `faculty1@test.local`, `advisor@test.local`,
    and confirm `RESEND_API_KEY` / `EMAIL_FROM`.
 3. Turn on **leaked-password protection** in Supabase → Authentication.
 4. Hand out the default passwords (files in `~/Downloads/CSE_Staff/`, not in the repo)
-   and ask everyone to sign in once.
-5. Decide the college-server details listed in the runbook (domain, campus-only or
+   and ask everyone to sign in once. The HOD should then turn on two-step sign-in.
+5. Raise the minimum password length in Supabase → Authentication (it is 6).
+6. Decide the college-server details listed in the runbook (domain, campus-only or
    internet, off-site backup).
 
 ## Open items
@@ -147,5 +180,6 @@ Test accounts `hod@test.local`, `faculty1@test.local`, `advisor@test.local`,
   removed.
 - III CSE-A timetable: only Tue P4 and Fri P7 of a lab swap were edited (II CSE-A was
   swapped fully) — check whether the other hours should change too.
-- Internal-assessment marks from the IA workbooks are not imported (layouts and
-  course codes differ between sheets); CO–PO attainment is not built yet.
+- Past IA workbooks are not imported yet: use Assessments & Marks → Import from Excel
+  course by course (it maps the columns and shows problems before saving).
+- Course outcomes and CO–PO matrices are empty until each teacher fills them in.

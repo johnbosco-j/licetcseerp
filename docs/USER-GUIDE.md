@@ -22,7 +22,7 @@ A split hour (batch 1 in one lab, batch 2 in another; or a vertical course taugh
 both sections together) shows only your students.
 
 **Cannot take a class?** *Hand over my class* gives one of your hours to a colleague
-for chosen dates. If you see "You are not the course instructor…", ask the instructor
+for chosen dates; they get an email and see it under My classes. If you see "You are not the course instructor…", ask the instructor
 to hand it over, or the HOD to link you to the course.
 
 **Self check-in (QR)** — for today's class: open the hour → *Self check-in*, start the
@@ -32,6 +32,16 @@ present live. Count the students in the room, enter the **head count**, review, 
 
 **Register / Summary** — the full register of a class and course with Excel export;
 Summary shows each student's % and eligibility.
+
+**Marks** — Assessments & Marks: pick the term, class and course (elective options such
+as *PE1 · POPL* are listed too). Type the marks, or **Import from Excel**: the sheet needs a
+register-number column; check the column → component matching and the warnings, then
+save. When a component is final, publish it on the Outcomes page — students then have
+7 days to object, and you answer there.
+
+**Outcomes (CO–PO)** — for each of your courses: write CO1–CO6, fill the CO–PO matrix
+(1/2/3), tick which assessments measure each CO. Attainment is calculated from the marks
+and the course feedback; export it to Excel for the course file.
 
 ## Class advisors
 
@@ -51,6 +61,10 @@ Everything faculty do, plus:
 - **Condonation** — if you missed classes for medical reasons or a sports event,
   request condonation with the certificate attached (65–74% only; Reg. 7.2).
 - Below 80% you get a weekly email (your parents and class advisor are copied).
+- **Courses** lists your own elective options (e.g. *PE1 · RL* for AI & ML, *PE1 · POPL*
+  for Full Stack). Give course feedback for every course, electives included.
+- **Marks objections** — when a teacher publishes a component, your Marks page shows it
+  with *Object* for 7 days. Say what is wrong; the teacher's answer appears there.
 
 ## HOD
 
@@ -78,3 +92,10 @@ Everything faculty do, plus:
     *Menus* (hide a module from faculty or students), *Data editor* (any record, with
     audit trail).
 - **Year Promotion** (June) and **archive graduates**; **Audit Trail**; **Data Export**.
+- **Outcomes (CO–PO)** — every course, plus the *Programme outcome attainment* of the
+  term (NAAC 2.6.2 / NBA) with Excel export.
+- **Two-step sign-in** — turn it on in My Profile (authenticator app). After that, HOD
+  powers need the 6-digit code at each sign-in.
+- **Start next term** also copies last year's elective / vertical courses and timetable
+  for the same semester; review teachers and *elective slots* (Configuration → Courses).
+- **Attendance rules** — includes the optional 2-digit projector code for self check-in.
