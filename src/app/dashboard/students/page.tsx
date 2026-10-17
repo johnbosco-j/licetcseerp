@@ -18,6 +18,9 @@ type Profile = Database['public']['Tables']['profiles']['Row']
 const SECTIONS = ['I CSE-A','I CSE-B','II CSE-A','II CSE-B','III CSE-A','III CSE-B','IV CSE-A','IV CSE-B']
 
 export default function StudentsPage() {
+  // verticals the HOD has switched on (Configuration → Verticals & groups)
+  const [activeVerticals, setActiveVerticals] = useState<{ code: string; name: string }[]>([])
+  useEffect(() => { supabase.from('verticals').select('code, name').eq('is_active', true).order('code').then(({ data }) => setActiveVerticals((data ?? []) as { code: string; name: string }[])) }, [])
   const router = useRouter()
   const [authUser, setAuthUser] = useState<AuthUser | null>(null)
   const [students, setStudents] = useState<Profile[]>([])
@@ -256,8 +259,7 @@ export default function StudentsPage() {
                   <select value={form.vertical} onChange={e => setForm({...form, vertical: e.target.value})}
                     className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none">
                     <option value="">{needsVertical(form.section, form.batch_year) ? 'Choose…' : '— not yet —'}</option>
-                    <option value="AIML">AI & ML</option>
-                    <option value="FSD">Full Stack Development</option>
+                    {activeVerticals.map(v => <option key={v.code} value={v.code}>{v.name}</option>)}
                   </select>
                 </div>
               </div>

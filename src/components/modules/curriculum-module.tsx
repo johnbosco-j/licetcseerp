@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
+import { verticalName } from "@/lib/verticals"
 import { loadClassOfferings, currentTermId } from "@/lib/academic"
 import type { AuthUser } from "@/lib/auth"
 import { getCurrentSemParity } from "@/lib/semester"
@@ -755,7 +756,7 @@ export default function CurriculumModule({ initialSection = "II CSE-A" }: { init
                   <span style={{ fontSize: "13px", fontWeight: 500, color: "#1A0C4E", flex: 1 }}>
                     {sub.elective_slot && <b style={{ marginRight: 6, padding: "1px 6px", borderRadius: 4, background: "#1A0C4E", color: "#fff", fontSize: 11 }}>{sub.elective_slot}</b>}
                     {sub.name}
-                    {!sub.section && sub.audience === "VERTICAL" && <span style={{ marginLeft: 6, fontSize: 11, color: "#6b6480" }}>· {sub.audience_value === "AIML" ? "AI & ML vertical" : sub.audience_value === "FSD" ? "Full Stack vertical" : sub.audience_value}, both sections</span>}
+                    {!sub.section && sub.audience === "VERTICAL" && <span style={{ marginLeft: 6, fontSize: 11, color: "#6b6480" }}>· {verticalName(sub.audience_value)} vertical, both sections</span>}
                   </span>
 
                   {/* CO indicator */}

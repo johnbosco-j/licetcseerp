@@ -74,3 +74,7 @@ export const VERTICAL_CATALOG: VerticalDef[] = [
 
 export const peCourse = (code: string): PeCourse | undefined =>
   VERTICAL_CATALOG.flatMap(v => v.courses).find(c => c.code === code)
+
+/** "AI & ML vertical" style label for a vertical code (any vertical, active or not). */
+export const verticalName = (code: string | null | undefined) =>
+  code === 'AIML' ? 'AI & ML' : code === 'FSD' ? 'Full Stack' : VERTICAL_CATALOG.find(v => v.code === code)?.name ?? code ?? ''

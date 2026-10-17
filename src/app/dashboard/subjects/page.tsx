@@ -7,6 +7,7 @@ export const dynamic = "force-dynamic"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
+import { verticalName } from "@/lib/verticals"
 import { loadClassOfferings } from "@/lib/academic"
 import { isTier1 } from "@/lib/roles"
 import { courseType as regulationCourseType } from "@/lib/regulations"
@@ -655,7 +656,7 @@ export default function SubjectsPage() {
                         <span className={`font-mono text-xs px-1.5 py-0.5 border rounded ${typeColor[ct]}`}>{ct}</span>
                         <span className="font-mono text-xs text-muted-foreground">{subject.credits} credits</span>
                         {subject.elective_slot && <span className="text-[11px] font-bold px-1.5 py-0.5 rounded bg-licet-indigo text-white" title="Elective slot: students take one option of this slot">{subject.elective_slot}</span>}
-                        {!subject.section && subject.audience === 'VERTICAL' && <span className="text-[11px] px-1.5 py-0.5 rounded border border-licet-gold bg-licet-cream text-licet-indigo">{subject.audience_value === 'AIML' ? 'AI & ML vertical' : subject.audience_value === 'FSD' ? 'Full Stack vertical' : subject.audience_value} · both sections</span>}
+                        {!subject.section && subject.audience === 'VERTICAL' && <span className="text-[11px] px-1.5 py-0.5 rounded border border-licet-gold bg-licet-cream text-licet-indigo">{verticalName(subject.audience_value)} vertical · both sections</span>}
                       </div>
                       <p className="font-medium text-sm mt-0.5">{subject.name}</p>
                       {assignedFaculty && (

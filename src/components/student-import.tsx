@@ -18,7 +18,7 @@ const COLUMNS: { key: keyof NewStudent; label: string; aliases: RegExp }[] = [
   { key: "email",           label: "Email",           aliases: /^(student\s*|official\s*)?e-?mail(\s*id)?$/i },
   { key: "section",         label: "Section",         aliases: /^(section|class)$/i },
   { key: "lab_batch",       label: "Lab batch (1/2)", aliases: /lab\s*batch/i },
-  { key: "vertical",        label: "Vertical (AIML/FSD)", aliases: /vertical/i },
+  { key: "vertical",        label: "Vertical (code, e.g. AIML)", aliases: /vertical/i },
   { key: "batch_year",      label: "Batch (graduating year)",      aliases: /graduat|passing|^batch$|batch\s*year|year\s*of\s*(joining|admission)/i },
   { key: "roll_number",     label: "Roll number",     aliases: /roll/i },
   { key: "register_number", label: "Register number", aliases: /reg(ister|istration)?\.?\s*(no|number)?/i },
