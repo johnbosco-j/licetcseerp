@@ -34,10 +34,17 @@ present live. Count the students in the room, enter the **head count**, review, 
 Summary shows each student's % and eligibility.
 
 **Marks** — Assessments & Marks: pick the term, class and course (elective options such
-as *PE1 · POPL* are listed too). Type the marks, or **Import from Excel**: the sheet needs a
-register-number column; check the column → component matching and the warnings, then
-save. When a component is final, publish it on the Outcomes page — students then have
-7 days to object, and you answer there.
+as *PE1 · POPL* are listed too). Each course follows its **assessment scheme** — the same
+split as the department's IA sheets: per CIA a CT (out of 30, counts 20), CAT (out of 60
+or 100, counts 40), ABA / assignment (out of 40, counts 40); lab-integrated courses add lab
+performance /75 and practical test /25 with the theory / lab split (e.g. 30 + 20, 25 + 25);
+labs LP /75 + test /25 → 60. Type marks as written in the sheet, **AB** for absent; the
+*Special test* tab takes the SP mark, which replaces an absent CAT. *Summary* shows the
+internal, SEE, total and grade. The course's teachers (and the HOD) can change the scheme on
+the *Assessment scheme* tab — out of, weight, which marks are added together (pool),
+rounding — when a sheet is laid out differently. **Import from Excel** maps the sheet's
+columns (CT1, CAT2, ABA1, LP, PT1, SP …) onto the scheme. When a component is final,
+publish it on the Outcomes page — students then have 7 days to object, and you answer there.
 
 **Outcomes (CO–PO)** — for each of your courses: write CO1–CO6, fill the CO–PO matrix
 (1/2/3), tick which assessments measure each CO. Attainment is calculated from the marks

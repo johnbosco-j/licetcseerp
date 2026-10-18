@@ -4,6 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import fs from 'node:fs'
 import path from 'node:path'
 import type { ToolDef } from './llm'
+import { schemeOf, examType } from '@/lib/cia-scheme'
 
 export type Asker = { id: string; role: 'HOD' | 'PROFESSOR' | 'STUDENT'; tier1: boolean; full_name: string; section: string | null; advisor_section: string | null }
 type Tool = ToolDef & { for: 'all' | 'staff' | 'student' | 'hod'; run: (db: SupabaseClient, me: Asker, input: Record<string, unknown>) => Promise<unknown> }
@@ -156,6 +157,22 @@ const TOOLS: Tool[] = [
       if (!subs?.length) return `No course ${str(i.course)} in ${t.label}.`
       const { data } = await db.from('marks').select('exam_type, marks_obtained, max_marks, subject_id, profiles!marks_student_id_fkey(roll_number, full_name)').in('subject_id', subs.map((s: { id: string }) => s.id)).range(0, 4999)
       return { term: t.label, courses: subs, marks: data }
+    },
+  },
+  {
+    name: 'course_scheme', for: 'staff',
+    description: 'The assessment scheme of a course: the components of CIA 1 and CIA 2 (exam_type code, name, out of, weight, part), the parts and their internal marks. Use before draft_marks.',
+    input_schema: { type: 'object', properties: { course: { type: 'string' }, section: { type: 'string' } }, required: ['course'] },
+    run: async (db, _me, i) => {
+      const t = await term(db); if (!t) return 'No current term.'
+      let q = db.from('subjects').select('id, code, name, section, cia_scheme').eq('term_id', t.id).ilike('code', str(i.course, 20).replace(/[%,]/g, ''))
+      if (str(i.section)) q = q.eq('section', str(i.section, 20))
+      const { data } = await q
+      return (data ?? []).map((s: { code: string; name: string; section: string | null; cia_scheme: unknown }) => {
+        const sc = schemeOf(s)
+        return { course: `${s.code} ${s.name}`, section: s.section ?? 'combined', own_scheme: !!s.cia_scheme, parts: sc.parts, special_test_replaces_absent_CAT: sc.sp !== false,
+          components: sc.comps.map(c => ({ exam_type: examType(c), name: `CIA ${c.cia} ${c.label}`, out_of: c.max, weight: c.weight, part: c.part, pool: c.pool })) }
+      })
     },
   },
   {

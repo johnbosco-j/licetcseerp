@@ -30,13 +30,13 @@ await admin.from('marks').delete().eq('subject_id', course!.id).eq('exam_type', 
 const d = await prepareAction(f.c, f.me, 'draft_marks', { course: 'CS24501', section: 'III CSE-A', component: 'CIA 2 CAT', out_of: 100,
   rows: [{ student: ident(k[0]), marks: '80' }, { student: ident(k[1]), marks: 'AB' }, { student: 'NOBODY123', marks: '50' }] })
 const p = d.proposal
-ok(!!p && p.lines.length === 2 && p.lines[0].includes('→ 48/60'), 'marks draft: two students, 80/100 scaled to 48/60', JSON.stringify(d).slice(0, 200))
+ok(!!p && p.lines.length === 2 && p.lines[0].includes('80/100') && p.lines[1].includes('AB'), 'marks draft: two students, kept as written (80/100, AB)', JSON.stringify(d).slice(0, 200))
 ok(!!p && p.warnings.some(w => w.includes('NOBODY123')), 'marks draft: unknown student listed, not saved')
 const { count: before } = await admin.from('marks').select('id', { count: 'exact', head: true }).eq('subject_id', course!.id).eq('exam_type', 'CIA2_CAT')
 ok(before === 0, 'nothing is saved before Confirm', String(before))
 const r = p ? await executeAction(f.c, f.me, p.token, f.token).catch(e => ({ message: 'ERR ' + e.message })) : { message: 'no draft' }
-const { data: saved } = await admin.from('marks').select('student_id, marks_obtained, max_marks, faculty_id').eq('subject_id', course!.id).eq('exam_type', 'CIA2_CAT')
-ok((saved ?? []).length === 2 && saved!.some(m => Number(m.marks_obtained) === 48 && Number(m.max_marks) === 60) && saved!.every(m => m.faculty_id === f.me.id), 'Confirm saves the marks as the teacher', r.message)
+const { data: saved } = await admin.from('marks').select('student_id, marks_obtained, max_marks, faculty_id, absent').eq('subject_id', course!.id).eq('exam_type', 'CIA2_CAT')
+ok((saved ?? []).length === 2 && saved!.some(m => Number(m.marks_obtained) === 80 && Number(m.max_marks) === 100) && saved!.some(m => m.absent) && saved!.every(m => m.faculty_id === f.me.id), 'Confirm saves the marks as the teacher (absent kept as AB)', r.message)
 await admin.from('marks').delete().eq('subject_id', course!.id).eq('exam_type', 'CIA2_CAT')
 
 // signed drafts: tampering and someone else's draft are refused

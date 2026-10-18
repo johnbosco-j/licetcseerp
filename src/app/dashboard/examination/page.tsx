@@ -9,7 +9,8 @@ import { loadClassOfferings, currentTermId } from "@/lib/academic"
 import { isTier1 } from "@/lib/roles"
 import { printHtml } from "@/lib/print"
 import { academicYear, semesterTerm } from "@/lib/utils"
-import { courseResult, type MarkMap } from "@/lib/regulations"
+import { courseResult } from "@/lib/regulations"
+import type { MarkRow } from "@/lib/cia-scheme"
 import { RichEditor } from "@/components/rich-editor"
 import type { AuthUser } from "@/lib/auth"
 import type { Database } from "@/lib/supabase"
@@ -551,7 +552,7 @@ function MarksAnalysisCard({ subject, section }: { subject: Subject; section: st
 
       const ids = students.map(s => s.id)
       const { data: marks } = await supabase.from('marks')
-        .select('marks_obtained, max_marks, exam_type, student_id')
+        .select('marks_obtained, max_marks, exam_type, student_id, absent')
         .eq('subject_id', subject.id).in('student_id', ids)
 
       if (!marks?.length) return
@@ -560,12 +561,12 @@ function MarksAnalysisCard({ subject, section }: { subject: Subject; section: st
       const avgSEE  = semEnd.length ? Math.round(semEnd.reduce((s, m) => s + Number(m.marks_obtained), 0) / semEnd.length) : 0
       const maxSEE  = semEnd.length ? semEnd[0].max_marks : 60
       // Regulations 2024, clauses 12–13: grade on internal + SEE with the 45% minimums
-      const byStudent: Record<string, MarkMap> = {}
-      marks.forEach(m => { (byStudent[m.student_id] ??= {})[m.exam_type] = Number(m.marks_obtained) })
+      const byStudent: Record<string, MarkRow[]> = {}
+      marks.forEach(m => { (byStudent[m.student_id] ??= []).push(m) })
       const grades: Record<string, number> = { O: 0, 'A+': 0, A: 0, 'B+': 0, B: 0, C: 0, U: 0 }
       let pass = 0, fail = 0
       Object.values(byStudent).forEach(mm => {
-        const r = courseResult(subject.code, mm)
+        const r = courseResult(subject.code, mm, (subject as { cia_scheme?: unknown }).cia_scheme)
         if (r.pending) return
         grades[r.grade] = (grades[r.grade] ?? 0) + 1
         if (r.passed) pass++; else fail++

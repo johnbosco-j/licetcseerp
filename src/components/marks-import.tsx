@@ -9,17 +9,26 @@ import * as XLSX from "xlsx"
 import { Loader2, FileSpreadsheet, X, AlertTriangle } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { reportResult, toast } from "@/components/toaster"
-import { COMPONENT_MAX, COMPONENT_NAMES as NAMES, guessComponent } from "@/lib/marks-columns"
+import { guessComponent, headerMax } from "@/lib/marks-columns"
+import { examType, SP_KEY, SP_MAX, type Scheme } from "@/lib/cia-scheme"
+import { courseType, internalSplit } from "@/lib/regulations"
 import { AiPaste } from "@/components/ai-paste"
 
 type Student = { id: string; full_name: string; register_number: string | null; roll_number: string | null }
 
-const AI_COLS = ['Register number', 'Name', 'CIA 1 class test', 'CIA 1 CAT', 'CIA 1 activity', 'CIA 2 class test', 'CIA 2 CAT', 'CIA 2 activity', 'Semester-end']
 const toCsv = (cols: string[], rows: Record<string, string>[]) =>
   [cols, ...rows.map(r => cols.map(c => r[c] ?? ''))].map(l => l.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n')
 const norm = (v: unknown) => String(v ?? '').trim().toUpperCase().replace(/\s+/g, '')
 
-export function MarksImport({ subjectId, students, onDone }: { subjectId: string; students: Student[]; onDone: () => void }) {
+export function MarksImport({ subjectId, code, students, scheme, onDone }: { subjectId: string; code: string; students: Student[]; scheme: Scheme; onDone: () => void }) {
+  // the components this course can take: its scheme, the special test and the semester-end exam
+  const targets = useMemo(() => [
+    ...scheme.comps.map(c => ({ type: examType(c), name: `CIA ${c.cia} ${c.label}`, max: c.max })),
+    ...(scheme.sp !== false ? [{ type: SP_KEY, name: 'Special test', max: SP_MAX }] : []),
+    ...(courseType(code) !== 'FORMATION' ? [{ type: 'SEM_END', name: 'Semester-end', max: internalSplit(code, scheme).see }] : []),
+  ], [scheme, code])
+  const AI_COLS = useMemo(() => ['Register number', 'Name', ...targets.map(t => t.name)], [targets])
+  const maxOf = (type: string) => targets.find(t => t.type === type)?.max ?? 100
   const [rows, setRows] = useState<unknown[][] | null>(null)
   const [headerRow, setHeaderRow] = useState(0)
   const [idCol, setIdCol] = useState(-1)
@@ -35,7 +44,8 @@ export function MarksImport({ subjectId, students, onDone }: { subjectId: string
     const header = (data[hr] ?? []).map(String)
     setRows(data); setHeaderRow(hr); setFileName(f.name)
     setIdCol(header.findIndex(c => /reg/i.test(c)) >= 0 ? header.findIndex(c => /reg/i.test(c)) : header.findIndex(c => /roll/i.test(c)))
-    setMap(Object.fromEntries(header.map((c, i) => [i, guessComponent(c)]).filter(([, v]) => v)))
+    // a column named after a component ("CIA 1 CT", "CT1", "ABA2 [40]") goes into it
+    setMap(Object.fromEntries(header.map((c, i) => [i, targets.find(t => t.name.toLowerCase() === c.trim().toLowerCase())?.type ?? guessComponent(c, scheme)]).filter(([, v]) => v)))
   }
 
   const byKey = useMemo(() => {
@@ -47,7 +57,7 @@ export function MarksImport({ subjectId, students, onDone }: { subjectId: string
   const preview = useMemo(() => {
     if (!rows || idCol < 0) return null
     // one value per student and component: a student listed twice keeps the later row
-    const recs = new Map<string, { student_id: string; exam_type: string; marks_obtained: number; max_marks: number }>()
+    const recs = new Map<string, { student_id: string; exam_type: string; marks_obtained: number; max_marks: number; absent: boolean }>()
     const unmatched: string[] = [], bad: string[] = [], twice = new Set<string>(), seen = new Set<string>()
     for (const r of rows.slice(headerRow + 1)) {
       const key = norm(r[idCol])
@@ -60,14 +70,15 @@ export function MarksImport({ subjectId, students, onDone }: { subjectId: string
         const raw = r[Number(col)]
         if (raw === '' || raw === null || raw === undefined) continue
         const v = Number(String(raw).trim())
-        if (/^(ab|a|absent)$/i.test(String(raw).trim())) { recs.set(`${s.id}|${type}`, { student_id: s.id, exam_type: type, marks_obtained: 0, max_marks: COMPONENT_MAX[type] }); continue }
-        if (!Number.isFinite(v) || v < 0 || v > COMPONENT_MAX[type]) { bad.push(`${s.full_name}: ${NAMES[type]} = ${raw}`); continue }
-        recs.set(`${s.id}|${type}`, { student_id: s.id, exam_type: type, marks_obtained: Math.round(v * 100) / 100, max_marks: COMPONENT_MAX[type] })
+        const max = targets.find(t => t.type === type)?.max ?? 100
+        if (/^(ab|a|absent)$/i.test(String(raw).trim())) { recs.set(`${s.id}|${type}`, { student_id: s.id, exam_type: type, marks_obtained: 0, max_marks: max, absent: true }); continue }
+        if (!Number.isFinite(v) || v < 0 || v > max) { bad.push(`${s.full_name}: ${targets.find(t => t.type === type)?.name ?? type} = ${raw} (out of ${max})`); continue }
+        recs.set(`${s.id}|${type}`, { student_id: s.id, exam_type: type, marks_obtained: Math.round(v * 100) / 100, max_marks: max, absent: false })
       }
     }
     const records = [...recs.values()]
     return { records, unmatched, bad, twice: [...twice], students: new Set(records.map(r => r.student_id)).size }
-  }, [rows, headerRow, idCol, map, byKey])
+  }, [rows, headerRow, idCol, map, byKey, targets])
 
   const save = async () => {
     if (!preview?.records.length) return
@@ -107,7 +118,8 @@ export function MarksImport({ subjectId, students, onDone }: { subjectId: string
                   <tr key={i} className="border-b border-border/60">
                     <td className="py-1 pr-2">{h || `Column ${i + 1}`}</td>
                     <td><select value={map[i] ?? ''} onChange={e => setMap(m => ({ ...m, [i]: e.target.value }))} className="h-8 px-1 rounded border border-input bg-white">
-                      <option value="">ignore</option>{Object.keys(COMPONENT_MAX).map(k => <option key={k} value={k}>{NAMES[k]} (/{COMPONENT_MAX[k]})</option>)}</select></td>
+                      <option value="">ignore</option>{targets.map(t => <option key={t.type} value={t.type}>{t.name} (/{t.max})</option>)}</select>
+                      {map[i] && headerMax(h) && headerMax(h) !== maxOf(map[i]) && <span className="ml-1 text-amber-800 text-[11.5px]">sheet says /{headerMax(h)} — change the scheme first if that is right</span>}</td>
                     <td className="text-right text-muted-foreground tabular-nums">{rows.slice(headerRow + 1, headerRow + 4).map(r => String(r[i] ?? '')).join(', ')}</td>
                   </tr>))}</tbody>
               </table>
@@ -117,7 +129,7 @@ export function MarksImport({ subjectId, students, onDone }: { subjectId: string
                   {preview.unmatched.length > 0 && <p className="text-amber-800 flex gap-1.5"><AlertTriangle className="w-4 h-4 shrink-0" /> {preview.unmatched.length} row(s) not on this course&apos;s list: {preview.unmatched.slice(0, 8).join(', ')}{preview.unmatched.length > 8 ? '…' : ''}</p>}
                   {preview.twice.length > 0 && <p className="text-amber-800 flex gap-1.5"><AlertTriangle className="w-4 h-4 shrink-0" /> Listed more than once (the lower row is used): {preview.twice.join(', ')}</p>}
                   {preview.bad.length > 0 && <p className="text-red-700 flex gap-1.5"><AlertTriangle className="w-4 h-4 shrink-0" /> {preview.bad.length} value(s) out of range, skipped: {preview.bad.slice(0, 5).join('; ')}{preview.bad.length > 5 ? '…' : ''}</p>}
-                  <p className="text-muted-foreground text-[12px]">&ldquo;AB&rdquo; or &ldquo;Absent&rdquo; is saved as 0.</p>
+                  <p className="text-muted-foreground text-[12px]">&ldquo;AB&rdquo; or &ldquo;Absent&rdquo; is saved as absent (counts 0; the special test can replace an absent CAT). Marks are checked against the “out of” of the course’s assessment scheme.</p>
                 </div>
               )}
             </div>

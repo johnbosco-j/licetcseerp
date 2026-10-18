@@ -1,6 +1,8 @@
 // LICET Regulations 2024 (CBCS) and the B.E. CSE R2024 curriculum.
 // Every grade/pass/attendance rule in the ERP should come from here.
 
+import { computeInternal, rowsFromMap, schemeOf, validScheme, type MarkRow } from './cia-scheme'
+
 export type CourseType = 'THEORY' | 'LAB_INTEGRATED' | 'LAB' | 'PROJECT' | 'FORMATION'
 
 export interface Course {
@@ -120,30 +122,29 @@ export function labIntegratedWeights(code: string | null | undefined): { theory:
 }
 
 export type MarkMap = Record<string, number | undefined>
-const n = (v: number | undefined) => Number(v ?? 0)
 
-// Table 6 — each theory CIA is out of 100: concept test 20%, CAT 40%, activity 40%.
-const theoryCia = (m: MarkMap, k: 'CIA1' | 'CIA2') =>
-  n(m[`${k}_CT`]) / 30 * 20 + n(m[`${k}_CAT`]) / 60 * 40 + n(m[`${k}_ACTIVITY`]) / 10 * 40
-// Table 8 — lab-integrated theory part is concept test + CAT only (as % of their 60).
-const litTheoryPct = (m: MarkMap, k: 'CIA1' | 'CIA2') =>
-  (n(m[`${k}_CT`]) / 30 * 20 + n(m[`${k}_CAT`]) / 60 * 40) / 60
-// Table 9 — lab CIA: experiments, record, viva, lab assessment, 25 each.
-const labCia = (m: MarkMap, k: 'CIA1' | 'CIA2') =>
-  n(m[`${k}_EXP`]) + n(m[`${k}_RECORD`]) + n(m[`${k}_VIVA`]) + n(m[`${k}_LAB`])
+/** Internal / semester-end maxima: Table 5, unless the offering's own CIA scheme sets another
+ *  internal total (as some department sheets do, e.g. a practical part added to a theory course). */
+export function internalSplit(code: string, scheme?: unknown): { internal: number; see: number } {
+  const reg = markSplit(courseType(code))
+  if (!validScheme(scheme) || courseType(code) === 'FORMATION') return reg
+  const own = scheme.parts.reduce((a, p) => a + p.out_of, 0)
+  return own > 0 && own < 100 && own !== reg.internal ? { internal: own, see: 100 - own } : reg
+}
 
-/** Clause 11 — internal marks, proportionately reduced and rounded to the nearest integer. */
-export function internalMarks(code: string, m: MarkMap): number {
-  const type = courseType(code)
-  if (type === 'THEORY') return Math.round((theoryCia(m, 'CIA1') + theoryCia(m, 'CIA2')) / 200 * 40)
-  if (type === 'LAB' || type === 'PROJECT') return Math.round((labCia(m, 'CIA1') + labCia(m, 'CIA2')) / 200 * 60)
-  if (type === 'LAB_INTEGRATED') {
-    const w = labIntegratedWeights(code)
-    const theory = (litTheoryPct(m, 'CIA1') + litTheoryPct(m, 'CIA2')) / 2
-    const lab = (labCia(m, 'CIA1') + labCia(m, 'CIA2')) / 200
-    return Math.round(theory * w.theory + lab * w.lab)
+/** Clause 11 — internal marks, by the course's CIA scheme (lib/cia-scheme.ts; default = Tables 6–9
+ *  laid out like the department's IA workbooks). Formation courses entered as one mark
+ *  (INTERNAL, or SEM_END in older records) still count. */
+export function internalMarks(code: string, m: MarkMap | MarkRow[], scheme?: unknown): number {
+  const sch = schemeOf({ code, cia_scheme: scheme })
+  const rows = Array.isArray(m) ? m : rowsFromMap(sch, m)
+  const r = computeInternal(sch, rows)
+  const { internal: max } = internalSplit(code, scheme)
+  if (courseType(code) === 'FORMATION' && !r.entered) {
+    const one = rows.find(x => x.exam_type === 'INTERNAL') ?? rows.find(x => x.exam_type === 'SEM_END')
+    return Math.round(Math.min(100, Number(one?.marks_obtained ?? 0)))
   }
-  return Math.round(Math.min(100, n(m['INTERNAL'] ?? m['SEM_END'])))
+  return Math.min(max, r.internal)
 }
 
 export const GRADE_POINTS: Record<string, number> = { O: 10, 'A+': 9, A: 8, 'B+': 7, B: 6, C: 5, U: 0 }
@@ -177,10 +178,10 @@ export interface CourseResult {
  * Clause 12 — pass needs ≥ 50% of the total and ≥ 45% in both CIA and SEE.
  * Formation/EEC courses assessed only internally pass at 50% (clause 12.4).
  */
-export function courseResult(code: string, m: MarkMap): CourseResult {
+export function courseResult(code: string, m: MarkMap | MarkRow[], scheme?: unknown): CourseResult {
   const type = courseType(code)
-  const { internal: internalMax, see: seeMax } = markSplit(type)
-  const internal = internalMarks(code, m)
+  const { internal: internalMax, see: seeMax } = internalSplit(code, scheme)
+  const internal = internalMarks(code, m, scheme)
 
   if (type === 'FORMATION') {
     const passed = internal >= 50
@@ -189,7 +190,7 @@ export function courseResult(code: string, m: MarkMap): CourseResult {
       reason: passed ? undefined : 'Below 50% in continuous assessment' }
   }
 
-  const seeRaw = m['SEM_END']
+  const seeRaw = Array.isArray(m) ? m.find(r => r.exam_type === 'SEM_END')?.marks_obtained : m['SEM_END']
   if (seeRaw === undefined || seeRaw === null) {
     return { type, internal, internalMax, see: null, seeMax, total: internal, grade: '—', gradePoint: 0, passed: false, pending: true }
   }

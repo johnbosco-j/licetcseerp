@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { guessComponent, COMPONENT_MAX } from '@/lib/marks-columns'
+import { guessComponent, headerMax } from '@/lib/marks-columns'
+import { defaultScheme } from '@/lib/cia-scheme'
 
 describe('guessComponent (IA workbook headers)', () => {
   it.each([
@@ -13,7 +14,14 @@ describe('guessComponent (IA workbook headers)', () => {
   it('leaves names, totals and unknown columns unmapped', () => {
     for (const h of ['Name', 'Register No', 'Total', 'Remarks', 'S.No']) expect(guessComponent(h)).toBe('')
   })
-  it('knows the maximum of every component it can return', () => {
-    for (const h of ['CAT 1', 'CT2', 'SEE', 'Record 1']) expect(COMPONENT_MAX[guessComponent(h)]).toBeGreaterThan(0)
+  it('maps the department sheet headers onto a course scheme', () => {
+    const lit = defaultScheme('CS24411')   // DAA, lab-integrated
+    expect(['CT1', 'CAT2', 'ABA1', 'Ass', 'LP', 'PT1', 'TEST2', 'SP'].map(h => guessComponent(h + (/\d$/.test(h) || h === 'SP' ? '' : ' 1'), lit)))
+      .toEqual(['CIA1_CT', 'CIA2_CAT', 'CIA1_ACTIVITY', 'CIA1_ACTIVITY', 'CIA1_LP', 'CIA1_PT', 'CIA2_PT', 'SP'])
+    expect(guessComponent('LP 1', defaultScheme('CS24401'))).toBe('')   // a theory course has no lab part
+    expect(guessComponent('Total-T', lit)).toBe('')
+  })
+  it('reads the maximum written in a header', () => {
+    expect(headerMax('CAT2 [100]')).toBe(100); expect(headerMax('Internal(60)')).toBe(60); expect(headerMax('CT1')).toBeNull()
   })
 })

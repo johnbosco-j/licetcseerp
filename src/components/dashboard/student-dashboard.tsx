@@ -7,7 +7,8 @@ import {
 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { cgpaFromMarks, type CGPAResult } from "@/lib/cgpa"
-import { courseType, markSplit, internalMarks, attendanceStatus, type MarkMap } from "@/lib/regulations"
+import { courseType, markSplit, internalMarks, attendanceStatus } from "@/lib/regulations"
+import type { MarkRow } from "@/lib/cia-scheme"
 import {
   PERIODS, currentSemester, isoDate, isFinalYear, dayPhase, loadWeekTimetables, loadTodayDays, loadUpcomingEvents, loadNotices,
   loadUpcomingExams, loadRecentDocuments, attendanceHeadroom, timeAgo, fmtDate,
@@ -18,7 +19,7 @@ import { Hero, HeroChip, HeroPanel, Kpi, KpiSkeleton, Panel, PanelEmpty, Ring, B
 import { NoticesPanel, EventsPanel, ExamsPanel, DocumentsPanel, TodoPanel, WeekGrid, daysUntil, type Todo } from "./panels"
 
 export type StudentMe = { id: string; full_name: string; section: string | null; register_number: string | null; roll_number: string | null; email: string; parent_mobile?: string | null }
-type Course = { id: string; code: string; name: string; credits: number; faculty: string | null; marks: MarkMap; entered: string[]; subjectAtt: { n: number; p: number }; feedbackDone: boolean }
+type Course = { id: string; code: string; name: string; credits: number; faculty: string | null; marks: MarkRow[]; scheme?: unknown; entered: string[]; subjectAtt: { n: number; p: number }; feedbackDone: boolean }
 type Leave = { id: string; leave_type: string; from_date: string; to_date: string; status: string }
 type Grievance = { id: string; subject_line: string; category: string; status: string; created_at: string }
 type Placement = { id: string; company_name: string; role_title: string; package_lpa: number | null; visit_date: string | null }
@@ -62,8 +63,8 @@ async function loadStudent(me: StudentMe): Promise<StudentData> {
   const viewer = { lab_batch: prof?.lab_batch ?? null, vertical: prof?.vertical ?? null, groupIds: (groups ?? []).map(g => g.group_id as string) }
   const [hoursRes, marksRes, subjectsRes, advisorRes, hodRes, alertsRes, weekRes, todayDays, feedbackRes, leavesRes, grievRes, notices, events, exams, docs, placementsRes] = await Promise.all([
     supabase.rpc('my_attendance', { p_term: term?.id ?? null }),
-    supabase.from('marks').select('*, subjects(id, code, name, credits, semester, section)').eq('student_id', me.id).range(0, 4999),
-    term ? supabase.from('subjects').select('id, code, name, credits, faculty_id, section, cohort_grad_year, audience, audience_value, group_id')
+    supabase.from('marks').select('*, subjects(id, code, name, credits, semester, section, cia_scheme)').eq('student_id', me.id).range(0, 4999),
+    term ? supabase.from('subjects').select('id, code, name, credits, faculty_id, section, cohort_grad_year, audience, audience_value, group_id, cia_scheme')
       .eq('term_id', term.id).or(`section.eq.${section},and(section.is.null,cohort_grad_year.eq.${Number(prof?.batch_year) || 0})`).order('code')
       : Promise.resolve({ data: [] }),
     supabase.from('profiles').select('full_name').eq('advisor_section', section).maybeSingle(),
@@ -86,7 +87,7 @@ async function loadStudent(me: StudentMe): Promise<StudentData> {
   for (const h of hours) { const m = byDate.get(h.date) ?? {}; m[h.period_no] = hourStatus(h); byDate.set(h.date, m) }
   const today = isoDate()
 
-  type Sub = { id: string; code: string; name: string; credits: number; faculty_id: string | null; section: string | null; audience: string; audience_value: string | null; group_id: string | null }
+  type Sub = { id: string; code: string; name: string; credits: number; faculty_id: string | null; section: string | null; audience: string; audience_value: string | null; group_id: string | null; cia_scheme?: unknown }
   const subjects = ((subjectsRes.data ?? []) as Sub[]).filter(s => s.section || s.audience === 'ALL'
     || (s.audience === 'VERTICAL' && s.audience_value === viewer.vertical)
     || (s.audience === 'GROUP' && !!s.group_id && viewer.groupIds.includes(s.group_id)))
@@ -112,7 +113,8 @@ async function loadStudent(me: StudentMe): Promise<StudentData> {
       return {
         id: s.id, code: s.code, name: s.name, credits: Number(s.credits),
         faculty: s.faculty_id ? facultyNames.get(s.faculty_id) ?? null : null,
-        marks: Object.fromEntries(mine.map(m => [m.exam_type, Number(m.marks_obtained)])),
+        marks: mine.map(m => ({ exam_type: m.exam_type, marks_obtained: m.marks_obtained, max_marks: m.max_marks, absent: m.absent })),
+        scheme: s.cia_scheme,
         entered: mine.map(m => m.exam_type),
         subjectAtt: { n: sa.length, p: sa.filter(h => h.present).length },
         feedbackDone: feedbackDone.has(s.id),
@@ -330,7 +332,7 @@ export default function StudentDashboard({ me, name, greeting }: { me: StudentMe
             {d.courses.map(c => {
               const type = courseType(c.code)
               const { internal: max } = markSplit(type)
-              const internal = c.entered.some(e => e.startsWith('CIA')) ? internalMarks(c.code, c.marks) : null
+              const internal = c.entered.some(e => e.startsWith('CIA')) ? internalMarks(c.code, c.marks, c.scheme) : null
               const subPct = c.subjectAtt.n ? c.subjectAtt.p / c.subjectAtt.n * 100 : null
               return (
                 <div key={c.id} className="bg-card p-4 flex flex-col gap-3">

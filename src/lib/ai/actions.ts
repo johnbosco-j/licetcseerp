@@ -6,7 +6,8 @@ import crypto from 'node:crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { ToolDef } from './llm'
 import type { Asker } from './tools'
-import { COMPONENT_MAX, COMPONENT_NAMES, guessComponent } from '@/lib/marks-columns'
+import { guessComponent } from '@/lib/marks-columns'
+import { schemeOf, examType, SP_KEY, SP_MAX } from '@/lib/cia-scheme'
 import { importStudentsAdmin, createStaffAdmin, type NewStudent, type NewStaff } from '@/app/actions'
 
 export type Proposal = { kind: string; title: string; summary: string; lines: string[]; warnings: string[]; payload: Record<string, unknown> }
@@ -128,49 +129,54 @@ const ROWS = { type: 'array', items: { type: 'object', properties: { student: { 
 const ACTIONS: Action[] = [
   {
     name: 'draft_marks', for: 'staff',
-    description: 'Prepare marks of ONE assessment component of ONE course for the user to confirm (e.g. from an attached sheet or a pasted list). Components: ' +
-      Object.entries(COMPONENT_NAMES).map(([k, v]) => `${k} (${v}, out of ${COMPONENT_MAX[k]})`).join(', ') + '. Give out_of when the sheet uses a different maximum; marks are then scaled. Nothing is saved until the user confirms.',
+    description: 'Prepare marks of ONE component of ONE course for the user to confirm (e.g. from an attached sheet or a pasted list). ' +
+      'Each course has its own assessment scheme (see course_scheme); components are named like CIA1_CT, CIA1_CAT, CIA2_ACTIVITY (ABA / assignment), CIA1_LP (lab performance), CIA1_PT (practical test), SP (special test, replaces an absent CAT), SEM_END. ' +
+      'Copy marks exactly as written in the sheet with its maximum in out_of; "AB" = absent. Nothing is saved until the user confirms.',
     input_schema: { type: 'object', properties: {
       course: { type: 'string', description: 'course code or short name' }, section: { type: 'string', description: 'class, e.g. III CSE-A (omit for combined/elective courses)' },
-      term: { type: 'string', description: 'only for a past term, e.g. "2025-26 Even"' }, component: { type: 'string' }, out_of: { type: 'number' }, rows: ROWS,
+      term: { type: 'string', description: 'only for a past term, e.g. "2025-26 Even"' }, component: { type: 'string', description: 'e.g. CIA1_CAT, or words like "CAT 2"' }, out_of: { type: 'number', description: 'maximum the sheet uses, e.g. 100 for a CAT written out of 100' }, rows: ROWS,
     }, required: ['course', 'component', 'rows'] },
     prepare: async (db, _me, i) => {
       const f = await findCourse(db, i); if (typeof f === 'string') return f
       const { course, term } = f
-      const comp = COMPONENT_MAX[str(i.component, 30).toUpperCase()] ? str(i.component, 30).toUpperCase() : guessComponent(str(i.component, 60))
-      if (!comp) return `Which component? One of ${Object.keys(COMPONENT_MAX).join(', ')}.`
+      const { data: own } = await db.from('subjects').select('cia_scheme').eq('id', course.id).single()
+      const scheme = schemeOf({ code: course.code, cia_scheme: own?.cia_scheme })
+      const types = [...scheme.comps.map(c => ({ t: examType(c), name: `CIA ${c.cia} ${c.label}`, max: c.max })), { t: SP_KEY, name: 'Special test', max: SP_MAX }, { t: 'SEM_END', name: 'Semester-end', max: 100 }]
+      const want = str(i.component, 40).toUpperCase().replace(/\s+/g, '_')
+      const hit = types.find(x => x.t === want) ?? types.find(x => x.t === guessComponent(str(i.component, 60), scheme))
+      if (!hit) return `Which component? This course has: ${types.map(x => `${x.t} (${x.name}, out of ${x.max})`).join(', ')}.`
+      const comp = hit.t
       const { data: may } = await db.rpc('can_edit_subject', { p_subject: course.id, p_kind: 'MARKS' })
-      if (may === false) return `You cannot enter marks for ${course.code} (only its teachers and the HOD can, and not while it is locked).`
-      const max = COMPONENT_MAX[comp], outOf = Number(i.out_of) > 0 ? Number(i.out_of) : max
+      if (may === false) return `You cannot enter marks for ${course.code} (only its teachers, its class advisor and the HOD can, and not while it is locked).`
+      const max = Number(i.out_of) > 0 ? Number(i.out_of) : hit.max
       const rows = list(i.rows, 400) as { student?: unknown; marks?: unknown }[]
       const roster = await courseRoster(db, course)
       const { found, missing } = matchStudents(roster, rows.map(r => r.student))
-      const warnings: string[] = [], lines: string[] = [], out: [string, number][] = []
+      const warnings: string[] = [], lines: string[] = [], out: [string, number, boolean][] = []
       const bad: string[] = []
       found.forEach(({ key, s }) => {
         const raw = rows.find(r => str(r.student, 80) === key)?.marks
         const absent = /^\s*(ab|a|abs|absent)\s*$/i.test(String(raw ?? ''))
         const v = absent ? 0 : Number(String(raw ?? '').trim())
-        if (!absent && (!Number.isFinite(v) || v < 0 || v > outOf)) { bad.push(`${who(s)}: "${raw}"`); return }
-        const scaled = Math.round(v / outOf * max * 100) / 100
+        if (!absent && (!Number.isFinite(v) || v < 0 || v > max)) { bad.push(`${who(s)}: "${raw}"`); return }
         if (out.some(o => o[0] === s.id)) return
-        out.push([s.id, scaled])
-        lines.push(`${who(s)} — ${absent ? 'AB (0)' : v}${outOf !== max ? ` → ${scaled}/${max}` : `/${max}`}`)
+        out.push([s.id, Math.round(v * 100) / 100, absent])
+        lines.push(`${who(s)} — ${absent ? 'AB' : v}/${max}`)
       })
       if (!out.length) return `None of the students matched ${course.code} ${course.section ?? ''}${missing.length ? ` (not found: ${missing.slice(0, 10).join(', ')})` : ''}.`
       if (missing.length) warnings.push(`Not in this course, left out: ${missing.join(', ')}`)
-      if (bad.length) warnings.push(`Not a valid mark (0–${outOf}), left out: ${bad.join('; ')}`)
-      if (outOf !== max) warnings.push(`Marks out of ${outOf} are scaled to the app’s ${max}.`)
+      if (bad.length) warnings.push(`Not a valid mark (0–${max}), left out: ${bad.join('; ')}`)
+      if (max !== hit.max) warnings.push(`Saved out of ${max} (the scheme says ${hit.max}); totals scale it.`)
       const { count } = await db.from('marks').select('id', { count: 'exact', head: true }).eq('subject_id', course.id).eq('exam_type', comp).in('student_id', out.map(o => o[0]))
-      if (count) warnings.push(`${count} student${count === 1 ? ' already has' : 's already have'} a ${comp} mark — it will be replaced.`)
+      if (count) warnings.push(`${count} student${count === 1 ? ' already has' : 's already have'} a ${hit.name} mark — it will be replaced.`)
       if (roster.length > out.length + missing.length) warnings.push(`${roster.length - out.length} student(s) of the course get no mark in this draft.`)
-      return { kind: 'draft_marks', title: `Save ${COMPONENT_NAMES[comp]} marks`, summary: `${course.code} ${course.name} · ${course.section ?? 'combined'} · ${term.label} — ${out.length} student(s)`,
-        lines, warnings, payload: { subject_id: course.id, exam_type: comp, max, rows: out, label: `${course.code} ${comp}` } }
+      return { kind: 'draft_marks', title: `Save ${hit.name} marks`, summary: `${course.code} ${course.name} · ${course.section ?? 'combined'} · ${term.label} — ${out.length} student(s)`,
+        lines, warnings, payload: { subject_id: course.id, exam_type: comp, max, rows: out, label: `${course.code} ${hit.name}` } }
     },
     execute: async (db, me, p) => {
-      const rows = p.rows as [string, number][]
-      const { error } = await db.from('marks').upsert(rows.map(([student_id, v]) => ({
-        student_id, subject_id: p.subject_id, faculty_id: me.id, exam_type: p.exam_type, marks_obtained: v, max_marks: p.max,
+      const rows = p.rows as [string, number, boolean][]
+      const { error } = await db.from('marks').upsert(rows.map(([student_id, v, absent]) => ({
+        student_id, subject_id: p.subject_id, faculty_id: me.id, exam_type: p.exam_type, marks_obtained: v, max_marks: p.max, absent: !!absent,
       })), { onConflict: 'student_id,subject_id,exam_type' })
       if (error) throw new Error(error.message)
       return { message: `Saved ${rows.length} ${p.label} marks. Check them under Assessments & Marks.` }

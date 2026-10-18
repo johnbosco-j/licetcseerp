@@ -5,7 +5,8 @@
 
 import * as XLSX from "xlsx"
 import { supabase } from "@/lib/supabase"
-import { courseResult, attendanceStatus, type MarkMap } from "@/lib/regulations"
+import { courseResult, attendanceStatus } from "@/lib/regulations"
+import type { MarkRow } from "@/lib/cia-scheme"
 
 export type Scope =
   | { kind: "department" }
@@ -197,25 +198,25 @@ export async function buildWorkbook(opts: ExportOptions): Promise<{ workbook: XL
   if (want("marks") || want("results")) {
     onProgress("Reading marks…")
     const rows = await readForStudents(ids, "student_id",
-      () => inRange(supabase.from("marks").select("student_id, subject_id, exam_type, marks_obtained, max_marks, faculty_id, recorded_at").order("recorded_at"), "recorded_at", true))
+      () => inRange(supabase.from("marks").select("student_id, subject_id, exam_type, marks_obtained, max_marks, absent, faculty_id, recorded_at").order("recorded_at"), "recorded_at", true))
     if (want("marks")) {
       sheets.push(["Marks", rows.map(r => {
         const s = subj.get(String(r.subject_id))
         return {
           ...who(r.student_id), "Semester": s?.semester ?? "", "Course Code": s?.code ?? "", "Course": s?.name ?? "",
-          "Assessment": String(r.exam_type).replace(/_/g, " "), "Marks": Number(r.marks_obtained), "Out of": Number(r.max_marks),
+          "Assessment": String(r.exam_type).replace(/_/g, " "), "Marks": r.absent ? "AB" : Number(r.marks_obtained), "Out of": Number(r.max_marks),
           "Entered by": staffName.get(String(r.faculty_id)) ?? "", "Recorded": dt(r.recorded_at),
         }
       })])
     }
     if (want("results")) {
-      const groups = new Map<string, MarkMap>()
+      const groups = new Map<string, MarkRow[]>()
       for (const r of rows) {
         const k = `${r.student_id}|${r.subject_id}`
-        const m = groups.get(k) ?? {}; m[String(r.exam_type)] = Number(r.marks_obtained); groups.set(k, m)
+        groups.set(k, [...(groups.get(k) ?? []), { exam_type: String(r.exam_type), marks_obtained: Number(r.marks_obtained), max_marks: Number(r.max_marks), absent: !!r.absent }])
       }
       sheets.push(["Course results", [...groups.entries()].map(([k, m]) => {
-        const [sid, subId] = k.split("|"); const s = subj.get(subId); const res = courseResult(String(s?.code ?? ""), m)
+        const [sid, subId] = k.split("|"); const s = subj.get(subId); const res = courseResult(String(s?.code ?? ""), m, s?.cia_scheme)
         return {
           ...who(sid), "Semester": s?.semester ?? "", "Course Code": s?.code ?? "", "Course": s?.name ?? "", "Credits": s?.credits ?? "",
           "Internal": `${res.internal} / ${res.internalMax}`, "SEE": res.see == null ? "Not entered" : `${res.see} / ${res.seeMax}`,

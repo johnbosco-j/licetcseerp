@@ -15,7 +15,7 @@ import type { AuthUser } from "@/lib/auth"
 import { isTier1 } from "@/lib/roles"
 import { semesterStart, fmtDate } from "@/lib/dashboard"
 import { formatMobile } from "@/lib/utils"
-import { courseResult, attendanceStatus, type MarkMap } from "@/lib/regulations"
+import { courseResult, attendanceStatus } from "@/lib/regulations"
 import { buildWorkbook, downloadWorkbook, DATASETS } from "@/lib/export"
 import { Kpi, Panel, PanelEmpty, Pill, Bar, AttPct, Ring } from "@/components/dashboard/widgets"
 import { toast } from "@/components/toaster"
@@ -23,8 +23,8 @@ import { toast } from "@/components/toaster"
 type Profile = Database["public"]["Tables"]["profiles"]["Row"]
 type Leave = Database["public"]["Tables"]["leaves"]["Row"]
 type Offer = Database["public"]["Tables"]["placement_offers"]["Row"]
-type Subject = { id: string; code: string; name: string; semester: number }
-type Mark = { subject_id: string; exam_type: string; marks_obtained: number; max_marks: number }
+type Subject = { id: string; code: string; name: string; semester: number; cia_scheme?: unknown }
+type Mark = { subject_id: string; exam_type: string; marks_obtained: number; max_marks: number; absent?: boolean }
 type Alert = { id: string; date: string; alert_type: string; missed_parts: number[]; met_hod: boolean; cleared_at: string | null }
 type Grievance = { id: string; category: string; subject_line: string; status: string; created_at: string }
 type History = { from_section: string | null; to_section: string | null; from_sem: number | null; to_sem: number | null; academic_year: string | null; promoted_at: string | null }
@@ -72,7 +72,7 @@ export default function StudentProfilePage() {
         supabase.from("profiles").select("full_name").eq("advisor_section", s.section ?? "").in("role", ["PROFESSOR", "HOD"]).limit(1),
         // every class hour this student was on the list for (hour-wise register)
         supabase.from("attendance_sessions").select("date, period_no, subject_id, absent, on_duty").contains("roster", [id]).gte("date", from).order("date", { ascending: false }).order("period_no").range(0, 4999),
-        supabase.from("marks").select("subject_id, exam_type, marks_obtained, max_marks").eq("student_id", id),
+        supabase.from("marks").select("subject_id, exam_type, marks_obtained, max_marks, absent").eq("student_id", id),
         supabase.from("leaves").select("*").eq("applicant_id", id).order("from_date", { ascending: false }),
         supabase.from("attendance_alerts").select("id, date, alert_type, missed_parts, met_hod, cleared_at").eq("student_id", id).order("date", { ascending: false }).limit(50),
         supabase.from("grievances").select("id, category, subject_line, status, created_at").eq("student_id", id).order("created_at", { ascending: false }),
@@ -92,7 +92,7 @@ export default function StudentProfilePage() {
       setOffers(offersRes.data ?? [])
       const subjIds = [...new Set([...hours.flatMap(h => h.subject_id ? [h.subject_id] : []), ...(marksRes.data ?? []).map(r => r.subject_id)])]
       if (subjIds.length) {
-        const { data: subs } = await supabase.from("subjects").select("id, code, name, semester").in("id", subjIds)
+        const { data: subs } = await supabase.from("subjects").select("id, code, name, semester, cia_scheme").in("id", subjIds)
         setSubjects(Object.fromEntries((subs ?? []).map(x => [x.id, x as Subject])))
       }
     })()
@@ -120,8 +120,7 @@ export default function StudentProfilePage() {
     for (const m of marks) g.set(m.subject_id, [...(g.get(m.subject_id) ?? []), m])
     return [...g.entries()].map(([sid, list]) => {
       const code = subjects[sid]?.code ?? ""
-      const map: MarkMap = Object.fromEntries(list.map(m => [m.exam_type, Number(m.marks_obtained)]))
-      return { sid, list, result: code ? courseResult(code, map) : null }
+      return { sid, list, result: code ? courseResult(code, list, subjects[sid]?.cia_scheme) : null }
     }).sort((a, b) => (subjects[b.sid]?.semester ?? 0) - (subjects[a.sid]?.semester ?? 0) || (subjects[a.sid]?.code ?? "").localeCompare(subjects[b.sid]?.code ?? ""))
   }, [marks, subjects])
 
@@ -258,7 +257,7 @@ export default function StudentProfilePage() {
                     <td className="px-3 py-3 tabular-nums">{subjects[sid]?.semester ?? "—"}</td>
                     <td className="px-3 py-3">
                       <div className="flex flex-wrap gap-1.5">
-                        {list.map(m => <Pill key={m.exam_type} tone="indigo">{examLabel(m.exam_type)} {Number(m.marks_obtained)}/{Number(m.max_marks)}</Pill>)}
+                        {list.map(m => <Pill key={m.exam_type} tone="indigo">{examLabel(m.exam_type)} {m.absent ? "AB" : Number(m.marks_obtained)}/{Number(m.max_marks)}</Pill>)}
                       </div>
                     </td>
                     <td className="px-3 py-3 tabular-nums">{result ? `${Math.round(result.internal)}/${result.internalMax}` : "—"}</td>

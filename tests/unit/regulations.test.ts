@@ -31,7 +31,7 @@ const PROJECT = 'CS24721'         // Professional Project - I
 const both = (marks: Record<string, number>): MarkMap =>
   Object.fromEntries(Object.entries(marks).flatMap(([k, v]) => [[`CIA1_${k}`, v], [`CIA2_${k}`, v]]))
 
-const FULL_THEORY = both({ CT: 30, CAT: 60, ACTIVITY: 10 })
+const FULL_THEORY = both({ CT: 30, CAT: 60, ACTIVITY: 40 })
 const FULL_LAB = both({ EXP: 25, RECORD: 25, VIVA: 25, LAB: 25 })
 
 describe('curriculum catalogue', () => {
@@ -136,20 +136,20 @@ describe('internalMarks', () => {
     })
 
     it('weights each component and averages the two CIAs', () => {
-      // CIA1: 24/30·20 + 45/60·40 + 8/10·40 = 16 + 30 + 32 = 78
-      // CIA2: 18/30·20 + 39/60·40 + 9/10·40 = 12 + 26 + 36 = 74
+      // CIA1: 24/30·20 + 45/60·40 + 32/40·40 = 16 + 30 + 32 = 78
+      // CIA2: 18/30·20 + 39/60·40 + 36/40·40 = 12 + 26 + 36 = 74
       // (78 + 74) / 200 · 40 = 30.4 → 30
-      const m = { CIA1_CT: 24, CIA1_CAT: 45, CIA1_ACTIVITY: 8, CIA2_CT: 18, CIA2_CAT: 39, CIA2_ACTIVITY: 9 }
+      const m = { CIA1_CT: 24, CIA1_CAT: 45, CIA1_ACTIVITY: 32, CIA2_CT: 18, CIA2_CAT: 39, CIA2_ACTIVITY: 36 }
       expect(internalMarks(THEORY, m)).toBe(30)
     })
 
     it('rounds to the nearest integer', () => {
-      // CIA1 full (100) + CIA2 activity 6/10 (24) = 124 / 200 · 40 = 24.8 → 25
-      expect(internalMarks(THEORY, { CIA1_CT: 30, CIA1_CAT: 60, CIA1_ACTIVITY: 10, CIA2_ACTIVITY: 6 })).toBe(25)
+      // CIA1 full (100) + CIA2 ABA 24/40 (24) = 124 / 200 · 40 = 24.8 → 25
+      expect(internalMarks(THEORY, { CIA1_CT: 30, CIA1_CAT: 60, CIA1_ACTIVITY: 40, CIA2_ACTIVITY: 24 })).toBe(25)
     })
 
     it('treats a missing CIA as zero', () => {
-      expect(internalMarks(THEORY, { CIA1_CT: 30, CIA1_CAT: 60, CIA1_ACTIVITY: 10 })).toBe(20)
+      expect(internalMarks(THEORY, { CIA1_CT: 30, CIA1_CAT: 60, CIA1_ACTIVITY: 40 })).toBe(20)
     })
 
     it('ignores lab components', () => {
@@ -178,27 +178,28 @@ describe('internalMarks', () => {
     })
   })
 
-  describe('LAB_INTEGRATED (Table 8: theory CT + CAT, lab CIA, weighted by Table 7)', () => {
+  describe('LAB_INTEGRATED (as the IA sheets: theory CT 30 + CAT 60 + assignment 10, lab LP 75 + PT 25, weighted by Table 7)', () => {
     it('gives 50 for full marks whatever the weights', () => {
-      const full = { ...FULL_THEORY, ...FULL_LAB }
+      const full = { ...both({ CT: 30, CAT: 60, ACTIVITY: 10 }), ...FULL_LAB }
       expect(internalMarks(LIT_2_0_4, full)).toBe(50)
       expect(internalMarks(LIT_3_0_2, full)).toBe(50)
     })
 
     it('applies the course weights to the theory and lab percentages', () => {
-      // theory: (15/30·20 + 30/60·40) / 60 = 50%; lab: 75/100 = 75% in both CIAs
-      const m = { ...both({ CT: 15, CAT: 30 }), ...both({ EXP: 20, RECORD: 20, VIVA: 20, LAB: 15 }) }
+      // theory: 15 + 30 + 5 = 50 of 100; lab: 75/100 in both CIAs (older experiment/record/viva/lab rows count as LP + PT)
+      const m = { ...both({ CT: 15, CAT: 30, ACTIVITY: 5 }), ...both({ EXP: 20, RECORD: 20, VIVA: 20, LAB: 15 }) }
       expect(internalMarks(LIT_3_0_2, m)).toBe(30)   // 0.5·30 + 0.75·20 = 15 + 15
-      expect(internalMarks(LIT_2_0_4, m)).toBe(31)   // 0.5·25 + 0.75·25 = 31.25
+      expect(internalMarks(LIT_2_0_4, m)).toBe(32)   // each part rounded, as in the sheets: 12.5 → 13, 18.75 → 19
     })
 
-    it('does not count the theory activity component', () => {
-      const m = { ...both({ CT: 15, CAT: 30 }), ...both({ EXP: 20, RECORD: 20, VIVA: 20, LAB: 15 }) }
-      expect(internalMarks(LIT_3_0_2, { ...m, ...both({ ACTIVITY: 10 }) })).toBe(30)
+    it('counts the assignment / ABA in the theory part, as the IA sheets do', () => {
+      const m = { ...both({ CT: 15, CAT: 30 }), ...both({ LP: 60, PT: 15 }) }
+      expect(internalMarks(LIT_3_0_2, m)).toBe(29)                                    // theory 45% → 13.5 → 14, lab 15
+      expect(internalMarks(LIT_3_0_2, { ...m, ...both({ ACTIVITY: 10 }) })).toBe(32)  // theory 55% → 16.5 → 17, lab 15
     })
 
     it('gives theory-only and lab-only shares', () => {
-      expect(internalMarks(LIT_3_0_2, both({ CT: 30, CAT: 60 }))).toBe(30)
+      expect(internalMarks(LIT_3_0_2, both({ CT: 30, CAT: 60, ACTIVITY: 10 }))).toBe(30)
       expect(internalMarks(LIT_3_0_2, FULL_LAB)).toBe(20)
     })
   })
@@ -254,10 +255,10 @@ describe('courseResult (Clause 12)', () => {
   })
 
   describe('THEORY: internal ≥ 18/40, SEE ≥ 27/60, total ≥ 50', () => {
-    // CIA1 60 (CT + CAT full, no activity) + CIA2 30 (CT 15 → 10, activity 5 → 20) = 90 / 200 · 40 = 18
-    const internal18 = { CIA1_CT: 30, CIA1_CAT: 60, CIA2_CT: 15, CIA2_ACTIVITY: 5 }
-    // CIA1 60 + CIA2 activity 6 (24) = 84 / 200 · 40 = 16.8 → 17
-    const internal17 = { CIA1_CT: 30, CIA1_CAT: 60, CIA2_ACTIVITY: 6 }
+    // CIA1 60 (CT + CAT full, no ABA) + CIA2 30 (CT 15 → 10, ABA 20/40 → 20) = 90 / 200 · 40 = 18
+    const internal18 = { CIA1_CT: 30, CIA1_CAT: 60, CIA2_CT: 15, CIA2_ACTIVITY: 20 }
+    // CIA1 60 + CIA2 ABA 24/40 (24) = 84 / 200 · 40 = 16.8 → 17
+    const internal17 = { CIA1_CT: 30, CIA1_CAT: 60, CIA2_ACTIVITY: 24 }
 
     it('passes with grade and grade point from the total', () => {
       const r = courseResult(THEORY, { ...FULL_THEORY, SEM_END: 52 })
@@ -312,7 +313,7 @@ describe('courseResult (Clause 12)', () => {
   })
 
   describe('LAB_INTEGRATED: internal ≥ 22.5/50, SEE ≥ 22.5/50', () => {
-    const full = { ...FULL_THEORY, ...FULL_LAB }
+    const full = { ...both({ CT: 30, CAT: 60, ACTIVITY: 10 }), ...FULL_LAB }
 
     it('needs 23 in the SEE (22 is below 45% of 50)', () => {
       expect(courseResult(LIT_3_0_2, { ...full, SEM_END: 22 })).toMatchObject({ passed: false, grade: 'U' })

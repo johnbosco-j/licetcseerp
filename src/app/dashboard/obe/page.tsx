@@ -16,13 +16,12 @@ import { POS, PSOS } from "@/lib/obe"
 import { loadTerms, type Term } from "@/lib/academic"
 import { useUnsavedGuard } from "@/lib/use-unsaved-guard"
 import type { AuthUser } from "@/lib/auth"
+import { schemeOf, examType } from "@/lib/cia-scheme"
 
 type Course = { id: string; code: string; name: string; short_name: string | null; section: string | null; semester: number
-  co1: string | null; co2: string | null; co3: string | null; co4: string | null; co5: string | null; co6: string | null }
+  co1: string | null; co2: string | null; co3: string | null; co4: string | null; co5: string | null; co6: string | null; cia_scheme?: unknown }
 type Rec = Record<string, unknown>
 const OUTCOMES = [...POS.map(p => p.code), ...PSOS.map(p => p.code)]
-const THEORY = ['CIA1_CT', 'CIA1_CAT', 'CIA1_ACTIVITY', 'CIA2_CT', 'CIA2_CAT', 'CIA2_ACTIVITY', 'SEM_END']
-const LAB = ['CIA1_EXP', 'CIA1_RECORD', 'CIA1_VIVA', 'CIA1_LAB', 'CIA2_EXP', 'CIA2_RECORD', 'CIA2_VIVA', 'CIA2_LAB']
 const label = (t: string) => t.replace('SEM_END', 'Semester-end').replace(/_/g, ' ').replace('CAT', 'CAT').replace('CT', 'CT')
 const card = "bg-card border border-border rounded-xl p-5 space-y-3"
 const btn = "inline-flex items-center gap-1.5 h-9 px-4 rounded-md bg-licet-indigo text-white text-[13px] font-semibold hover:bg-licet-violet disabled:opacity-50"
@@ -58,7 +57,7 @@ export default function OutcomesPage() {
     if (!user || !termId) return
     let off = false
     ;(async () => {
-      const cols = 'id, code, name, short_name, section, semester, co1, co2, co3, co4, co5, co6'
+      const cols = 'id, code, name, short_name, section, semester, co1, co2, co3, co4, co5, co6, cia_scheme'
       let list: Course[] = []
       if (isHod) {
         const { data } = await supabase.from('subjects').select(cols).eq('term_id', termId).order('code')
@@ -166,11 +165,11 @@ function Mapping({ course }: { course: Course }) {
     return () => { off = true }
   }, [course.id])
 
-  const type = courseType(course.code)
+  // the course's own assessment components (its CIA scheme), the semester-end exam, and anything else already marked
   const components = useMemo(() => {
-    const base = type === 'LAB' ? [...LAB, 'SEM_END'] : type === 'LAB_INTEGRATED' ? [...THEORY.slice(0, 6), ...LAB, 'SEM_END'] : THEORY
+    const base = [...schemeOf(course).comps.map(examType), ...(courseType(course.code) === 'FORMATION' ? [] : ['SEM_END'])]
     return [...new Set([...base, ...present])]
-  }, [type, present])
+  }, [course, present])
 
   const save = async () => {
     setBusy(true)

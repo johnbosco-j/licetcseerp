@@ -1,5 +1,6 @@
 import { supabase } from "./supabase"
 import { courseResult, findCourse, gpa, letterGrade, GRADE_POINTS } from "./regulations"
+import type { MarkRow } from "./cia-scheme"
 
 export interface SubjectResult {
   subjectId:   string
@@ -38,7 +39,7 @@ export function getGrade(total: number): { grade: string; point: number } {
 export async function computeCGPA(studentId: string): Promise<CGPAResult> {
   const { data: marksData } = await supabase
     .from('marks')
-    .select('*, subjects(id, code, name, credits, semester, section)')
+    .select('*, subjects(id, code, name, credits, semester, section, cia_scheme)')
     .eq('student_id', studentId)
   return cgpaFromMarks(marksData ?? [])
 }
@@ -51,18 +52,18 @@ export function cgpaFromMarks(marksData: any[]): CGPAResult {
   }
 
   // Group marks by subject
-  const bySubject: Record<string, { subject: any; marks: Record<string, number> }> = {}
+  const bySubject: Record<string, { subject: any; marks: MarkRow[] }> = {}
   marksData.forEach((m: any) => {
     const s = m.subjects
     if (!s) return
-    if (!bySubject[s.id]) bySubject[s.id] = { subject: s, marks: {} }
-    bySubject[s.id].marks[m.exam_type] = Number(m.marks_obtained)
+    if (!bySubject[s.id]) bySubject[s.id] = { subject: s, marks: [] }
+    bySubject[s.id].marks.push({ exam_type: m.exam_type, marks_obtained: m.marks_obtained, max_marks: m.max_marks, absent: m.absent })
   })
 
   const allResults: SubjectResult[] = []
 
   Object.values(bySubject).forEach(({ subject, marks }) => {
-    const r = courseResult(subject.code, marks)
+    const r = courseResult(subject.code, marks, subject.cia_scheme)
     if (r.pending) return // semester-end marks not entered yet — no grade
     const course  = findCourse(subject.code)
     const credits = course?.credits ?? Number(subject.credits)
@@ -192,7 +193,7 @@ async function fetchForStudents(table: string, select: string, column: string, i
 export async function loadStudentStats(studentIds: string[], attendanceFrom?: string): Promise<Record<string, StudentStats>> {
   const [att, marks] = await Promise.all([
     loadAttendanceTotals(studentIds, attendanceFrom),
-    fetchForStudents('marks', '*, subjects(id, code, name, credits, semester, section)', 'student_id', studentIds),
+    fetchForStudents('marks', '*, subjects(id, code, name, credits, semester, section, cia_scheme)', 'student_id', studentIds),
   ])
   const out: Record<string, StudentStats> = {}
   for (const id of studentIds) {

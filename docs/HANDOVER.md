@@ -221,13 +221,18 @@ copy is in `~/Downloads/CSE_Student_Lists/backups/test_data_removed_2026-10-17.j
   left out of the Head of Department list.
 - III CSE-A timetable: only Tue P4 and Fri P7 of a lab swap were edited (II CSE-A was
   swapped fully) — check whether the other hours should change too.
-- IA workbooks in the source folder are imported (17 Oct 2026): 19,908 component marks,
-  255 students, 53 offerings (AY 2025-26 Even: I–II year; AY 2026-27 Odd: II CSE-B and
-  III year incl. PE1/PE2). Workbook scales were converted to the app's (CT/30, CAT/60,
-  activity/10; lab performance /75 split over experiments, record and viva); a special test
-  (SP) replaces an absent CAT, as in the sheets. Not imported: Soft Skills of semester 3 for
-  the 2024–28 batch (that term is not in the system), Logical Reasoning (CIA-1 only, no
-  maximum given), and the 9 lateral-entry students of II year who have no account yet.
-  Nine students' sheet totals differ from their own components (hand-edited cells) —
-  the class advisors should check them on the Marks page.
+- IA workbooks in the source folder are imported (re-imported 18 Oct 2026) **as written**:
+  15,858 component marks (153 "AB"), 259 students, 54 offerings, each with the CIA scheme
+  read from its sheet (`subjects.cia_scheme`, migration 45; engine `src/lib/cia-scheme.ts`).
+  Lab marks kept on the PiC / PIS / DS / DBMS sheets went to their lab courses (CS24221,
+  PH24121, CS24321, CS24322). Students were matched by register number first (one III CSE-A student carries
+  another student's roll number in the sheets). Checked against each
+  sheet's own internal: 1,852 exact, 152 within 1 mark (sheets that round up part-totals),
+  63 more: DAA III CSE-B (sheet mixes theory and lab in CIA 2), Engineering Practices lab
+  I CSE-A (typed by hand) and about 17 hand-edited cells. Not imported: Soft Skills (sem 3,
+  2024–28 batch), Logical Reasoning (CIA-1 only); two listed students who never joined. Backup of the earlier import: `~/Downloads/CSE_Student_Lists/backups/`.
+- 9 II-year lateral entries added 18 Oct 2026 (II CSE-A 25CS023–026, II CSE-B 25CS134–138,
+  lab batch 2 like earlier laterals, roll numbers as in the attendance register — the IA sheet
+  swaps 25CS134/135); their register attendance from 31 Aug is in the class hours. Four
+  unused student accounts were removed at the HOD's request.
 - Course outcomes and CO–PO matrices are empty until each teacher fills them in.
