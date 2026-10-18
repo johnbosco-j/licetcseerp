@@ -8,11 +8,13 @@ import { tierOf } from "@/lib/roles"
 import HodDashboard from "@/components/dashboard/hod-dashboard"
 import FacultyDashboard from "@/components/dashboard/faculty-dashboard"
 import StudentDashboard from "@/components/dashboard/student-dashboard"
+import { AdminDashboard, LabDashboard } from "@/components/dashboard/support-dashboard"
 
 type Me = {
   id: string; full_name: string; email: string; role: string; section: string | null; advisor_section: string | null
   register_number: string | null; roll_number: string | null; employee_id: string | null
   designation: string | null; access_tier: number | null; can_reset_passwords: boolean | null; parent_mobile: string | null
+  staff_type?: string | null; is_admin?: boolean | null
 }
 
 export default function DashboardPage() {
@@ -29,7 +31,7 @@ export default function DashboardPage() {
     const h = new Date().getHours()
     setGreeting(h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening")
     supabase.from('profiles')
-      .select('id, full_name, email, role, section, advisor_section, register_number, roll_number, employee_id, designation, access_tier, can_reset_passwords, parent_mobile')
+      .select('id, full_name, email, role, section, advisor_section, register_number, roll_number, employee_id, designation, access_tier, can_reset_passwords, parent_mobile, staff_type, is_admin')
       .eq('email', au.data.email).single()
       .then(({ data }) => { if (data) setMe(data as Me) })
   }, [router])
@@ -60,7 +62,12 @@ export default function DashboardPage() {
           {me?.role === 'PROFESSOR' && <FacultyDashboard me={me} name={name} greeting={greeting} embedded />}
           {me?.role === 'HOD' && hodPerson && <FacultyDashboard me={hodPerson} name={name} greeting={greeting} embedded />}
         </>
-      ) : tier === 2 ? <FacultyDashboard me={me} name={name} greeting={greeting} />
+      ) : me?.staff_type === 'ADMIN' ? <AdminDashboard name={name} greeting={greeting} />
+        : me?.staff_type === 'LAB' ? <LabDashboard name={name} greeting={greeting} />
+        : tier === 2 ? <>
+            <FacultyDashboard me={me} name={name} greeting={greeting} />
+            {me?.is_admin && <AdminDashboard name={name} greeting="Administrator tools" />}
+          </>
         : <StudentDashboard me={me} name={name} greeting={greeting} />}
     </div>
   )

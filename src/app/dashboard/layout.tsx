@@ -155,7 +155,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       const { data: navSetting } = await supabase.from("app_settings").select("value").eq("key", "nav.hidden").maybeSingle()
       if (!active) return
-      setAllowed(getAllowedModules({ type, role: profile.role, advisor_section: profile.advisor_section, can_reset_passwords: profile.can_reset_passwords, access_tier: profile.access_tier },
+      setAllowed(getAllowedModules({ type, role: profile.role, advisor_section: profile.advisor_section, can_reset_passwords: profile.can_reset_passwords, access_tier: profile.access_tier,
+        staff_type: (profile as { staff_type?: string }).staff_type ?? 'TEACHING', is_admin: !!(profile as { is_admin?: boolean }).is_admin },
         (navSetting?.value ?? null) as Record<string, string[]> | null))
       setDesignation(profile.designation ?? null)
       setName(profile.full_name || "")

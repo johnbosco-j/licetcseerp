@@ -36,7 +36,8 @@ const TONES = {
 }
 const ICON = { todo: Circle, draft: PencilLine, self: QrCode, done: CheckCircle2, locked: Lock }
 
-export function TakeAttendance({ term, me, isHod }: { term: Term; me: { id: string; full_name: string }; isHod: boolean }) {
+/** isLab: a lab instructor — today's lab hours of every class, nothing else. */
+export function TakeAttendance({ term, me, isHod, isLab = false }: { term: Term; me: { id: string; full_name: string }; isHod: boolean; isLab?: boolean }) {
   const [date, setDate] = useState(isoToday())
   const [entries, setEntries] = useState<TimetableEntry[]>([])
   const [periods, setPeriods] = useState<PeriodSlot[]>([])
@@ -92,6 +93,10 @@ export function TakeAttendance({ term, me, isHod }: { term: Term; me: { id: stri
     const out: ClassBlock[] = []
     const seen = new Set<string>()
     for (const sec of SECTIONS) for (const b of blocksFor(sec)) {
+      if (isLab) {
+        if (!b.entry.is_lab || seen.has(b.key)) continue
+        seen.add(b.key); out.push(b); continue
+      }
       const handedToMe = covering.some(d => (d.subject_id && d.subject_id === b.entry.subject_id) || (!d.subject_id && b.entry.faculty_ids.includes(d.from_faculty)))
       const mine = teach.ids.some(id => b.entry.faculty_ids.includes(id)) || (!!b.entry.subject_id && teach.courses.has(b.entry.subject_id))
       if (!mine && !handedToMe) continue
@@ -100,12 +105,12 @@ export function TakeAttendance({ term, me, isHod }: { term: Term; me: { id: stri
       seen.add(k); out.push(b)
     }
     return out.sort((a, b) => a.periods[0] - b.periods[0])
-  }, [blocksFor, teach, covering])
+  }, [blocksFor, teach, covering, isLab])
 
   const shift = (n: number) => {
     const d = new Date(date + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n)
     const iso = d.toISOString().slice(0, 10)
-    if (iso <= isoToday()) setDate(iso)
+    if (iso <= isoToday() && !isLab) setDate(iso)
   }
   const wd = weekdayOf(date)
   const anyDay = days[section || 'II CSE-A']
@@ -151,11 +156,11 @@ export function TakeAttendance({ term, me, isHod }: { term: Term; me: { id: stri
           {anyDay && !anyDay.working ? <> · <span className="text-amber-700">not a working day{anyDay.label ? ` (${anyDay.label.split(' / ')[0]})` : ''}</span></> : null}
         </p>
         <div className="ml-auto flex flex-wrap items-center gap-2">
-        <DelegationsButton me={me.id} termId={term.id} />
-        <div className="inline-flex rounded-md border border-border overflow-hidden text-[13px]">
+        {!isLab && <DelegationsButton me={me.id} termId={term.id} />}
+        {!isLab && <div className="inline-flex rounded-md border border-border overflow-hidden text-[13px]">
           <button onClick={() => setView('mine')} className={`px-3 h-9 ${view === 'mine' ? 'bg-licet-indigo text-white' : 'bg-white hover:bg-muted'}`}>My classes</button>
           <button onClick={() => setView('all')} className={`px-3 h-9 ${view === 'all' ? 'bg-licet-indigo text-white' : 'bg-white hover:bg-muted'}`}>{isHod ? 'All classes' : 'All classes (view)'}</button>
-        </div>
+        </div>}
         </div>
       </div>
 
@@ -166,8 +171,8 @@ export function TakeAttendance({ term, me, isHod }: { term: Term; me: { id: stri
           <div className="grid gap-2.5 sm:grid-cols-2">{myBlocks.map(blockCard)}</div>
         ) : (
           <div className="rounded-lg border border-dashed border-border bg-white px-6 py-10 text-center text-[13.5px] text-muted-foreground">
-            No classes on your timetable for this day. Class advisors can take any hour of their class from <b>All classes</b>; to cover a colleague, ask them to hand the class over to you.
-            <br /><span className="text-[12.5px]">If your classes are missing, ask the HOD to link your name to the courses in Configuration → Courses.</span>
+            {isLab ? 'No lab hours today.' : <>No classes on your timetable for this day. Class advisors can take any hour of their class from <b>All classes</b>; to cover a colleague, ask them to hand the class over to you.
+            <br /><span className="text-[12.5px]">If your classes are missing, ask the HOD to link your name to the courses in Configuration → Courses.</span></>}
           </div>
         )
       ) : (

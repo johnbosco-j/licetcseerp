@@ -33,10 +33,13 @@ export default function ExportPage() {
   const [result, setResult] = useState<{ file: string; counts: Record<string, number> } | null>(null)
   const [error, setError] = useState('')
 
-  useEffect(() => {
-    const stored = localStorage.getItem('licet_user')
-    if (!stored) { router.push('/login'); return }
-    const au = JSON.parse(stored) as AuthUser
+  useEffect(() => { (async () => {
+    // role and scope come from the live profile, never from the browser's stored copy
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) { router.push('/login'); return }
+    const { data: profile } = await supabase.from('profiles').select('*').eq('id', session.user.id).single()
+    if (!profile) { router.push('/login'); return }
+    const au = { type: profile.role === 'STUDENT' ? 'student' : 'staff', data: { ...profile, name: profile.full_name } } as unknown as AuthUser
     setAuthUser(au)
     if (au.type === 'student') {
       setScopeKind('student')
@@ -47,7 +50,7 @@ export default function ExportPage() {
     } else if (au.data.advisor_section) {
       setSection(au.data.advisor_section)
     }
-  }, [router])
+  })() }, [router])
 
   const isStudent = authUser?.type === 'student'
   const tier1 = authUser?.type === 'staff' && isTier1(authUser.data)

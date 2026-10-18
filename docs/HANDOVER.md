@@ -133,6 +133,20 @@ nothing in the app reads them any more except the audit page.
   version, `npm run dist:mac && npm run dist:win`, then
   `gh release create vX.Y.Z desktop/dist/LICET-Things-Staff-* desktop/dist/latest*.yml`.
 
+### Tiers (migration 47)
+
+| Tier | `profiles` | Can |
+| --- | --- | --- |
+| 1 — HOD / leadership | `role = HOD`, or `access_tier = 1` | everything (two-step code once set up) |
+| 2 — faculty | `staff_type = TEACHING` | their classes; marks only of courses they teach / students they advise |
+| Administrator | `staff_type = ADMIN` (non-teaching) or `is_admin` on a faculty account | add / correct students, courses, staff accounts; reset passwords — no marks, attendance, timetable |
+| Lab instructor | `staff_type = LAB` | attendance of `timetable_entries.is_lab` hours, on the day during the hour |
+| 3 — student | `role = STUDENT` | own records; own class's courses and current timetable |
+
+`is_staff()` means teaching staff; `is_admin_staff()`, `is_lab_staff()`, `student_sees_subject()`
+and `lab_hour_open()` carry the rest. A trigger stops anyone but the HOD changing roles, tiers,
+administrator powers or class advisors. Checked by `tests/db/10_tiers.sql` and `tests/unit/tiers.test.ts`.
+
 ## Security
 
 - Row-level security on every table; signed-out visitors have no table or function

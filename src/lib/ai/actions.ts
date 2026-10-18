@@ -472,9 +472,15 @@ const ACTIONS: Action[] = [
   },
 ]
 
+// Account drafts for administrators (non-teaching, or faculty with administrator powers);
+// lab instructors draft attendance (the database still limits them to lab hours) and leave.
+const ADMIN_DRAFTS = ['draft_students', 'draft_staff', 'draft_student_update', 'draft_course_teacher']
 export function actionsFor(me: Asker) {
+  if (me.kind === 'ADMIN') return ACTIONS.filter(a => ADMIN_DRAFTS.includes(a.name) || a.name === 'draft_leave')
+  if (me.kind === 'LAB') return ACTIONS.filter(a => a.name === 'draft_attendance' || a.name === 'draft_leave')
   const staff = me.role !== 'STUDENT'
-  return ACTIONS.filter(a => a.for === 'all' || (a.for === 'student' && !staff) || (a.for === 'staff' && staff) || (a.for === 'hod' && me.tier1))
+  return ACTIONS.filter(a => a.for === 'all' || (a.for === 'student' && !staff) || (a.for === 'staff' && staff) || (a.for === 'hod' && me.tier1)
+    || (me.admin && ADMIN_DRAFTS.includes(a.name)))
 }
 export const isAction = (name: string) => ACTIONS.some(a => a.name === name)
 

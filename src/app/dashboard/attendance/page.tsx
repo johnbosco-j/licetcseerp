@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Loader2 } from "lucide-react"
-import { isTier1 } from "@/lib/roles"
+import { isTier1, isLabStaff } from "@/lib/roles"
 import type { AuthUser } from "@/lib/auth"
 import { loadSettings, loadTerms, type Term } from "@/lib/academic"
 import { TakeAttendance } from "@/components/attendance/take-attendance"
@@ -39,6 +39,7 @@ export default function AttendancePage() {
 
   const isStudent = user.type === 'student'
   const isHod = user.type === 'staff' && isTier1(user.data)
+  const isLab = user.type === 'staff' && isLabStaff(user.data)
   const me = { id: user.data.id, full_name: user.data.full_name }
 
   return (
@@ -65,14 +66,14 @@ export default function AttendancePage() {
       ) : (
         <>
           <div className="flex gap-1 border-b border-border">
-            {([['take', 'Take attendance'], ['register', 'Register'], ['summary', 'Summary & eligibility'],
+            {(isLab ? [['take', 'Lab hours today']] as [Tab, string][] : [['take', 'Take attendance'], ['register', 'Register'], ['summary', 'Summary & eligibility'],
                ...((isHod || user.data.advisor_section) ? [['condonation', 'Condonation']] : [])] as [Tab, string][]).map(([k, label]) => (
               <button key={k} onClick={() => setTab(k)}
                 className={`px-4 py-2 -mb-px text-[13.5px] font-semibold border-b-2 ${tab === k ? 'border-licet-indigo text-licet-indigo' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>{label}</button>
             ))}
           </div>
           {tab === 'take' && (term.is_current
-            ? <TakeAttendance term={term} me={me} isHod={isHod} />
+            ? <TakeAttendance term={term} me={me} isHod={isHod} isLab={isLab} />
             : <p className="text-[13.5px] text-muted-foreground">{term.label} is a past term — use Register to view or correct its hours.</p>)}
           {tab === 'register' && <RegisterView term={term} isHod={isHod} me={me} defaultSection={user.data.advisor_section} />}
           {tab === 'condonation' && <CondonationDesk term={term} isHod={isHod} />}

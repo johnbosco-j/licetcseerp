@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { verticalName } from "@/lib/verticals"
 import { loadClassOfferings } from "@/lib/academic"
-import { isTier1 } from "@/lib/roles"
+import { isTier1, isAdminStaff } from "@/lib/roles"
 import { courseType as regulationCourseType } from "@/lib/regulations"
 import type { AuthUser } from "@/lib/auth"
 import type { Database } from "@/lib/supabase"
@@ -486,7 +486,8 @@ export default function SubjectsPage() {
   const [saveMsg, setSaveMsg]     = useState('')
   const [activeTab, setActiveTab]  = useState<'view'|'manage'>('view')
 
-  const isHOD     = authUser?.type === 'staff' && isTier1(authUser.data)
+  // the HOD and administrators add courses and allot teachers
+  const isHOD     = authUser?.type === 'staff' && (isTier1(authUser.data) || isAdminStaff(authUser.data))
   const isFaculty = authUser?.type === 'staff' && authUser.data.role === 'PROFESSOR'
   const isStudent = authUser?.type === 'student'
   const SECTIONS  = ['I CSE-A','I CSE-B','II CSE-A','II CSE-B','III CSE-A','III CSE-B','IV CSE-A','IV CSE-B']

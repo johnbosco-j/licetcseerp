@@ -11,11 +11,12 @@ export async function askerFrom(req: Request, opts: { quota?: boolean } = {}): P
   const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
     global: { headers: { Authorization: `Bearer ${token}` } }, auth: { persistSession: false, autoRefreshToken: false },
   })
-  const { data: p } = await db.from('profiles').select('id, role, access_tier, full_name, section, advisor_section, is_active').eq('id', user.id).single()
+  const { data: p } = await db.from('profiles').select('id, role, access_tier, full_name, section, advisor_section, is_active, staff_type, is_admin').eq('id', user.id).single()
   if (!p?.is_active) return { error: 'Account not active', status: 403 }
   if (opts.quota !== false) {
     const { data: ok } = await db.rpc('ai_take_quota')
     if (!ok) return { error: 'The assistant is switched off, or you have reached today’s limit.', status: 429 }
   }
-  return { db, token, me: { id: p.id, role: p.role, tier1: p.role === 'HOD' || (p.role === 'PROFESSOR' && p.access_tier === 1), full_name: p.full_name, section: p.section, advisor_section: p.advisor_section } }
+  return { db, token, me: { id: p.id, role: p.role, tier1: p.role === 'HOD' || (p.role === 'PROFESSOR' && p.access_tier === 1), full_name: p.full_name, section: p.section, advisor_section: p.advisor_section,
+    kind: p.role === 'STUDENT' ? 'STUDENT' : (p.staff_type ?? 'TEACHING'), admin: p.role === 'HOD' || p.access_tier === 1 || p.staff_type === 'ADMIN' || !!p.is_admin } }
 }

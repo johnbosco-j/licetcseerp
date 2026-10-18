@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { StudentImport } from "@/components/student-import"
 import { supabase } from "@/lib/supabase"
-import { isTier1 } from "@/lib/roles"
+import { isTier1, isAdminStaff } from "@/lib/roles"
 import type { AuthUser } from "@/lib/auth"
 import type { Database } from "@/lib/supabase"
 import { Phone, Plus, X, Search, Edit2, Trash2, Loader2, Users, AlertTriangle, Check, KeyRound, FileSpreadsheet, ChevronRight } from "lucide-react"
@@ -38,6 +38,8 @@ export default function StudentsPage() {
   const [form, setForm]         = useState({ full_name: '', email: '', section: 'I CSE-A', batch_year: graduationYear('I CSE-A'), roll_number: '', register_number: '', parent_mobile: '', lab_batch: 1, vertical: '', parent_email: '' })
 
   const isHOD = authUser?.type === 'staff' && isTier1(authUser.data)
+  // HOD and administrators add / correct students; only the HOD deletes
+  const canManage = authUser?.type === 'staff' && isAdminStaff(authUser.data)
 
   useEffect(() => {
     const stored = localStorage.getItem('excelsior_user') || localStorage.getItem('licet_user')
@@ -152,7 +154,7 @@ export default function StudentsPage() {
           <h1 className="text-2xl font-semibold tracking-tight mt-2">Student Directory</h1>
           <p className="text-[13.5px] text-muted-foreground mt-1.5 max-w-3xl">Manage student profiles, sections, and access</p>
         </div>
-        {isHOD && (
+        {canManage && (
           <div className="flex flex-wrap gap-2">
             <button onClick={() => setImporting(true)} className="flex items-center gap-2 px-3 py-2 border border-licet-indigo/25 bg-white text-licet-indigo text-[13px] font-semibold rounded-md hover:bg-licet-cream/60 shadow-sm">
               <FileSpreadsheet className="w-3.5 h-3.5" /> Import from Excel
@@ -349,7 +351,7 @@ export default function StudentsPage() {
                 </td>
                 <td className="p-4 font-mono text-xs text-muted-foreground">{s.batch_year ?? '—'}</td>
                 <td className="p-4 text-right">
-                  {isHOD && (
+                  {canManage && (
                     <div className="flex justify-end gap-2">
                       <button onClick={() => openEdit(s)} className="p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded transition-colors" title="Edit">
                         <Edit2 className="w-4 h-4" />
@@ -357,9 +359,9 @@ export default function StudentsPage() {
                       <button onClick={() => handleResetPassword(s)} className="p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded transition-colors" title="Reset password">
                         <KeyRound className="w-4 h-4" />
                       </button>
-                      <button onClick={() => handleDelete(s.id, s.full_name)} className="p-1.5 text-muted-foreground hover:text-red-700 hover:bg-red-50 rounded transition-colors" title="Delete">
+                      {isHOD && <button onClick={() => handleDelete(s.id, s.full_name)} className="p-1.5 text-muted-foreground hover:text-red-700 hover:bg-red-50 rounded transition-colors" title="Delete">
                         <Trash2 className="w-4 h-4" />
-                      </button>
+                      </button>}
                     </div>
                   )}
                 </td>

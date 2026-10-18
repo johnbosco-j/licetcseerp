@@ -4,7 +4,8 @@
 #   bash tests/e2e/run.sh
 set -euo pipefail
 cd "$(dirname "$0")/../.."
-eval "$(supabase status -o env | grep -E '^(API_URL|ANON_KEY|SERVICE_ROLE_KEY)=')"
+# the CLI prints JSON (older versions printed KEY="value" lines)
+eval "$(supabase status -o json 2>/dev/null | python3 -c 'import json,sys; d=json.load(sys.stdin); print("\n".join(f"{k}={d[k]!r}" for k in ("API_URL","ANON_KEY","SERVICE_ROLE_KEY")))')"
 export API_URL ANON_KEY SERVICE_ROLE_KEY STATION_PORT=${STATION_PORT:-7071}
 (cd station && SUPABASE_URL=$API_URL SUPABASE_ANON_KEY=$ANON_KEY node server.mjs > /tmp/licet-station-e2e.log 2>&1) &
 STATION_PID=$!

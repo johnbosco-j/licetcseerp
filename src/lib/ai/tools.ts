@@ -6,7 +6,9 @@ import path from 'node:path'
 import type { ToolDef } from './llm'
 import { schemeOf, examType } from '@/lib/cia-scheme'
 
-export type Asker = { id: string; role: 'HOD' | 'PROFESSOR' | 'STUDENT'; tier1: boolean; full_name: string; section: string | null; advisor_section: string | null }
+export type Asker = { id: string; role: 'HOD' | 'PROFESSOR' | 'STUDENT'; tier1: boolean; full_name: string; section: string | null; advisor_section: string | null
+  /** TEACHING / ADMIN (non-teaching administrator) / LAB (lab instructor) / STUDENT; admin = may manage accounts */
+  kind?: 'TEACHING' | 'ADMIN' | 'LAB' | 'STUDENT'; admin?: boolean }
 type Tool = ToolDef & { for: 'all' | 'staff' | 'student' | 'hod'; run: (db: SupabaseClient, me: Asker, input: Record<string, unknown>) => Promise<unknown> }
 
 const ist = () => new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 10)
@@ -218,7 +220,10 @@ const TOOLS: Tool[] = [
   },
 ]
 
+// Administrators and lab instructors get no student data tools (marks, attendance, analytics).
+const SUPPORT: Record<string, string[]> = { ADMIN: ['how_to', 'notices', 'calendar', 'find_staff'], LAB: ['how_to', 'timetable', 'notices', 'calendar'] }
 export function toolsFor(me: Asker) {
+  if (me.kind === 'ADMIN' || me.kind === 'LAB') return TOOLS.filter(t => SUPPORT[me.kind!].includes(t.name))
   const staff = me.role !== 'STUDENT', hod = me.tier1
   return TOOLS.filter(t => t.for === 'all' || (t.for === 'student' && !staff) || (t.for === 'staff' && staff) || (t.for === 'hod' && hod))
 }

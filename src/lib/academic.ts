@@ -25,7 +25,7 @@ export interface Offering {
 export interface TimetableEntry {
   id: string; term_id: string; section: string; day_order: number; period_no: number
   subject_id: string | null; label: string | null; audience: Audience; audience_value: string | null; group_id: string | null
-  room: string | null; faculty_ids: string[]; faculty_names: string | null; takes_attendance: boolean
+  room: string | null; faculty_ids: string[]; faculty_names: string | null; takes_attendance: boolean; is_lab?: boolean
   effective_from: string | null; effective_to: string | null
   subjects?: Pick<Offering, 'id' | 'code' | 'name' | 'short_name' | 'section' | 'cohort_grad_year' | 'audience' | 'audience_value'> | null
 }

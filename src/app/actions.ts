@@ -1,6 +1,6 @@
 "use server"
 
-import { adminClient, requireRole, AuthError } from '@/lib/server-auth'
+import { adminClient, requireRole, requireAdmin, AuthError } from '@/lib/server-auth'
 import { normalizeMobile, needsVertical } from '@/lib/utils'
 import { defaultStaffPassword, canResetPassword, defaultStudentPassword, MIN_PASSWORD_LENGTH } from '@/lib/passwords'
 
@@ -70,7 +70,7 @@ async function createStudent(db: ReturnType<typeof adminClient>, data: NewStuden
 
 export async function addStudentAdmin(accessToken: string, data: NewStudent): Promise<ActionResult> {
   try {
-    await requireRole(accessToken, ['HOD'])
+    await requireAdmin(accessToken)
     return await createStudent(adminClient(), data)
   } catch (e) {
     return failure(e)
@@ -84,7 +84,7 @@ export interface ImportRowResult { row: number; email: string; status: 'created'
 // and must change it at first login.
 export async function importStudentsAdmin(accessToken: string, rows: NewStudent[]): Promise<{ error?: string; results?: ImportRowResult[] }> {
   try {
-    await requireRole(accessToken, ['HOD'])
+    await requireAdmin(accessToken)
     if (!Array.isArray(rows) || rows.length === 0) return { error: 'The file has no student rows' }
     if (rows.length > 50) return { error: 'Send at most 50 students per request' }
 
@@ -254,7 +254,7 @@ export type StaffRowResult = { email: string; full_name: string; ok: boolean; pa
  *  department empty = CSE; anything else marks staff of another department. */
 export async function createStaffAdmin(accessToken: string, rows: NewStaff[]): Promise<{ error?: string; results?: StaffRowResult[] }> {
   try {
-    await requireRole(accessToken, ['HOD'])
+    await requireAdmin(accessToken)
     if (!Array.isArray(rows) || !rows.length || rows.length > 200) return { error: 'Give between 1 and 200 staff' }
     const db = adminClient()
     const results: StaffRowResult[] = []

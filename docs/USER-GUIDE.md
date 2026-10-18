@@ -56,8 +56,25 @@ Everything faculty do, plus:
 
 - take any hour of your section (a colleague is absent),
 - *Condonation* tab: requests from your students (the HOD decides),
-- *Insights* for your section, password resets for your students (User Accounts),
+- *Insights* for your section, password resets for your students (User Accounts — your own
+  class only),
 - weekly shortage emails copy you.
+
+## Administrators (non-teaching)
+
+Add and correct **students** (Student Records → Add / Import from Excel), **courses**
+(Courses → Manage & allot) and **staff accounts** (User Accounts → Add staff), and reset
+students' and faculty passwords. Administrators do not see marks, attendance or the timetable,
+and cannot make anyone HOD, tier 1 or an administrator — only the HOD sets tiers (User
+Accounts → Tier). A faculty member can be given administrator powers on top of teaching
+(*Faculty + administrator*).
+
+## Lab instructors
+
+*Attendance → Lab hours today* lists the lab hours of every class. A lab hour can be marked
+on the day, from a few minutes before it starts until 15 minutes after it ends — not other
+hours, past days or marks. Whether an hour is a lab hour comes from the timetable (lab courses,
+batch-split hours and lab blocks); the HOD can correct it.
 
 ## Students
 

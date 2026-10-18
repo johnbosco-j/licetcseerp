@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { KeyRound, Loader2, Search, ShieldCheck, UserCog, Users, X, Check, Copy } from "lucide-react"
 import { supabase } from "@/lib/supabase"
-import { isTier1 } from "@/lib/roles"
+import { isTier1, isAdminStaff, tierLabel } from "@/lib/roles"
 import type { Database } from "@/lib/supabase"
 import { getAccessToken } from "@/lib/auth"
 import { resetPassword } from "@/app/actions"
@@ -30,7 +30,8 @@ export default function AccountsPage() {
 
   const isHOD = isTier1(me)              // tier 1: HOD or Vice Principal
   const isRealHOD = me?.role === 'HOD'   // only the HOD grants password-admin rights
-  const isPasswordAdmin = isHOD || !!me?.can_reset_passwords
+  const isAdmin = isAdminStaff(me)       // HOD, administrators, faculty with administrator powers
+  const isPasswordAdmin = isHOD || !!me?.can_reset_passwords || isAdmin
   const advisorOnly = !isPasswordAdmin && !!me?.advisor_section
 
   const load = useCallback(async () => {
@@ -40,7 +41,7 @@ export default function AccountsPage() {
     const { data: self } = await supabase.from('profiles').select('*').eq('id', session.user.id).single()
     setMe(self)
     let q = supabase.from('profiles').select('*').in('role', ['STUDENT', 'PROFESSOR']).order('full_name')
-    if (self && !isTier1(self) && !self.can_reset_passwords && self.advisor_section) {
+    if (self && !isTier1(self) && !self.can_reset_passwords && !isAdminStaff(self) && self.advisor_section) {
       q = q.eq('role', 'STUDENT').eq('section', self.advisor_section)
     }
     const { data } = await q
@@ -88,6 +89,17 @@ export default function AccountsPage() {
     setPeople(ps => ps.map(p => p.id === faculty.id ? { ...p, advisor_section: section || null }
       : prev && p.id === prev.id ? { ...p, advisor_section: null } : p))
     setMessage({ tone: 'ok', text: section ? `${faculty.full_name} is now class advisor of ${section}` : `${faculty.full_name} is no longer a class advisor` })
+  }
+
+  type Tier = 'TEACHING' | 'TEACHING_ADMIN' | 'ADMIN' | 'LAB'
+  const tierOfRow = (p: Profile): Tier => { const x = p as Profile & { staff_type?: string; is_admin?: boolean }; return x.staff_type === 'ADMIN' ? 'ADMIN' : x.staff_type === 'LAB' ? 'LAB' : x.is_admin ? 'TEACHING_ADMIN' : 'TEACHING' }
+  const setTier = async (p: Profile, t: Tier) => {
+    setMessage(null)
+    const patch = { staff_type: t === 'TEACHING_ADMIN' ? 'TEACHING' : t, is_admin: t === 'TEACHING_ADMIN' || t === 'ADMIN' }
+    const { error } = await supabase.from('profiles').update(patch as never).eq('id', p.id)
+    if (error) { setMessage({ tone: 'err', text: error.message }); return }
+    setPeople(ps => ps.map(x => x.id === p.id ? { ...x, ...patch } as Profile : x))
+    setMessage({ tone: 'ok', text: `${p.full_name} is now: ${tierLabel({ role: 'PROFESSOR', ...patch })}` })
   }
 
   const togglePasswordAdmin = async (faculty: Profile) => {
@@ -173,7 +185,7 @@ export default function AccountsPage() {
                 <tr className="text-left">
                   <th className="px-5 py-2.5">Name</th>
                   <th className="px-5 py-2.5">Email</th>
-                  {tab === 'STUDENT' ? <th className="px-5 py-2.5">Section</th> : isHOD && <><th className="px-5 py-2.5">Class advisor</th><th className="px-5 py-2.5">Password admin</th></>}
+                  {tab === 'STUDENT' ? <th className="px-5 py-2.5">Section</th> : <><th className="px-5 py-2.5">Tier</th>{isHOD && <><th className="px-5 py-2.5">Class advisor</th><th className="px-5 py-2.5">Password admin</th></>}</>}
                   <th className="px-5 py-2.5">Status</th>
                   <th className="px-5 py-2.5 text-right">Actions</th>
                 </tr>
@@ -183,7 +195,18 @@ export default function AccountsPage() {
                   <tr key={p.id}>
                     <td className="px-5 py-3 font-medium text-licet-indigo">{p.full_name}</td>
                     <td className="px-5 py-3 text-muted-foreground">{p.email}</td>
-                    {tab === 'STUDENT' ? <td className="px-5 py-3">{p.section}</td> : isHOD && (
+                    {tab === 'STUDENT' ? <td className="px-5 py-3">{p.section}</td> : <>
+                      <td className="px-5 py-3">
+                        {isHOD && !isTier1(p) ? (
+                          <select value={tierOfRow(p)} onChange={e => setTier(p, e.target.value as Tier)} className={`${field} h-8 w-48`} aria-label={`Tier of ${p.full_name}`}>
+                            <option value="TEACHING">Faculty (tier 2)</option>
+                            <option value="TEACHING_ADMIN">Faculty + administrator</option>
+                            <option value="ADMIN">Administrator (non-teaching)</option>
+                            <option value="LAB">Lab instructor</option>
+                          </select>
+                        ) : <span className="text-[12.5px]">{tierLabel(p as never)}</span>}
+                      </td>
+                      {isHOD && (
                       <>
                         <td className="px-5 py-3">
                           <select value={p.advisor_section ?? ''} onChange={e => setAdvisor(p, e.target.value)} className={`${field} h-8 w-36`} aria-label={`Class advisor section for ${p.full_name}`}>
@@ -200,7 +223,8 @@ export default function AccountsPage() {
                           </button>
                         </td>
                       </>
-                    )}
+                      )}
+                    </>}
                     <td className="px-5 py-3">
                       {p.must_change_password ? <Badge tone="amber">Must change password</Badge> : <Badge tone="green">Active</Badge>}
                     </td>
@@ -267,7 +291,7 @@ export default function AccountsPage() {
         </div>
       )}
 
-      {isHOD && tab === 'PROFESSOR' && (
+      {isAdmin && tab === 'PROFESSOR' && (
         <>
           <AddStaff onDone={load} />
           <p className="text-[12px] text-muted-foreground flex items-center gap-1.5"><UserCog size={13} /> Password admins can reset any student or faculty password.</p>
