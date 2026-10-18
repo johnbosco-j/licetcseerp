@@ -17,6 +17,18 @@ export type ToolDef = { name: string; description: string; input_schema: Record<
 export type Reply = { content: Block[]; stop_reason: string }
 
 export type Provider = 'anthropic' | 'gemini'
+
+/** A provider refused or failed; `hint` is safe to show (no key, no prompt). */
+export class AiError extends Error {
+  constructor(public status: number, detail: string) { super(`AI service error ${status}: ${detail.slice(0, 400)}`) }
+  get hint() {
+    if (this.status === 400) return 'The AI service refused the request (model name or request format).'
+    if (this.status === 401 || this.status === 403) return 'The AI key on the server is not valid or not allowed for this model.'
+    if (this.status === 404) return 'The AI model set on the server was not found.'
+    if (this.status === 429) return 'The AI service quota is used up for now — try again later.'
+    return 'The AI service did not answer. Try again in a minute.'
+  }
+}
 export function aiProvider(): Provider | null {
   const a = !!process.env.ANTHROPIC_API_KEY, g = !!process.env.GEMINI_API_KEY
   const want = process.env.AI_PROVIDER?.toLowerCase()
@@ -43,7 +55,7 @@ async function anthropic(body: { system: string; messages: Msg[]; tools?: ToolDe
     headers: { 'x-api-key': process.env.ANTHROPIC_API_KEY ?? '', 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
     body: JSON.stringify({ model: aiModel(), max_tokens: body.max_tokens ?? 2000, system: body.system, messages, ...(body.tools?.length ? { tools: body.tools } : {}) }),
   })
-  if (!res.ok) throw new Error(`AI service error ${res.status}`)
+  if (!res.ok) throw new AiError(res.status, await res.text().catch(() => ''))
   return await res.json() as Reply
 }
 
@@ -94,7 +106,7 @@ async function gemini(body: { system: string; messages: Msg[]; tools?: ToolDef[]
       }) }] } : {}),
     }),
   })
-  if (!res.ok) throw new Error(`AI service error ${res.status}`)
+  if (!res.ok) throw new AiError(res.status, await res.text().catch(() => ''))
   const j = await res.json() as { candidates?: { content?: { parts?: GPart[] }; finishReason?: string }[] }
   const parts = j.candidates?.[0]?.content?.parts ?? []
   const content: Block[] = []

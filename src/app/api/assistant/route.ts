@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { aiConfigured, aiChat, replyText, type Block, type Msg } from '@/lib/ai/llm'
+import { AiError, aiProvider, aiModel } from '@/lib/ai/llm'
 import { toolsFor, runTool } from '@/lib/ai/tools'
 import { actionsFor, isAction, prepareAction } from '@/lib/ai/actions'
 import { fileBlocks, type Attachment } from '@/lib/ai/files'
@@ -69,7 +70,8 @@ export async function POST(req: Request) {
       messages.push({ role: 'user', content: results })
     }
     return NextResponse.json({ reply: proposals.length ? 'Check the drafts below and press Confirm.' : 'That needed too many look-ups; please ask a narrower question.', proposals })
-  } catch {
-    return NextResponse.json({ error: 'The AI service did not answer. Try again in a minute.' }, { status: 502 })
+  } catch (e) {
+    console.error('[assistant]', aiProvider(), aiModel(), e instanceof Error ? e.message : e)
+    return NextResponse.json({ error: e instanceof AiError ? e.hint : 'The AI service did not answer. Try again in a minute.' }, { status: 502 })
   }
 }

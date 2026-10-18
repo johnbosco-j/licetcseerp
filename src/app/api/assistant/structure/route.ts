@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { aiConfigured, aiChat, extractJsonArray, replyText } from '@/lib/ai/llm'
+import { AiError, aiProvider, aiModel } from '@/lib/ai/llm'
 import { askerFrom } from '@/lib/ai/session'
 
 // Bulk entry helper (staff): turns pasted text (a mail, a PDF copy, a messy sheet) into rows
@@ -26,7 +27,8 @@ export async function POST(req: Request) {
     const clean = rows.filter((x): x is Record<string, unknown> => !!x && typeof x === 'object')
       .map(x => Object.fromEntries(columns.map(c => [c, String(x[c] ?? '').trim()])))
     return NextResponse.json({ rows: clean.slice(0, 2000) })
-  } catch {
-    return NextResponse.json({ error: 'The AI service did not answer. Try again in a minute.' }, { status: 502 })
+  } catch (e) {
+    console.error('[assistant]', aiProvider(), aiModel(), e instanceof Error ? e.message : e)
+    return NextResponse.json({ error: e instanceof AiError ? e.hint : 'The AI service did not answer. Try again in a minute.' }, { status: 502 })
   }
 }
