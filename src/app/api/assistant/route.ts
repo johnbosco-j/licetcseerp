@@ -53,8 +53,10 @@ export async function POST(req: Request) {
   try {
     const messages: Msg[] = [...history]
     const state: { model?: string } = {}
+    // questions with files (marks sheets, photos) get the stronger model; the rest the fast one
+    const withFiles = history.some(m => typeof m.content !== 'string' && m.content.some(b => b.type === 'document' || b.type === 'image' || (b.type === 'text' && b.text.startsWith('[Attached file:'))))
     for (let round = 0; round < 6; round++) {
-      const r = await aiChat({ system, messages, tools, max_tokens: 2500, state })
+      const r = await aiChat({ system, messages, tools, max_tokens: 2500, state, fast: !withFiles })
       const uses = r.content.filter((b): b is Extract<Block, { type: 'tool_use' }> => b.type === 'tool_use')
       if (r.stop_reason !== 'tool_use' || !uses.length) return NextResponse.json({ reply: replyText(r) || (proposals.length ? 'Check the draft below and press Confirm.' : 'No answer.'), proposals })
       messages.push({ role: 'assistant', content: r.content })

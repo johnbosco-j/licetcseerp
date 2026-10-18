@@ -63,6 +63,8 @@ describe('Gemini model chain', () => {
     expect(new Set(chain)).toEqual(new Set(GEMINI_MODELS))
     process.env.GEMINI_FALLBACK_MODELS = 'gemini-flash-lite-latest, gemini-pro-latest'
     expect(geminiChain()).toEqual(['gemini-2.5-flash', 'gemini-flash-lite-latest', 'gemini-pro-latest'])
+    delete process.env.GEMINI_FAST_MODEL
+    expect(geminiChain(true)[0]).toBe('gemini-flash-lite-latest')       // plain questions: the fast model first
     process.env = keep
   })
 })

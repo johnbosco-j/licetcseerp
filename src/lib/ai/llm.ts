@@ -44,7 +44,7 @@ export const aiModel = () => aiProvider() === 'gemini'
   : process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5'
 
 /** `state` (optional, per request) remembers which Gemini model answered, for the follow-up steps. */
-export async function aiChat(body: { system: string; messages: Msg[]; tools?: ToolDef[]; max_tokens?: number; state?: { model?: string } }): Promise<Reply> {
+export async function aiChat(body: { system: string; messages: Msg[]; tools?: ToolDef[]; max_tokens?: number; state?: { model?: string }; fast?: boolean }): Promise<Reply> {
   return aiProvider() === 'gemini' ? gemini(body) : anthropic(body)
 }
 
@@ -100,12 +100,20 @@ export function geminiSchema(s: Record<string, unknown>): Record<string, unknown
 // (comma-separated). One request keeps the model that answered for its follow-up tool steps,
 // since Gemini's tool-call signatures belong to the model that made them.
 export const GEMINI_MODELS = ['gemini-flash-latest', 'gemini-2.5-flash', 'gemini-flash-lite-latest', 'gemini-2.5-flash-lite', 'gemini-2.0-flash', 'gemini-pro-latest', 'gemini-2.5-pro']
-export function geminiChain(): string[] {
+// Plain questions go to the fast model (GEMINI_FAST_MODEL, default Flash-Lite); questions with
+// files (marks sheets, photos) to GEMINI_MODEL. A model that just said "busy" is tried last
+// for two minutes, so later questions do not wait on it again.
+const busyUntil = new Map<string, number>()
+export function geminiChain(fast = false): string[] {
   const extra = process.env.GEMINI_FALLBACK_MODELS?.split(',').map(x => x.trim()).filter(Boolean) ?? GEMINI_MODELS
-  return [...new Set([aiModel(), ...extra])]
+  const first = fast ? (process.env.GEMINI_FAST_MODEL || 'gemini-flash-lite-latest') : aiModel()
+  const chain = [...new Set([first, aiModel(), ...extra])]
+  const now = Date.now()
+  return [...chain.filter(m => (busyUntil.get(m) ?? 0) <= now), ...chain.filter(m => (busyUntil.get(m) ?? 0) > now)]
 }
-async function gemini(body: { system: string; messages: Msg[]; tools?: ToolDef[]; max_tokens?: number; state?: { model?: string } }): Promise<Reply> {
-  const chain = body.state?.model ? [body.state.model, ...geminiChain().filter(m => m !== body.state!.model)] : geminiChain()
+async function gemini(body: { system: string; messages: Msg[]; tools?: ToolDef[]; max_tokens?: number; state?: { model?: string }; fast?: boolean }): Promise<Reply> {
+  const base = geminiChain(!!body.fast)
+  const chain = body.state?.model ? [body.state.model, ...base.filter(m => m !== body.state!.model)] : base
   let last: unknown
   for (const model of chain) {
     try {
@@ -115,6 +123,7 @@ async function gemini(body: { system: string; messages: Msg[]; tools?: ToolDef[]
     } catch (e) {
       last = e
       if (!(e instanceof AiError) || ![404, 429, 500, 503].includes(e.status)) throw e
+      if (e.status !== 404) busyUntil.set(model, Date.now() + 120_000)
     }
   }
   throw last

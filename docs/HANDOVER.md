@@ -125,7 +125,9 @@ nothing in the app reads them any more except the audit page.
   - **Provider**: `ANTHROPIC_API_KEY` (Claude, `ANTHROPIC_MODEL`, default `claude-sonnet-5-5`)
     or `GEMINI_API_KEY` (`GEMINI_MODEL`, default `gemini-flash-latest`; when a Gemini model is
     busy or rate-limited the next one answers — 2.5 Flash, Flash-Lite, 2.0 Flash, Pro; override
-    the list with `GEMINI_FALLBACK_MODELS`); `AI_PROVIDER` picks one when both are set. Provider
+    the list with `GEMINI_FALLBACK_MODELS`); plain questions use the fast `GEMINI_FAST_MODEL`
+    (default `gemini-flash-lite-latest`), questions with files `GEMINI_MODEL`; thinking is turned
+    down for speed (`GEMINI_THINKING=default` to keep each model's own setting); `AI_PROVIDER` picks one when both are set. Provider
     errors are logged as `[assistant]` in the Vercel function logs. Local test: `erp-local-ai` in `.claude/launch.json` with a
     mock model on port 8787; `tests/e2e/ai-actions.mts` checks every kind of draft.
 - **Desktop app** (`desktop/`, releases on GitHub): Windows updates itself in the
