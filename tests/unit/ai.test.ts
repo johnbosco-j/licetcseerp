@@ -51,3 +51,44 @@ describe('attached files', () => {
     expect(() => fileBlocks({ name: 'big.csv', type: '', data: b64(Buffer.alloc(2_600_000, 65)) })).toThrow(/larger than 2.5 MB/)
   })
 })
+
+describe('Gemini model chain', () => {
+  it('starts with GEMINI_MODEL and then mixes in the other Gemini models', async () => {
+    const { geminiChain, GEMINI_MODELS } = await import('@/lib/ai/llm')
+    const keep = { ...process.env }
+    process.env.GEMINI_API_KEY = 'x'; delete process.env.ANTHROPIC_API_KEY; delete process.env.GEMINI_FALLBACK_MODELS
+    process.env.GEMINI_MODEL = 'gemini-2.5-flash'
+    const chain = geminiChain()
+    expect(chain[0]).toBe('gemini-2.5-flash')
+    expect(new Set(chain)).toEqual(new Set(GEMINI_MODELS))
+    process.env.GEMINI_FALLBACK_MODELS = 'gemini-flash-lite-latest, gemini-pro-latest'
+    expect(geminiChain()).toEqual(['gemini-2.5-flash', 'gemini-flash-lite-latest', 'gemini-pro-latest'])
+    process.env = keep
+  })
+})
+
+describe('Gemini under demand', () => {
+  it('moves to the next model on 503 / 404 and keeps the one that answered', async () => {
+    const { vi } = await import('vitest')
+    const { aiChat } = await import('@/lib/ai/llm')
+    const keep = { ...process.env }
+    process.env.GEMINI_API_KEY = 'x'; delete process.env.ANTHROPIC_API_KEY; process.env.AI_PROVIDER = 'gemini'
+    process.env.GEMINI_MODEL = 'm-busy'; process.env.GEMINI_FALLBACK_MODELS = 'm-missing,m-ok,m-never'
+    const asked: string[] = []
+    vi.stubGlobal('fetch', async (url: string) => {
+      const model = decodeURIComponent(url.split('/models/')[1].split(':')[0]); asked.push(model)
+      if (model === 'm-busy') return new Response('{"error":{"code":503}}', { status: 503 })
+      if (model === 'm-missing') return new Response('{"error":{"code":404}}', { status: 404 })
+      return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: 'hi' }] } }] }), { status: 200 })
+    })
+    const state: { model?: string } = {}
+    const r = await aiChat({ system: 's', messages: [{ role: 'user', content: 'q' }], state })
+    expect(r.content).toEqual([{ type: 'text', text: 'hi' }])
+    expect(asked).toEqual(['m-busy', 'm-missing', 'm-ok'])
+    expect(state.model).toBe('m-ok')
+    asked.length = 0
+    await aiChat({ system: 's', messages: [{ role: 'user', content: 'q' }], state })
+    expect(asked).toEqual(['m-ok'])                       // the follow-up step stays on the model that answered
+    vi.unstubAllGlobals(); process.env = keep
+  })
+})

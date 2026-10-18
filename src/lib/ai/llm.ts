@@ -1,8 +1,8 @@
 // The AI model behind LICET AI (server only; keys never reach the browser).
 // Either provider works — set ONE key on the server:
 //   ANTHROPIC_API_KEY (Claude; model ANTHROPIC_MODEL, default claude-sonnet-5-5), or
-//   GEMINI_API_KEY    (Google Gemini; model GEMINI_MODEL, default gemini-flash-latest; when it is busy,
-//                      GEMINI_FALLBACK_MODELS, default gemini-flash-lite-latest).
+//   GEMINI_API_KEY    (Google Gemini; model GEMINI_MODEL, default gemini-flash-latest; when it is busy
+//                      the other Gemini models take over — GEMINI_FALLBACK_MODELS, see geminiChain).
 // With both set, AI_PROVIDER=anthropic|gemini picks one (default: Claude). ANTHROPIC_BASE_URL /
 // GEMINI_BASE_URL point at a proxy (or the local mock used in testing).
 // Messages use one shape (Claude's content blocks); Gemini is translated in and out.
@@ -43,7 +43,8 @@ export const aiModel = () => aiProvider() === 'gemini'
   ? process.env.GEMINI_MODEL || 'gemini-flash-latest'
   : process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5'
 
-export async function aiChat(body: { system: string; messages: Msg[]; tools?: ToolDef[]; max_tokens?: number }): Promise<Reply> {
+/** `state` (optional, per request) remembers which Gemini model answered, for the follow-up steps. */
+export async function aiChat(body: { system: string; messages: Msg[]; tools?: ToolDef[]; max_tokens?: number; state?: { model?: string } }): Promise<Reply> {
   return aiProvider() === 'gemini' ? gemini(body) : anthropic(body)
 }
 
@@ -94,17 +95,26 @@ export function geminiSchema(s: Record<string, unknown>): Record<string, unknown
   return out
 }
 
-// Gemini models are sometimes overloaded (503) or briefly rate-limited: retry once, then use the
-// lighter fallback model(s) in GEMINI_FALLBACK_MODELS (default gemini-flash-lite-latest).
-async function gemini(body: { system: string; messages: Msg[]; tools?: ToolDef[]; max_tokens?: number }): Promise<Reply> {
-  const fallbacks = (process.env.GEMINI_FALLBACK_MODELS ?? 'gemini-flash-lite-latest').split(',').map(x => x.trim()).filter(Boolean)
-  const tries = [aiModel(), aiModel(), ...fallbacks]
+// When a Gemini model is busy (503), rate-limited (429) or not available to this key (404),
+// the next model in the list answers instead: GEMINI_MODEL first, then GEMINI_FALLBACK_MODELS
+// (comma-separated). One request keeps the model that answered for its follow-up tool steps,
+// since Gemini's tool-call signatures belong to the model that made them.
+export const GEMINI_MODELS = ['gemini-flash-latest', 'gemini-2.5-flash', 'gemini-flash-lite-latest', 'gemini-2.5-flash-lite', 'gemini-2.0-flash', 'gemini-pro-latest', 'gemini-2.5-pro']
+export function geminiChain(): string[] {
+  const extra = process.env.GEMINI_FALLBACK_MODELS?.split(',').map(x => x.trim()).filter(Boolean) ?? GEMINI_MODELS
+  return [...new Set([aiModel(), ...extra])]
+}
+async function gemini(body: { system: string; messages: Msg[]; tools?: ToolDef[]; max_tokens?: number; state?: { model?: string } }): Promise<Reply> {
+  const chain = body.state?.model ? [body.state.model, ...geminiChain().filter(m => m !== body.state!.model)] : geminiChain()
   let last: unknown
-  for (const [n, model] of tries.entries()) {
-    try { return await geminiOnce(body, model) } catch (e) {
+  for (const model of chain) {
+    try {
+      const r = await geminiOnce(body, model)
+      if (body.state) body.state.model = model
+      return r
+    } catch (e) {
       last = e
-      if (!(e instanceof AiError) || ![429, 500, 503].includes(e.status)) throw e
-      if (n === 0) await new Promise(r => setTimeout(r, 1500))
+      if (!(e instanceof AiError) || ![404, 429, 500, 503].includes(e.status)) throw e
     }
   }
   throw last

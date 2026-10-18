@@ -52,8 +52,9 @@ export async function POST(req: Request) {
   const proposals: unknown[] = []
   try {
     const messages: Msg[] = [...history]
+    const state: { model?: string } = {}
     for (let round = 0; round < 6; round++) {
-      const r = await aiChat({ system, messages, tools, max_tokens: 4000 })
+      const r = await aiChat({ system, messages, tools, max_tokens: 4000, state })
       const uses = r.content.filter((b): b is Extract<Block, { type: 'tool_use' }> => b.type === 'tool_use')
       if (r.stop_reason !== 'tool_use' || !uses.length) return NextResponse.json({ reply: replyText(r) || (proposals.length ? 'Check the draft below and press Confirm.' : 'No answer.'), proposals })
       messages.push({ role: 'assistant', content: r.content })

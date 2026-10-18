@@ -123,8 +123,10 @@ nothing in the app reads them any more except the audit page.
   - **Files** (staff): Excel / CSV / Word are turned into text on the server; PDFs and
     pictures go to the model as they are (up to 3 files, 2.5 MB each).
   - **Provider**: `ANTHROPIC_API_KEY` (Claude, `ANTHROPIC_MODEL`, default `claude-sonnet-5-5`)
-    or `GEMINI_API_KEY` (`GEMINI_MODEL`, default `gemini-flash-latest`); `AI_PROVIDER`
-    picks one when both are set. Local test: `erp-local-ai` in `.claude/launch.json` with a
+    or `GEMINI_API_KEY` (`GEMINI_MODEL`, default `gemini-flash-latest`; when a Gemini model is
+    busy or rate-limited the next one answers — 2.5 Flash, Flash-Lite, 2.0 Flash, Pro; override
+    the list with `GEMINI_FALLBACK_MODELS`); `AI_PROVIDER` picks one when both are set. Provider
+    errors are logged as `[assistant]` in the Vercel function logs. Local test: `erp-local-ai` in `.claude/launch.json` with a
     mock model on port 8787; `tests/e2e/ai-actions.mts` checks every kind of draft.
 - **Desktop app** (`desktop/`, releases on GitHub): Windows updates itself in the
   background; the Mac app offers new versions. Release: bump `desktop/package.json`
