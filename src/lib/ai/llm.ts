@@ -1,7 +1,8 @@
 // The AI model behind LICET AI (server only; keys never reach the browser).
 // Either provider works — set ONE key on the server:
 //   ANTHROPIC_API_KEY (Claude; model ANTHROPIC_MODEL, default claude-sonnet-5-5), or
-//   GEMINI_API_KEY    (Google Gemini; model GEMINI_MODEL, default gemini-flash-latest).
+//   GEMINI_API_KEY    (Google Gemini; model GEMINI_MODEL, default gemini-flash-latest; when it is busy,
+//                      GEMINI_FALLBACK_MODELS, default gemini-flash-lite-latest).
 // With both set, AI_PROVIDER=anthropic|gemini picks one (default: Claude). ANTHROPIC_BASE_URL /
 // GEMINI_BASE_URL point at a proxy (or the local mock used in testing).
 // Messages use one shape (Claude's content blocks); Gemini is translated in and out.
@@ -26,6 +27,7 @@ export class AiError extends Error {
     if (this.status === 401 || this.status === 403) return 'The AI key on the server is not valid or not allowed for this model.'
     if (this.status === 404) return 'The AI model set on the server was not found.'
     if (this.status === 429) return 'The AI service quota is used up for now — try again later.'
+    if (this.status === 503 || this.status === 500) return 'The AI service is busy right now — try again in a minute.'
     return 'The AI service did not answer. Try again in a minute.'
   }
 }
@@ -92,8 +94,24 @@ export function geminiSchema(s: Record<string, unknown>): Record<string, unknown
   return out
 }
 
+// Gemini models are sometimes overloaded (503) or briefly rate-limited: retry once, then use the
+// lighter fallback model(s) in GEMINI_FALLBACK_MODELS (default gemini-flash-lite-latest).
 async function gemini(body: { system: string; messages: Msg[]; tools?: ToolDef[]; max_tokens?: number }): Promise<Reply> {
-  const res = await fetch(`${process.env.GEMINI_BASE_URL || 'https://generativelanguage.googleapis.com'}/v1beta/models/${encodeURIComponent(aiModel())}:generateContent`, {
+  const fallbacks = (process.env.GEMINI_FALLBACK_MODELS ?? 'gemini-flash-lite-latest').split(',').map(x => x.trim()).filter(Boolean)
+  const tries = [aiModel(), aiModel(), ...fallbacks]
+  let last: unknown
+  for (const [n, model] of tries.entries()) {
+    try { return await geminiOnce(body, model) } catch (e) {
+      last = e
+      if (!(e instanceof AiError) || ![429, 500, 503].includes(e.status)) throw e
+      if (n === 0) await new Promise(r => setTimeout(r, 1500))
+    }
+  }
+  throw last
+}
+
+async function geminiOnce(body: { system: string; messages: Msg[]; tools?: ToolDef[]; max_tokens?: number }, model: string): Promise<Reply> {
+  const res = await fetch(`${process.env.GEMINI_BASE_URL || 'https://generativelanguage.googleapis.com'}/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
     method: 'POST',
     headers: { 'x-goog-api-key': process.env.GEMINI_API_KEY ?? '', 'content-type': 'application/json' },
     body: JSON.stringify({
