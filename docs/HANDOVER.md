@@ -147,6 +147,14 @@ nothing in the app reads them any more except the audit page.
 and `lab_hour_open()` carry the rest. A trigger stops anyone but the HOD changing roles, tiers,
 administrator powers or class advisors. Checked by `tests/db/10_tiers.sql` and `tests/unit/tiers.test.ts`.
 
+### Excel formats
+
+`src/lib/xlsx-formats/` builds the department's workbooks with ExcelJS (styles, merges,
+formulas): `register.ts` (attendance register, CSE.xlsx layout), `ia.ts` (IA workbook: Namelist,
+course sheets from each course's CIA scheme, Upload 1 / 2 in Format 16a) and `timetable.ts`
+(Format 8a). The IA formulas were recalculated with a formula engine against the app for a
+whole class (640 of 640 internals equal). Data Export (`lib/export.ts`) stays a plain data dump.
+
 ## Security
 
 - Row-level security on every table; signed-out visitors have no table or function

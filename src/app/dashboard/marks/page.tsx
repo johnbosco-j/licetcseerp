@@ -177,32 +177,53 @@ export default function MarksPage() {
     }
   }
 
-  // ── Excel: one row per student, columns as in the department's IA sheet ──
-  const exportXLSX = async () => {
-    if (!selectedSubject || !scheme) return
-    setExporting(true)
-    const rows = students.map((s, i) => {
-      const cells = grid[s.id] ?? {}
-      const { cia, res } = resultOf(s.id)
-      const row: Record<string, string | number> = { 'S.No': i + 1, 'Roll No': s.roll_number ?? '', 'Register No': s.register_number ?? '', 'Name': s.full_name }
-      for (const c of [1, 2] as const) {
-        for (const comp of scheme.comps.filter(x => x.cia === c)) {
-          const cell = cells[examType(comp)]
-          row[`CIA${c} ${comp.label} [${cell?.max ?? comp.max}]`] = cell?.absent ? 'AB' : cell?.v ? Number(cell.v) : ''
-        }
-        for (const p of scheme.parts) if (cia.cia[c][p.key]) row[`CIA${c} ${p.label} [${cia.cia[c][p.key].of}]`] = Math.round(cia.cia[c][p.key].got * 100) / 100
-      }
-      if (scheme.sp !== false) row['SP [100]'] = cells[SP_KEY]?.v ? Number(cells[SP_KEY].v) : ''
-      if (scheme.parts.length > 1) for (const p of cia.parts) row[`${p.label} (${p.out_of})`] = p.value
-      row[`Internal (${res.internalMax})`] = res.internal
-      if (ctype !== 'FORMATION') { row[`SEE (${res.seeMax})`] = res.see ?? ''; row['Total'] = res.total; row['Grade'] = res.grade }
-      return row
+  // ── Excel in the department's IA workbook format (Namelist, course sheet, Upload 1 / 2) ──
+  const KIND: Record<CourseType, string> = { THEORY: 'Theory Course', LAB_INTEGRATED: 'Laboratory Integrated Theory Course', LAB: 'Laboratory Course', PROJECT: 'Project', FORMATION: 'Formation Course' }
+  const iaClassOf = async (section: string, courses: Subject[], roster: Profile[]) => {
+    const term = terms.find(t => t.id === termId)
+    const grad = term ? Number(term.academic_year.split('-')[1]) + ({ I: 3, II: 2, III: 1, IV: 0 } as Record<string, number>)[section.split(' ')[0]] : 0
+    const [{ data: mk }, { data: adv }] = await Promise.all([
+      supabase.from('marks').select('student_id, subject_id, exam_type, marks_obtained, max_marks, absent').in('subject_id', courses.map(c => c.id)).range(0, 49999),
+      supabase.from('profiles').select('full_name').eq('advisor_section', section).in('role', ['HOD', 'PROFESSOR']),
+    ])
+    const marks = new Map<string, Map<string, MarkRow[]>>()
+    for (const m of (mk ?? []) as (MarkRow & { student_id: string; subject_id: string })[]) {
+      const c = marks.get(m.subject_id) ?? new Map<string, MarkRow[]>(); c.set(m.student_id, [...(c.get(m.student_id) ?? []), m]); marks.set(m.subject_id, c)
+    }
+    const { iaWorkbook } = await import('@/lib/xlsx-formats/ia')
+    return iaWorkbook({
+      section, semester: courses[0]?.semester ?? 0, batch: grad ? `${grad - 4} - ${grad}` : '', termLabel: term?.label ?? '',
+      advisor: ((adv ?? []) as { full_name: string }[]).map(a => a.full_name).join(' & '),
+      students: roster.map(s => ({ id: s.id, roll: s.roll_number ?? '', reg: s.register_number ?? '', name: s.full_name })),
+      courses: courses.map(c => ({ code: c.code, name: c.name, short: c.short_name || c.code, kindLabel: KIND[regulationCourseType(c.code)], faculty: c.faculty_names ?? '',
+        scheme: schemeOf(c), marks: marks.get(c.id) ?? new Map() })),
     })
-    const ws = XLSX.utils.json_to_sheet(rows)
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, selectedSubject.code)
-    XLSX.writeFile(wb, `Marks_${selectedSubject.code}_${(selectedSubject.section ?? 'combined').replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`)
-    setExporting(false); setSaveMsg(`✓ Exported ${rows.length} students`); setTimeout(() => setSaveMsg(''), 4000)
+  }
+  const exportXLSX = async () => {
+    if (!selectedSubject) return
+    setExporting(true)
+    try {
+      const wb = await iaClassOf(selectedSubject.section ?? 'Combined', [selectedSubject], students)
+      const { download } = await import('@/lib/xlsx-formats/common')
+      await download(wb, `IA_${selectedSubject.code}_${(selectedSubject.section ?? 'combined').replace(/\s+/g, '_')}.xlsx`)
+      setSaveMsg(`✓ Exported ${students.length} students`)
+    } catch (e) { setSaveMsg('Error: ' + (e instanceof Error ? e.message : 'export failed')) }
+    setExporting(false); setTimeout(() => setSaveMsg(''), 4000)
+  }
+  /** the whole class: every course of the section this term (HOD and class advisors) */
+  const exportClassXLSX = async () => {
+    const section = selectedSection || profile?.advisor_section
+    if (!section) return
+    setExporting(true)
+    try {
+      const own = subjects.filter(s => s.section === section)
+      const { data: roster } = await supabase.from('profiles').select('*').eq('role', 'STUDENT').eq('section', section).eq('is_active', true).order('roll_number')
+      const wb = await iaClassOf(section, own, (roster ?? []) as Profile[])
+      const { download } = await import('@/lib/xlsx-formats/common')
+      await download(wb, `IA_${section.replace(/\s+/g, '_')}_${terms.find(t => t.id === termId)?.label.replace(/\s+/g, '_') ?? ''}.xlsx`)
+      setSaveMsg(`✓ Class IA workbook: ${own.length} courses`)
+    } catch (e) { setSaveMsg('Error: ' + (e instanceof Error ? e.message : 'export failed')) }
+    setExporting(false); setTimeout(() => setSaveMsg(''), 5000)
   }
 
   const exportStudentXLSX = async () => {
@@ -366,6 +387,12 @@ export default function MarksPage() {
                   className="flex items-center gap-2 h-9 px-3 border border-licet-indigo/25 bg-white text-licet-indigo text-[13px] font-semibold rounded-md hover:bg-licet-cream/60 shadow-sm disabled:opacity-50">
                   {exporting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />} Export XLSX
                 </button>
+                {(isHOD || (profile?.advisor_section && (!selectedSection || selectedSection === profile.advisor_section))) && (selectedSection || profile?.advisor_section) && (
+                  <button onClick={exportClassXLSX} disabled={exporting}
+                    className="flex items-center gap-2 h-9 px-3 border border-licet-indigo/25 bg-white text-licet-indigo text-[13px] font-semibold rounded-md hover:bg-licet-cream/60 shadow-sm disabled:opacity-50">
+                    <Download className="w-3 h-3" /> Class IA workbook ({selectedSection || profile?.advisor_section})
+                  </button>
+                )}
                 {editable && scheme && <MarksImport subjectId={selectedSubject.id} code={selectedSubject.code} students={students as never} scheme={scheme} onDone={loadMarks} />}
                 {isHOD && (
                   <button onClick={() => isLocked ? toggleLock() : setShowLockModal(true)}

@@ -232,5 +232,5 @@ export async function runTool(db: SupabaseClient, me: Asker, name: string, input
   if (!t) return JSON.stringify({ error: 'Not available to you' })
   const out = await t.run(db, me, input ?? {})
   const s = typeof out === 'string' ? out : JSON.stringify(out)
-  return s.length > 12000 ? s.slice(0, 12000) + '…(cut)' : s
+  return s.length > 8000 ? s.slice(0, 8000) + '…(cut: ask for a narrower list)' : s
 }

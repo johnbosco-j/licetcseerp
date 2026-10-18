@@ -120,22 +120,37 @@ async function gemini(body: { system: string; messages: Msg[]; tools?: ToolDef[]
   throw last
 }
 
-async function geminiOnce(body: { system: string; messages: Msg[]; tools?: ToolDef[]; max_tokens?: number }, model: string): Promise<Reply> {
+/** Short answers need little "thinking": off on 2.5 Flash models, low on newer ones; Pro decides itself.
+ *  GEMINI_THINKING=default leaves every model at its own default. */
+export function thinkingFor(model: string): Record<string, unknown> | null {
+  if (process.env.GEMINI_THINKING === 'default' || /pro/.test(model) || /2\.0/.test(model)) return null
+  return /2\.5/.test(model) ? { thinkingBudget: 0 } : { thinkingLevel: 'low' }
+}
+
+async function geminiOnce(body: { system: string; messages: Msg[]; tools?: ToolDef[]; max_tokens?: number }, model: string, thinking = true): Promise<Reply> {
+  const think = thinking ? thinkingFor(model) : null
+  const started = Date.now()
   const res = await fetch(`${process.env.GEMINI_BASE_URL || 'https://generativelanguage.googleapis.com'}/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
     method: 'POST',
     headers: { 'x-goog-api-key': process.env.GEMINI_API_KEY ?? '', 'content-type': 'application/json' },
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: body.system }] },
       contents: toGemini(body.messages),
-      generationConfig: { maxOutputTokens: body.max_tokens ?? 2000 },
+      generationConfig: { maxOutputTokens: body.max_tokens ?? 2000, ...(think ? { thinkingConfig: think } : {}) },
       ...(body.tools?.length ? { tools: [{ functionDeclarations: body.tools.map(t => {
         const parameters = geminiSchema(t.input_schema)
         return { name: t.name, description: t.description, ...(parameters ? { parameters } : {}) }
       }) }] } : {}),
     }),
   })
-  if (!res.ok) throw new AiError(res.status, await res.text().catch(() => ''))
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '')
+    // a model that does not take this thinking setting: ask again without it
+    if (res.status === 400 && think && /thinking/i.test(detail)) return geminiOnce(body, model, false)
+    throw new AiError(res.status, detail)
+  }
   const j = await res.json() as { candidates?: { content?: { parts?: GPart[] }; finishReason?: string }[] }
+  console.info(`[assistant] ${model} answered in ${Date.now() - started} ms`)
   const parts = j.candidates?.[0]?.content?.parts ?? []
   const content: Block[] = []
   parts.forEach((p, i) => {

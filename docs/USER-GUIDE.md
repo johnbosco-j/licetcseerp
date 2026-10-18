@@ -138,3 +138,14 @@ or a photo of a marks list (up to 3 files, 2.5 MB each) — and say what to fill
 can also add students and staff, declare holidays, correct a student's record and link
 teachers to courses this way. For a whole IA workbook, Assessments & Marks → Import from
 Excel is still the quickest.
+
+## Excel downloads (department formats)
+
+- **Attendance → Register → Excel**: the department register (as in CSE.xlsx) — a block per
+  week, each day's date and day order over its periods, 1 present / 0 absent / 2 on duty, total
+  hours present / on duty / worked and %, and the absentee count per hour.
+- **Assessments & Marks → Export XLSX**: the course in the IA workbook format — Namelist, the
+  course sheet (CT, CAT, ABA … as written, scaled columns, CIA totals, SP, total internal,
+  internal, all as Excel formulas) and the CIA-I / CIA-II upload sheets (Format No. 16a).
+  **Class IA workbook** (HOD and class advisors) puts every course of the class in one workbook.
+- **Class Timetable → Excel**: the class timetable in Format No. 8a.

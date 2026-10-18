@@ -2,12 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { Download, Loader2, BadgeCheck } from "lucide-react"
-import * as XLSX from "xlsx"
+import { registerWorkbook } from "@/lib/xlsx-formats/register"
+import { download } from "@/lib/xlsx-formats/common"
 import { supabase } from "@/lib/supabase"
 import { reportResult } from "@/components/toaster"
 import {
   SECTIONS, type AttSession, type Offering, type Term, type ClassBlock, type TimetableEntry,
-  loadRosterStudents, type RosterStudent, DAY_SHORT, weekdayOf, offeringLabel,
+  loadRosterStudents, type RosterStudent, DAY_SHORT, weekdayOf, offeringLabel, scopeOf,
 } from "@/lib/academic"
 import { MarkPanel } from "./mark-panel"
 
@@ -95,16 +96,33 @@ export function RegisterView({ term, isHod, me, defaultSection }: { term: Term; 
     return { h, p, pct: h ? Math.round(p / h * 1000) / 10 : null }
   }
 
-  const exportXlsx = () => {
-    const header = ['S.No', 'Roll No', 'Reg No', 'Name', ...cols.map(c => `${c.date.slice(8)}/${c.date.slice(5, 7)} P${c.period} ${offName(c.sessions[0].subject_id, c.sessions[0].label)}`), 'Present', 'Worked', '%']
-    const rows = students.map((s, i) => {
-      const t = totals(s.id)
-      return [i + 1, s.roll_number ?? '', s.register_number ?? '', s.full_name, ...cols.map(c => { const v = cell(s.id, c.sessions); return v === 'P' ? 1 : v === 'OD' ? 2 : v === 'A' ? 0 : '' }), t.p, t.h, t.pct ?? '']
-    })
-    const ws = XLSX.utils.aoa_to_sheet([[`${section} — Attendance ${month} (${term.label})`], header, ...rows])
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, section)
-    XLSX.writeFile(wb, `Attendance_${section.replace(/\s/g, '_')}_${month}.xlsx`)
+  // the department's register format (CSE.xlsx): weekly blocks, 1 present / 0 absent / 2 on duty
+  const exportXlsx = async () => {
+    const grad = gradOf(term, section)
+    const from = month + '-01'
+    const to = new Date(Date.UTC(+month.slice(0, 4), +month.slice(5, 7), 0)).toISOString().slice(0, 10)
+    const [{ data: cal }, { data: adv }] = await Promise.all([
+      supabase.from('calendar_days').select('date, scope, is_working, day_order').in('scope', [scopeOf(section), 'ALL']).gte('date', from).lte('date', to),
+      supabase.from('profiles').select('full_name').eq('advisor_section', section).in('role', ['HOD', 'PROFESSOR']),
+    ])
+    const DAYS = ['', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
+    const known = new Map(((cal ?? []) as { date: string; scope: string; is_working: boolean; day_order: number | null }[])
+      .sort((a, b) => (a.scope === 'ALL' ? 1 : 0) - (b.scope === 'ALL' ? 1 : 0)).reverse().map(c => [c.date, c]))
+    const days: { date: string; dayOrder: string }[] = []
+    for (let d = new Date(from + 'T00:00:00Z'); d.toISOString().slice(0, 10) <= to; d.setUTCDate(d.getUTCDate() + 1)) {
+      const iso = d.toISOString().slice(0, 10), c = known.get(iso), wd = weekdayOf(iso)
+      const hasHours = cols.some(x => x.date === iso)
+      const order = c ? (c.is_working ? (c.day_order ?? (wd <= 6 ? wd : null)) : null) : (wd <= 6 && hasHours ? wd : null)
+      if (order || hasHours) days.push({ date: iso, dayOrder: DAYS[order ?? wd] ?? 'SAT' })
+    }
+    const byKey = new Map(cols.map(c => [c.key, c]))
+    const wb = await registerWorkbook([{
+      section, batch: `${grad - 4} - ${grad}`, advisors: ((adv ?? []) as { full_name: string }[]).map(a => a.full_name).join(' & '),
+      students: students.map(s => ({ id: s.id, roll: s.roll_number ?? '', reg: s.register_number ?? '', name: s.full_name })),
+      days, periods: section.startsWith('IV') ? 9 : 8,
+      mark: (sid, date, p) => { const c = byKey.get(`${date}|${p}`); const v = c ? cell(sid, c.sessions) : null; return v === 'P' ? 1 : v === 'OD' ? 2 : v === 'A' ? 0 : null },
+    }])
+    await download(wb, `Attendance_${section.replace(/\s/g, '_')}_${month}.xlsx`)
   }
 
   const verify = async () => {

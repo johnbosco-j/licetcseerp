@@ -92,3 +92,29 @@ describe('Gemini under demand', () => {
     vi.unstubAllGlobals(); process.env = keep
   })
 })
+
+describe('Gemini thinking setting', () => {
+  it('turns thinking down for quick answers, leaves Pro alone', async () => {
+    const { thinkingFor } = await import('@/lib/ai/llm')
+    expect(thinkingFor('gemini-2.5-flash')).toEqual({ thinkingBudget: 0 })
+    expect(thinkingFor('gemini-flash-latest')).toEqual({ thinkingLevel: 'low' })
+    expect(thinkingFor('gemini-2.5-pro')).toBeNull()
+    expect(thinkingFor('gemini-2.0-flash')).toBeNull()
+  })
+  it('asks again without it when a model refuses the setting', async () => {
+    const { vi } = await import('vitest')
+    const { aiChat } = await import('@/lib/ai/llm')
+    const keep = { ...process.env }
+    process.env.GEMINI_API_KEY = 'x'; delete process.env.ANTHROPIC_API_KEY; process.env.AI_PROVIDER = 'gemini'; process.env.GEMINI_MODEL = 'm-x'; process.env.GEMINI_FALLBACK_MODELS = 'm-x'
+    const bodies: { generationConfig: { thinkingConfig?: unknown } }[] = []
+    vi.stubGlobal('fetch', async (_u: string, init: { body: string }) => {
+      const b = JSON.parse(init.body); bodies.push(b)
+      if (b.generationConfig.thinkingConfig) return new Response('{"error":{"message":"thinking level is not supported"}}', { status: 400 })
+      return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: 'ok' }] } }] }), { status: 200 })
+    })
+    const r = await aiChat({ system: 's', messages: [{ role: 'user', content: 'q' }] })
+    expect(r.content).toEqual([{ type: 'text', text: 'ok' }])
+    expect(bodies.length).toBe(2); expect(bodies[1].generationConfig.thinkingConfig).toBeUndefined()
+    vi.unstubAllGlobals(); process.env = keep
+  })
+})

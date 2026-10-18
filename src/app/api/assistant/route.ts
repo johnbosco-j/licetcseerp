@@ -54,20 +54,21 @@ export async function POST(req: Request) {
     const messages: Msg[] = [...history]
     const state: { model?: string } = {}
     for (let round = 0; round < 6; round++) {
-      const r = await aiChat({ system, messages, tools, max_tokens: 4000, state })
+      const r = await aiChat({ system, messages, tools, max_tokens: 2500, state })
       const uses = r.content.filter((b): b is Extract<Block, { type: 'tool_use' }> => b.type === 'tool_use')
       if (r.stop_reason !== 'tool_use' || !uses.length) return NextResponse.json({ reply: replyText(r) || (proposals.length ? 'Check the draft below and press Confirm.' : 'No answer.'), proposals })
       messages.push({ role: 'assistant', content: r.content })
-      const results: Block[] = []
-      for (const u of uses) {
+      // look-ups of one step run together
+      const results: Block[] = await Promise.all(uses.map(async (u): Promise<Block> => {
         try {
           if (isAction(u.name)) {
             const p = await prepareAction(db, me, u.name, u.input)
             if (p.proposal) proposals.push(p.proposal)
-            results.push({ type: 'tool_result', tool_use_id: u.id, content: p.text })
-          } else results.push({ type: 'tool_result', tool_use_id: u.id, content: String(await runTool(db, me, u.name, u.input)) })
-        } catch (e) { results.push({ type: 'tool_result', tool_use_id: u.id, content: e instanceof Error ? e.message : 'failed', is_error: true }) }
-      }
+            return { type: 'tool_result', tool_use_id: u.id, content: p.text }
+          }
+          return { type: 'tool_result', tool_use_id: u.id, content: String(await runTool(db, me, u.name, u.input)) }
+        } catch (e) { return { type: 'tool_result', tool_use_id: u.id, content: e instanceof Error ? e.message : 'failed', is_error: true } }
+      }))
       messages.push({ role: 'user', content: results })
     }
     return NextResponse.json({ reply: proposals.length ? 'Check the drafts below and press Confirm.' : 'That needed too many look-ups; please ask a narrower question.', proposals })

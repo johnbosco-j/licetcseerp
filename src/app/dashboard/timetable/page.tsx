@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic"
 import { useUnsavedGuard } from "@/lib/use-unsaved-guard"
 import { useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Loader2, Pencil, Plus, Trash2, X, Printer, Check } from "lucide-react"
+import { Loader2, Pencil, Plus, Trash2, X, Printer, Check, Download } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { isTier1 } from "@/lib/roles"
 import type { AuthUser } from "@/lib/auth"
@@ -55,6 +55,30 @@ export default function TimetablePage() {
   const term = terms.find(t => t.id === termId)
   const grad = term ? Number(term.academic_year.split('-')[1]) + ({ I: 3, II: 2, III: 1, IV: 0 } as Record<string, number>)[section.split(' ')[0]] : 0
 
+  // the college's class timetable format (Format No. 8a)
+  const exportXlsx = async () => {
+    if (!term) return
+    const { timetableWorkbook } = await import('@/lib/xlsx-formats/timetable')
+    const { download } = await import('@/lib/xlsx-formats/common')
+    const { data: adv } = await supabase.from('profiles').select('full_name, designation').eq('advisor_section', section).in('role', ['HOD', 'PROFESSOR'])
+    const grid: Record<number, Record<number, string>> = {}
+    for (const e of entries) {
+      const o = offerings.find(x => x.id === e.subject_id)
+      const text = o ? `${o.short_name || o.code} [${o.code}]` : (e.label ?? '')
+      const cell = (grid[e.day_order] ??= {})
+      cell[e.period_no] = cell[e.period_no] && cell[e.period_no] !== text ? `${cell[e.period_no]} / ${text}` : text
+    }
+    const sem = sectionOfferings.find(o => o.section === section)?.semester ?? 0
+    const wb = await timetableWorkbook([{
+      section, semester: sem, academicYear: term.academic_year, parity: term.parity, venue: entries.find(e => e.room && e.audience === 'ALL')?.room ?? '',
+      advisors: ((adv ?? []) as { full_name: string; designation: string | null }[]).map(a => `${a.full_name}${a.designation ? `, ${a.designation}` : ''}`).join(',\n'),
+      wef: term.starts_on ? term.starts_on.split('-').reverse().join('.') : '',
+      slots: periods.map(p => ({ period_no: p.period_no, starts_at: p.starts_at, ends_at: p.ends_at })), grid,
+      courses: sectionOfferings.map(o => ({ code: o.code, name: o.name, faculty: o.faculty_names ?? '' })),
+    }])
+    await download(wb, `Timetable_${section.replace(/\s/g, '_')}_${term.label.replace(/\s+/g, '_')}.xlsx`)
+  }
+
   const load = useCallback(async () => {
     if (!termId) return
     setLoading(true)
@@ -99,6 +123,7 @@ export default function TimetablePage() {
             {terms.map(t => <option key={t.id} value={t.id}>{t.label}{t.is_current ? ' (current)' : ''}</option>)}
           </select>
           <button onClick={() => window.print()} className="h-9 px-3 rounded-md border border-border bg-white text-[13px] inline-flex items-center gap-1.5 hover:bg-muted"><Printer className="w-4 h-4" /> Print</button>
+          {mode === 'class' && <button onClick={exportXlsx} className="h-9 px-3 rounded-md border border-border bg-white text-[13px] inline-flex items-center gap-1.5 hover:bg-muted"><Download className="w-4 h-4" /> Excel</button>}
           {isHod && mode === 'class' && (
             <button onClick={() => setEditing(v => !v)} className={`h-9 px-3 rounded-md text-[13px] font-semibold inline-flex items-center gap-1.5 ${editing ? 'bg-green-700 text-white' : 'bg-licet-indigo text-white hover:bg-licet-violet'}`}>
               {editing ? <><Check className="w-4 h-4" /> Done editing</> : <><Pencil className="w-4 h-4" /> Edit</>}
