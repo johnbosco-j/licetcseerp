@@ -1,5 +1,5 @@
 {
- "syncedAt": "2026-10-15T05:24:46.440Z",
+ "syncedAt": "2026-10-21T05:33:02.718Z",
  "source": "https://licet.ac.in/computer-science-and-engineering/",
  "sections": [
   {
@@ -69,7 +69,7 @@
     },
     {
      "t": "html",
-     "html": "<p>The department has received ₹29,364,835 through funded programs and ₹4,59,935 through self-supported funding, which includes ₹2,97,885 in support from TNSDC, TNSCST, and TANCOM. Faculty members and students have contributed to over 80 research publications and have collectively organized more than 300 workshops and events. The department has also facilitated the incubation of two start-ups, Hospitintel and CareConnect AI.</p>"
+     "html": "<p>The department has received ₹29,364,835 through funded programs and ₹4,59,935 through self-supported funding, which includes ₹2,97,885 in support from TNSDC, TNSCST, and TANCOM. Faculty members and students have contributed to over 94 research publications and have collectively organized more than 300 workshops and events. The department has also facilitated the incubation of two start-ups, Hospitintel and CareConnect AI.</p>"
     },
     {
      "t": "gallery",
@@ -86,7 +86,7 @@
     },
     {
      "t": "html",
-     "html": "<p>About 150 students have participated in an international summer internship program with Institut catholique d’arts et métiers (ICAM), experiencing project-based learning across Paris, Lille, Toulouse, and Nantes. The program blends academic rigor with industrial exposure, intercultural collaboration, and language learning. This international exposure builds cross-cultural competence, industry-ready skills, and a global mindset—qualities that employers value highly.</p>"
+     "html": "<p>About 80 students have participated in an international summer internship program with Institut catholique d’arts et métiers (ICAM), experiencing project-based learning across Paris, Lille, Toulouse, and Nantes. The program blends academic rigor with industrial exposure, intercultural collaboration, and language learning. This international exposure builds cross-cultural competence, industry-ready skills, and a global mindset—qualities that employers value highly.</p>"
     },
     {
      "t": "html",
@@ -112,11 +112,11 @@
     },
     {
      "t": "html",
-     "html": "<p>Beyond academics, the department has nurtured 20 international sports players across table tennis, swimming, cricket, badminton, football, and volleyball. These student-athletes have represented the college, state, and nation—showcasing the department’s commitment to balanced growth.</p>"
+     "html": "<p>Beyond academic excellence, the department has fostered sporting talent, with 48 students participating in national, international, and state-level sports across table tennis, swimming, cricket, badminton, football, and volleyball. Their achievements reflect the department’s commitment to holistic development, encouraging students to excel both academically and on the sporting field.</p>"
     },
     {
      "t": "html",
-     "html": "<p>Approximately 700 alumni are employed across multinational companies worldwide, occupying roles that reflect technical competence and leadership. Alumni success stories reinforce the department’s reputation and create a virtuous cycle of mentorship and recruitment.</p>"
+     "html": "<p>The department takes pride in its network of approximately 700 alumni working across leading multinational companies worldwide and pursuing higher education at prestigious institutions. Our graduates have established themselves at renowned organizations such as <strong>Google, Meta, Apple, Microsoft, Cohesity, and Tesla</strong>, contributing to innovation and technological advancements across diverse domains. Our alumni are also pursuing higher studies at esteemed institutions, including <strong>BITS Pilani, IIT Madras, and NIT Trichy</strong>, reflecting the department’s strong academic foundation and commitment to excellence. Their achievements inspire current students, strengthen industry connections, and foster mentorship and recruitment opportunities, further enhancing the department’s reputation.</p>"
     },
     {
      "t": "gallery",
@@ -135,7 +135,7 @@
     {
      "t": "gallery",
      "images": [
-      "https://licet.ac.in/wp-content/uploads/2026/10/CSE_LabFc1.jpeg"
+      "https://licet.ac.in/wp-content/uploads/2026/10/CSE_LabFc1-1.jpeg"
      ]
     },
     {
@@ -159,16 +159,16 @@
      "t": "stats",
      "items": [
       {
-       "value": "16",
+       "value": "19",
        "label": "Well Qualified Faculty"
       },
       {
-       "value": "8+",
+       "value": "5",
        "label": "Labs"
       },
       {
-       "value": "58+",
-       "label": "Research & Projects"
+       "value": "90+",
+       "label": "Research Papers & Projects"
       },
       {
        "value": "97%",
@@ -401,29 +401,13 @@
       {
        "img": "https://licet.ac.in/wp-content/uploads/2021/04/494-scaled.jpg",
        "title": "Research Laboratory",
-       "html": "<table> <tbody> <tr> <td><strong>System Configuration: </strong></td> <td>HP Z2 G8 Tower Workstation – 700W Xeon W1350 / 64GB (4×16) ECC RAM/512GB NVME+1TB SATA HDD/NVIDIA A4000 16GB Graphics / 27” Monitor FHD (1920×1080) IPS Display</td> </tr> <tr> <td>Courses and Softwares:</td> <td>Machine learning and Data Analytics, Cloud Computing, Block Chain, Mendeley, Python, Java.</td> </tr> </tbody> </table>"
+       "html": ""
       }
      ]
     },
     {
-     "t": "h",
-     "text": "Teaching Learning Facility"
-    },
-    {
      "t": "html",
-     "html": "<table><tbody><tr><td><p><strong>HALL NO</strong></p></td><td><p><strong>CLASS</strong></p></td><td><p><strong>TEACHING LEARNING AIDS</strong></p></td></tr><tr><td><p>D-31</p><p>D-32</p></td><td><p>I CSE -A</p><p>I CSE – B</p></td><td rowspan=\"4\"><p>Projector</p><p>Projector screen</p><p>Blackboard</p><p>Speaker (wireless)</p><p>Notice board</p></td></tr><tr><td><p>F-31</p><p>I-21</p></td><td><p>II CSE – A</p><p>II CSE – B</p></td></tr><tr><td><p>F-32</p><p>I-22</p></td><td><p>III CSE – A</p><p>III CSE – B</p></td></tr><tr><td><p>F-33</p><p>I-23</p></td><td><p>IV CSE – A</p><p>IV CSE – B</p></td></tr></tbody></table>"
-    },
-    {
-     "t": "html",
-     "html": "<p>The GMeet Teaching and Learning Upgrade package is added to the existing TLP infrastructure. This supports in domain live streaming, noise cancellation, break-out rooms, polls, Q&amp;A, track attendance and meeting recordings.</p>"
-    },
-    {
-     "t": "h",
-     "text": "Research Facility"
-    },
-    {
-     "t": "html",
-     "html": "<p>Additional facilities are created in order to give the students an edge over the current Technologies. </p><p>Three Specialised Workstations for research in Machine Learning and Data Analytics.</p><h4>CONFIGURATION:</h4><table><tbody><tr><td>Model</td><td>HP Z2 G8 Tower Workstation – 700W</td></tr><tr><td>Processor</td><td>Xeon W1350</td></tr><tr><td>Memory</td><td>64GB (4×16) ECC RAM</td></tr><tr><td>Secondary Memory</td><td>512GB NVME+1TB SATA HDD</td></tr><tr><td>Graphics</td><td>NVIDIA A4000 16GB Graphics</td></tr><tr><td>Display</td><td>27” Monitor FHD (1920×1080) IPS Display</td></tr></tbody></table>"
+     "html": "<table><tbody><tr><td><strong>System Configuration: </strong></td><td>HP Z2 G8 Tower Workstation – 700W Xeon W1350 / 64GB (4×16) ECC RAM/512GB NVME+1TB SATA HDD/NVIDIA A4000 16GB Graphics / 27” Monitor FHD (1920×1080) IPS Display</td></tr><tr><td>Courses and Softwares:</td><td>Machine learning and Data Analytics, Cloud Computing, Block Chain, Mendeley, Python, Java.</td></tr></tbody></table>"
     },
     {
      "t": "img",
@@ -432,16 +416,52 @@
      "caption": ""
     },
     {
-     "t": "html",
-     "html": "<h4>IOT KITS FOR HARDWARE PROJECTS:</h4> To support hardware projects, a facility has been created with three Arduino based IoT kits inclusive of 32 different dynamic sensors and display units."
+     "t": "h",
+     "text": "Teaching & Learning Facility"
     },
     {
-     "t": "gallery",
-     "images": [
-      "https://licet.ac.in/wp-content/uploads/2022/05/2_b-300x300.jpg",
-      "https://licet.ac.in/wp-content/uploads/2022/05/2_c.jpg",
-      "https://licet.ac.in/wp-content/uploads/2022/05/2_c-2.jpg"
-     ]
+     "t": "html",
+     "html": "<table><tbody><tr><td><p><strong>HALL NO</strong></p></td><td><p><strong>CLASS</strong></p></td><td><p><strong>TEACHING LEARNING AIDS</strong></p></td></tr><tr><td><p>D-31</p><p>D-32</p></td><td><p>I CSE -A</p><p>I CSE – B</p></td><td rowspan=\"4\"><p>Projector</p><p>Projector screen</p><p>Blackboard</p><p>Speaker </p><p>Notice board</p></td></tr><tr><td><p>F-31</p><p>I-21</p></td><td><p>II CSE – A</p><p>II CSE – B</p></td></tr><tr><td><p>F-32</p><p>I-22</p></td><td><p>III CSE – A</p><p>III CSE – B</p></td></tr><tr><td><p>F-33</p><p>I-23</p></td><td><p>IV CSE – A</p><p>IV CSE – B</p></td></tr></tbody></table>"
+    },
+    {
+     "t": "h",
+     "text": "Additional Facility"
+    },
+    {
+     "t": "html",
+     "html": "<p><strong>Red Hat Interactive Lab</strong></p><p>Red Hat Enterprise Linux training and certification.</p>"
+    },
+    {
+     "t": "html",
+     "html": "<p><strong>Network Administration and Cybersecurity</strong></p><p>Fortinet firewall and HP router for practical network security training.</p>"
+    },
+    {
+     "t": "html",
+     "html": "<p><strong>Remote Skill Development (IoT)</strong></p><p>Arduino, Raspberry Pi and sensors for IoT development.</p>"
+    },
+    {
+     "t": "html",
+     "html": "<p><strong>Oracle Interactive Application</strong></p><p>Oracle APEX and Oracle Academy learning resources.</p>"
+    },
+    {
+     "t": "html",
+     "html": "<p><strong>FAB LAB</strong></p><p>MOSFET driver circuit and hands-on fabrication and project work.</p>"
+    },
+    {
+     "t": "html",
+     "html": "<p><strong>MATLAB</strong></p><p>Cloud-based campus MATLAB licence for learning and research.</p>"
+    },
+    {
+     "t": "html",
+     "html": "<p><strong>System Discovery/System Analysis</strong></p><p>Computer hardware teardown, assembly and analysis.</p>"
+    },
+    {
+     "t": "html",
+     "html": "<p><strong>Online Resources</strong></p><p>Access to e-journals and Anna University resources for research and publication.</p>"
+    },
+    {
+     "t": "html",
+     "html": "<p><strong>Smart Classrooms</strong></p><p>Hybrid classrooms for interactive teaching and technical sessions</p>"
     }
    ]
   },
