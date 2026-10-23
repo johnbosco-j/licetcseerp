@@ -1,25 +1,16 @@
 {
- "syncedAt": "2026-10-21T05:33:02.718Z",
+ "syncedAt": "2026-10-23T05:34:46.109Z",
  "source": "https://licet.ac.in/computer-science-and-engineering/computer-science-and-engineering-faculty/",
  "hod": {
   "name": "Dr Sharmila V J",
   "role": "Head of the Department",
   "designation": "Associate Professor",
   "email": "hodcse@licet.ac.in",
-  "bio": "Dr V J Sharmila , Associate Professor, completed Ph.D. in the Faculty of Information and Communication in the year 2023 from Anna University, Chennai, India. She has completed her Masters in Computer Science and Engineering in the year 2008 from Dr Sivanthi Aditanar College of Engineering,Tiruchendur, India. She has got an experience of 14 years in teaching and research. She has published four articles in International Journals and 2 presentations in Conferences and recognized research supervisor of Anna University, Chennai. Her research interests include Machine Learning, Deep Learning, Big Data and Cloud Computing.",
+  "bio": "Dr V J Sharmila , Associate Professor, completed Ph.D. in the Faculty of Information and Communication in the year 2023 from Anna University, Chennai, India. She has completed her Masters in Computer Science and Engineering in the year 2008 from Dr Sivanthi Aditanar College of Engineering,Tiruchendur, India. She has got an experience of 14 years in teaching and research. She has published four articles in International Journals and 2 presentations in Conferences and recognized research supervisor of Anna University, Chennai. Her research interests include Machine Learning, Deep Learning, Big Data and Cloud Computing.\n\nhodcse@licet.ac.in",
   "photo": "/cse/people/sharmila-v-j.jpg",
   "photoHash": "049323393c03"
  },
  "faculty": [
-  {
-   "name": "Dr Gopalakrishnan K",
-   "designation": "Professor",
-   "email": "drgk81@licet.ac.in",
-   "otherEmails": [],
-   "bio": "Dr. K Gopalakrishnan has completed his Full Time Ph.D. in Faculty of Information and Communication Engineering from the College of Engineering, Guindy, Anna University, Chennai. He was selected as one among the three awardees of Senior Research Fellow (Direct SRF under ENG43) by Council of Scientific and Industrial Research(CSIR), Govt. of India during the year 2008. He has 5 years of experience in research as Senior Research Fellow and 11 years of teaching experience in reputed engineering institutions till March 2021. Published research articles in Springer and IEEE. Reviewer of IEEE, Springer and a recognized research supervisor of Anna University, Chennai.",
-   "photo": "/cse/people/gopalakrishnan-k.jpg",
-   "photoHash": "90d89600cda2"
-  },
   {
    "name": "Ms Nirmala S",
    "designation": "Associate Professor",
