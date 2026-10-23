@@ -29,6 +29,7 @@ Stack: Next.js (App Router) + Supabase (Postgres, Auth, Storage, Row Level Secur
 
 4. **Create accounts and subjects**
 
+
    ```bash
    npm run seed
    npm run seed:subjects
