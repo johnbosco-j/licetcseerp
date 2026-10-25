@@ -19,7 +19,7 @@ const OUTPUTS = ['src/data/cse-site.json', 'src/data/cse-people.json', 'public/c
 // Minimums the synced content must meet before it replaces what is live.
 const MIN_SECTIONS = 12
 const MIN_FACULTY = 5
-const EXCLUDED = [/justine\s+yasappan/i]
+const EXCLUDED = []   // people the website lists who must not appear here (none at present)
 
 const git = (...args) => execFileSync('git', args, { encoding: 'utf8' }).trim()
 const log = msg => console.log(`[autosync] ${msg}`)

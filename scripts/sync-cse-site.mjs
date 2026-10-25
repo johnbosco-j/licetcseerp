@@ -89,7 +89,7 @@ const FIX_TEXT = [[/\bSymosium\b/g, 'Symposium']]
 const fixText = t => FIX_TEXT.reduce((s, [re, to]) => s.replace(re, to), t)
 
 // People listed on the website who are not part of the department's staff.
-const EXCLUDE_PEOPLE = [/justine\s+yasappan/i]
+const EXCLUDE_PEOPLE = []
 const excluded = name => EXCLUDE_PEOPLE.some(re => re.test(name))
 
 // Removes every mention of an excluded person: their paragraph in text blocks,
