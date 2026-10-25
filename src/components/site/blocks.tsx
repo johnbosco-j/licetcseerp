@@ -19,7 +19,7 @@ export type Block =
 
 const PROSE = "site-prose text-[14.5px] leading-relaxed text-[#3c3852]"
 
-function Lightbox({ images, index, onClose }: { images: string[]; index: number; onClose: () => void }) {
+export function Lightbox({ images, index, onClose }: { images: string[]; index: number; onClose: () => void }) {
   const [i, setI] = useState(index)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -115,6 +115,17 @@ const plain = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " 
 /** People, labs and achievements: each photo stays with its own text. */
 function Cards({ items }: { items: { img: string; title: string; html: string }[] }) {
   const avg = items.reduce((a, c) => a + plain(c.html).length, 0) / items.length
+  // One card on its own (e.g. the OBE objectives): title, wide photo, then the text, as on the website
+  if (items.length === 1) {
+    const c = items[0]
+    return (
+      <article>
+        {c.title && <h3 className="font-serif text-[24px] sm:text-[28px] text-licet-indigo leading-tight mb-4">{c.title}</h3>}
+        <img src={c.img} alt={c.title} loading="lazy" referrerPolicy="no-referrer" className="w-full max-h-[420px] object-cover bg-licet-parchment" />
+        <div className="site-prose mt-5" dangerouslySetInnerHTML={{ __html: c.html }} />
+      </article>
+    )
+  }
   if (avg > 260) {
     return (
       <div className="grid md:grid-cols-2 gap-4">
@@ -149,14 +160,14 @@ function Cards({ items }: { items: { img: string; title: string; html: string }[
 
 function Toggle({ items }: { items: { title: string; html: string }[] }) {
   return (
-    <div className="divide-y divide-border border border-border rounded-xl bg-white overflow-hidden">
+    <div className="divide-y divide-[#e5e0d3] border-b border-[#e5e0d3]">
       {items.map(it => (
         <details key={it.title} className="group">
-          <summary className="flex items-center justify-between gap-3 px-5 py-3.5 cursor-pointer list-none hover:bg-licet-cream/40">
-            <span className="font-serif text-[18px] font-semibold text-licet-indigo">{it.title}</span>
-            <ChevronDown size={18} className="text-licet-violet shrink-0 transition-transform group-open:rotate-180" />
+          <summary className="flex items-center gap-2.5 px-2 py-3 cursor-pointer list-none hover:bg-licet-cream/30">
+            <ChevronDown size={14} className="text-black shrink-0 -rotate-90 transition-transform group-open:rotate-0" />
+            <span className="lx-menu text-[13.5px] font-bold text-[#222]">{it.title}</span>
           </summary>
-          <div className={`px-5 pb-5 ${PROSE}`} dangerouslySetInnerHTML={{ __html: it.html }} />
+          <div className={`px-6 pb-5 ${PROSE}`} dangerouslySetInnerHTML={{ __html: it.html }} />
         </details>
       ))}
     </div>
@@ -169,7 +180,10 @@ export function Blocks({ blocks }: { blocks: Block[] }) {
       {blocks.map((b, i) => {
         switch (b.t) {
           case "h":
-            return <h3 key={i} className="font-serif text-[24px] sm:text-[27px] font-semibold text-licet-indigo pt-3 first:pt-0 leading-tight">{b.text}</h3>
+            // Capitalised headings (VISION, MISSION) are small tracked capitals on licet.ac.in; the rest are serif titles
+            return b.text === b.text.toUpperCase() || /^(vision|mission)$/i.test(b.text)
+              ? <h4 key={i} className="text-[17px] font-semibold tracking-[2px] uppercase text-licet-indigo pt-4 first:pt-0">{b.text}</h4>
+              : <h3 key={i} className="font-serif text-[28px] sm:text-[34px] font-semibold text-licet-indigo pt-4 first:pt-0 leading-tight">{b.text}</h3>
           case "html":
             return <div key={i} className={PROSE} dangerouslySetInnerHTML={{ __html: b.html }} />
           case "img":

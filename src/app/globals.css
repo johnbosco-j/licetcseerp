@@ -329,3 +329,18 @@ body { font-feature-settings: "cv11", "ss01"; letter-spacing: -0.003em; }
 .logo-strip { mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent); }
 .logo-strip > div { animation: licet-strip 45s linear infinite; width: max-content; }
 .logo-strip:hover > div { animation-play-state: paused; }
+
+/* ── Public homepage: the look of licet.ac.in ──
+   Cormorant Garamond headings, light DM Sans text, Arial menus; navy #1A0C4E and cream. */
+.licet-site { font-family: var(--font-dmsans), "DM Sans", sans-serif; color: #000; }
+.licet-site h1, .licet-site h2, .licet-site h3, .licet-site .lx-serif {
+  font-family: var(--font-cormorant), "Cormorant Garamond", Georgia, serif;
+  font-size-adjust: none; font-weight: 500; color: #1A0C4E; letter-spacing: 0;
+}
+.licet-site .lx-menu { font-family: Arial, Helvetica, sans-serif; }
+.licet-site .site-prose { font-weight: 300; font-size: 15.5px; line-height: 1.65; color: #000; text-align: justify; }
+.licet-site .site-prose strong { color: inherit; font-weight: 600; }
+.licet-site .site-prose ul > li::before { background: #1A0C4E; width: 5px; height: 5px; }
+.licet-site .site-prose th, .licet-site .site-prose tr:first-child td { background: #F3E5C4; color: #1A0C4E; }
+.licet-site .site-prose-dark, .licet-site .site-prose-dark p { color: rgb(243 229 196 / 0.9); }
+@media (max-width: 640px) { .licet-site .site-prose { text-align: left; } }

@@ -31,6 +31,26 @@ const marcellus = localFont({
   display: "swap",
 });
 
+// The public homepage copies licet.ac.in: Cormorant Garamond headings, DM Sans text.
+const cormorant = localFont({
+  variable: "--font-cormorant",
+  src: [
+    { path: "../../node_modules/@fontsource/cormorant-garamond/files/cormorant-garamond-latin-500-normal.woff2", weight: "500", style: "normal" },
+    { path: "../../node_modules/@fontsource/cormorant-garamond/files/cormorant-garamond-latin-500-italic.woff2", weight: "500", style: "italic" },
+    { path: "../../node_modules/@fontsource/cormorant-garamond/files/cormorant-garamond-latin-600-normal.woff2", weight: "600", style: "normal" },
+  ],
+  display: "swap",
+});
+
+const dmSans = localFont({
+  variable: "--font-dmsans",
+  src: [
+    { path: "../../node_modules/@fontsource-variable/dm-sans/files/dm-sans-latin-wght-normal.woff2", weight: "100 1000", style: "normal" },
+    { path: "../../node_modules/@fontsource-variable/dm-sans/files/dm-sans-latin-wght-italic.woff2", weight: "100 1000", style: "italic" },
+  ],
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: "LICET Things – Department of CSE, Loyola-ICAM College of Engineering and Technology",
   description: "Department of Computer Science & Engineering ERP — Loyola-ICAM College of Engineering and Technology (Autonomous), Chennai",
@@ -54,7 +74,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en-IN">
-      <body className={`${jakarta.variable} ${playfair.variable} ${marcellus.variable} antialiased`}>
+      <body className={`${jakarta.variable} ${playfair.variable} ${marcellus.variable} ${cormorant.variable} ${dmSans.variable} antialiased`}>
         {children}
       </body>
     </html>
