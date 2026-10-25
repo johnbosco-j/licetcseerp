@@ -10,7 +10,7 @@
 // Re-run whenever the department website changes.
 
 import { load } from 'cheerio'
-import { mkdirSync, writeFileSync, existsSync, rmSync } from 'node:fs'
+import { mkdirSync, writeFileSync, existsSync, rmSync, readFileSync, readdirSync } from 'node:fs'
 import sharp from 'sharp'
 import { createHash } from 'node:crypto'
 
@@ -34,7 +34,18 @@ const SECTIONS = [
 ]
 
 const UA = { 'User-Agent': 'Mozilla/5.0 (LICET Things content sync)' }
-const fetchText = async url => { const r = await fetch(url, { headers: UA }); if (!r.ok) throw new Error(`${url}: HTTP ${r.status}`); return r.text() }
+// licet.ac.in sometimes drops a connection mid-download: every request gets a timeout and up to
+// three tries (2 s, 4 s apart) before it counts as failed.
+async function fetchRetry(url, tries = 3) {
+  for (let i = 1; ; i++) {
+    try {
+      const r = await fetch(url, { headers: UA, signal: AbortSignal.timeout(45_000) })
+      if (r.ok || r.status < 500 || i >= tries) return r
+    } catch (e) { if (i >= tries) throw e }
+    await new Promise(res => setTimeout(res, 2000 * i))
+  }
+}
+const fetchText = async url => { const r = await fetchRetry(url); if (!r.ok) throw new Error(`${url}: HTTP ${r.status}`); return r.text() }
 
 const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 const ALLOWED = new Set(['p', 'br', 'ul', 'ol', 'li', 'strong', 'b', 'em', 'i', 'a', 'table', 'thead', 'tbody', 'tr', 'td', 'th', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'sup', 'sub'])
@@ -268,13 +279,31 @@ const slug = s => s.toLowerCase().replace(/^(dr|mr|ms|mrs|rev)\.?\s+/g, '').repl
 // cropped from the top so faces are never cut off. The person record keeps a
 // hash of the original image: re-encoding can differ by a few bytes between
 // machines, so change detection (scripts/autosync.mjs) relies on this hash.
+// The last synced copy of each person, so a photo that fails to download today is kept as it was.
+const previous = (() => {
+  try {
+    const old = JSON.parse(readFileSync('src/data/cse-people.json', 'utf8'))
+    return new Map([old.hod, ...(old.faculty ?? []), ...(old.staff ?? [])].filter(Boolean).map(x => [x.name, x]))
+  } catch { return new Map() }
+})()
+const kept = new Set()
 async function savePhoto(person) {
   const url = person.photo, name = person.name
   if (!url || /NoPhoto/i.test(url)) return null
   const file = `public/cse/people/${slug(name)}.jpg`
-  const r = await fetch(url, { headers: UA })
-  if (!r.ok) return url                       // fall back to the website copy
-  const original = Buffer.from(await r.arrayBuffer())
+  kept.add(file)
+  let original
+  try {
+    const r = await fetchRetry(url)
+    if (!r.ok) throw new Error(`HTTP ${r.status}`)
+    original = Buffer.from(await r.arrayBuffer())
+  } catch (e) {
+    // keep yesterday's photo (and its hash, so nothing counts as changed); else link the website copy
+    const old = previous.get(name)
+    console.warn(`  photo of ${name} not downloaded (${e.cause?.code ?? e.message}) — ${existsSync(file) ? 'keeping the last copy' : 'linking the website copy'}`)
+    if (existsSync(file)) { if (old?.photoHash) person.photoHash = old.photoHash; return file.replace(/^public/, '') }
+    return url
+  }
   person.photoHash = createHash('sha1').update(original).digest('hex').slice(0, 12)
   await sharp(original)
     .resize(480, 480, { fit: 'cover', position: 'north' })   // keep the head in frame
@@ -284,7 +313,6 @@ async function savePhoto(person) {
   return file.replace(/^public/, '')
 }
 
-rmSync('public/cse/people', { recursive: true, force: true })
 mkdirSync('public/cse/people', { recursive: true })
 mkdirSync('src/data', { recursive: true })
 
@@ -312,6 +340,9 @@ if (!p?.hod || !p.faculty.length) throw new Error('Faculty page layout changed: 
 p.hod.photo = await savePhoto(p.hod)
 for (const f of p.faculty) f.photo = await savePhoto(f)
 for (const s of p.staff) s.photo = await savePhoto(s)
+
+// photos of people no longer on the website are removed; everyone else's stay
+for (const f of readdirSync('public/cse/people')) if (!kept.has(`public/cse/people/${f}`)) rmSync(`public/cse/people/${f}`)
 
 // People go in their own small file: the dashboards load only that.
 writeFileSync('src/data/cse-people.json', JSON.stringify({ syncedAt: out.syncedAt, source: BASE + 'computer-science-and-engineering-faculty/', ...p }, null, 1))

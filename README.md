@@ -59,7 +59,7 @@ Access is enforced in the database (RLS), not just in the UI:
 
 ### Passwords
 
-- Default student password: email local part without dots + `@licet` (e.g. `lithika.30csb@licet.ac.in` → `lithika30csb@licet`).
+- New accounts start on a default password, given to the person by their class advisor or the HOD (never written in this repository).
 - Anyone with a default or reset password must set a new one at their next sign-in before using the ERP.
 - **Accounts** page: students' passwords can be reset by the HOD, a password admin (set by the HOD; currently Dr. Remegius Praveen L) or the class advisor of their section; faculty passwords by the HOD or a password admin. The HOD assigns class advisors there.
 - Resets and account creation run as server actions that re-check these rules with the service-role key.

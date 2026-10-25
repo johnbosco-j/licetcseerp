@@ -1,9 +1,8 @@
 # LICET Things — how to use it
 
 Sign in at https://cseerp.vercel.app with your licet.ac.in email. The first time, you
-must choose your own password (staff default: `licet@` + your name in lower case
-without titles or initials, e.g. `licet@kavitha`; students: as told by the class
-advisor). Forgotten password: ask your class advisor, a password admin or the HOD.
+must choose your own password (the first password is given to you by the HOD's
+office or, for students, the class advisor). Forgotten password: ask your class advisor, a password admin or the HOD.
 
 ## Faculty
 

@@ -206,7 +206,7 @@ Test accounts `hod@test.local`, `faculty1@test.local`, `advisor@test.local`,
 | After each assessment | Enter or import marks, then publish the component (7-day objection window) | Assessments & Marks, Outcomes |
 | End of term (outcomes) | Map COs → POs and assessments → COs; export CO / PO attainment and the term report | Outcomes (CO–PO) |
 | June | Year promotion, then archive graduates | Year Promotion |
-| New staff | `node scripts/create-staff.mjs list.json --apply --out <file outside the repo>` (default password `licet@<name>`) | terminal |
+| New staff | `node scripts/create-staff.mjs list.json --apply --out <file outside the repo>` (passwords go to the --out file only) | terminal |
 
 ## Things only the owner can do
 
