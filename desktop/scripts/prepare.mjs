@@ -8,7 +8,7 @@ const app = path.join(here, '..'), repo = path.join(app, '..')
 const env = {}
 for (const f of [path.join(repo, '.env.local'), path.join(app, '.env')]) {
   if (!fs.existsSync(f)) continue
-  for (const l of fs.readFileSync(f, 'utf8').split(/\r?\n/)) { const m = l.match(/^(\w+)=(.*)$/); if (m) env[m[1]] = m[2].trim() }
+  for (const l of fs.readFileSync(f, 'utf8').split(/\r?\n/)) { const m = l.match(/^(\w+)=(.*)$/); if (m) env[m[1]] = m[2].trim().replace(/^(['"])(.*)\1$/, '$2') }
 }
 Object.assign(env, process.env)
 const config = {
