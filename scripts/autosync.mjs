@@ -6,8 +6,10 @@
 // Runs scripts/sync-cse-site.mjs, then refuses to keep the result unless it
 // passes sanity checks (so a website outage or redesign can never wipe the
 // homepage), and ignores runs where only the "last synced" time changed.
-// The GitHub Actions workflow .github/workflows/sync-site.yml runs this every
-// two days; Vercel redeploys automatically when it pushes a change.
+// The GitHub Actions workflow .github/workflows/sync-site.yml runs this whenever the
+// website changes (scripts/site-fingerprint.mjs); Vercel redeploys when it pushes a change.
+// Exit codes: 0 done (changed or not), 1 the website could not be read (try again later),
+// 2 the result failed the sanity checks (do not retry until the website changes again).
 
 import { execFileSync, spawnSync } from 'node:child_process'
 import { readFileSync, existsSync, readdirSync } from 'node:fs'
@@ -52,10 +54,10 @@ try {
   if (EXCLUDED.some(re => re.test(text))) problems.push('an excluded person appears in the content')
   const photos = existsSync('public/cse/people') ? readdirSync('public/cse/people').length : 0
   if (photos < MIN_FACULTY) problems.push(`only ${photos} staff photos saved`)
-  if (problems.length) { restore(`Sanity check failed: ${problems.join('; ')}`); process.exit(1) }
+  if (problems.length) { restore(`Sanity check failed: ${problems.join('; ')}`); process.exit(2) }
 } catch (e) {
   restore(`Could not read the synced files (${e.message})`)
-  process.exit(1)
+  process.exit(2)
 }
 
 // 3. Did anything besides the sync time change?
@@ -83,7 +85,9 @@ if (COMMIT) {
   git('commit', '-q', '-m', `Sync department content from licet.ac.in (${new Date().toISOString().slice(0, 10)})`)
   log(`Committed ${git('rev-parse', '--short', 'HEAD')}.`)
   if (PUSH) {
-    git('push', '-q', 'origin', 'HEAD')
+    // Someone may have pushed meanwhile: the bot only touches the synced files, so a rebase is clean
+    try { git('push', '-q', 'origin', 'HEAD') }
+    catch { git('pull', '--rebase', '-q', 'origin', git('rev-parse', '--abbrev-ref', 'HEAD')); git('push', '-q', 'origin', 'HEAD') }
     log('Pushed. Vercel will redeploy the site.')
   }
 } else {

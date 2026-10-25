@@ -1,13 +1,15 @@
 # Keeps the public homepage in step with the department pages on licet.ac.in.
-# Every second day at 06:30 IST (01:00 UTC) it runs scripts/autosync.mjs, which
-# commits only when the website content actually changed and the result passes
-# its sanity checks. Vercel redeploys on that commit. Run it any time from the
-# repository's Actions tab ("Sync department website" → "Run workflow").
+# Every 15 minutes it asks the website (one small request to its WordPress API) when the
+# CSE pages and CSE news were last edited. Only when that changed (or once a day, to catch
+# replaced photos) does it run scripts/autosync.mjs, which commits only when the content
+# actually changed and passes its sanity checks. Vercel redeploys on that commit.
+# Run it any time from the repository's Actions tab ("Sync department website" → "Run workflow");
+# a manual run always does the full sync.
 name: Sync department website
 
 on:
   schedule:
-    - cron: "0 1 */2 * *"
+    - cron: "*/15 * * * *"
   workflow_dispatch:
 
 permissions:
@@ -24,16 +26,57 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check licet.ac.in for changes
+        id: check
+        run: |
+          fp=$(node scripts/site-fingerprint.mjs)
+          echo "Website fingerprint: $fp"
+          echo "fingerprint=$fp" >> "$GITHUB_OUTPUT"
+          echo "key=site-$(date -u +%F)-$fp" >> "$GITHUB_OUTPUT"
+
+      # A cache entry named after the fingerprint means this version of the website is already synced
+      - name: Already synced?
+        id: seen
+        if: steps.check.outputs.fingerprint != 'unavailable' && github.event_name != 'workflow_dispatch'
+        uses: actions/cache/restore@v4
+        with:
+          path: .site-fingerprint
+          key: ${{ steps.check.outputs.key }}
+          lookup-only: true
+
+      - name: Nothing new
+        if: steps.check.outputs.fingerprint == 'unavailable' || steps.seen.outputs.cache-hit == 'true'
+        run: echo "licet.ac.in unchanged (or not reachable) — nothing to do."
+
       - uses: actions/setup-node@v4
+        if: steps.check.outputs.fingerprint != 'unavailable' && steps.seen.outputs.cache-hit != 'true'
         with:
           node-version: 22
           cache: npm
 
       - name: Install dependencies
+        if: steps.check.outputs.fingerprint != 'unavailable' && steps.seen.outputs.cache-hit != 'true'
         run: npm ci --no-audit --no-fund
 
       - name: Sync from licet.ac.in
+        id: sync
+        if: steps.check.outputs.fingerprint != 'unavailable' && steps.seen.outputs.cache-hit != 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          set +e
           node scripts/autosync.mjs --commit --push
+          code=$?
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          exit $code
+
+      # Remember this version unless the website could not be read (then the next run retries).
+      # A run that failed its sanity checks is remembered too, so it is not repeated every 15 minutes.
+      - name: Remember this version of the website
+        if: always() && steps.sync.outcome != 'skipped' && (steps.sync.outputs.code == '0' || steps.sync.outputs.code == '2')
+        run: echo "${{ steps.check.outputs.fingerprint }}" > .site-fingerprint
+      - uses: actions/cache/save@v4
+        if: always() && steps.sync.outcome != 'skipped' && (steps.sync.outputs.code == '0' || steps.sync.outputs.code == '2')
+        with:
+          path: .site-fingerprint
+          key: ${{ steps.check.outputs.key }}
