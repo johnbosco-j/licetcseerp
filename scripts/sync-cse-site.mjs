@@ -246,7 +246,7 @@ function extractPeople($, main) {
   for (const c of main.find('.e-con.e-parent, .elementor-top-section').toArray()) {
     const ws = widgets(c)
     const heads = ws.filter(w => w.type === 'heading' || w.type === 'animated-headline').map(w => text($, w.el))
-    const cat = heads.find(h => /^(Professors|Associate Professors|Assistant Professors|Non-? ?Teaching Staff)$/i.test(h))
+    const cat = heads.find(h => /^(Professors?|Associate Professors?|Assistant Professors?|Non-? ?Teaching Staff)$/i.test(h))
     if (cat) { category = /non/i.test(cat) ? 'Non-Teaching Staff' : cat; continue }
     const texts = ws.filter(w => w.type === 'text-editor').map(w => text($, w.el))
     const photo = imgSrc($, $(ws.find(w => w.type === 'image')?.el).find('img').get(0))
