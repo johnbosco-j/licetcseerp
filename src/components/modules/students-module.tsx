@@ -10,6 +10,7 @@ import { Search, Edit2, Trash2, Plus, Loader2, Download, X, Users, AlertTriangle
 import { addStudentAdmin, deleteStudentAdmin } from "@/app/actions"
 import { getAccessToken } from "@/lib/auth"
 import * as XLSX from "xlsx"
+import { Portal } from "@/components/ui/portal"
 
 type Profile = Database['public']['Tables']['profiles']['Row']
 
@@ -130,8 +131,9 @@ export function StudentsModule() {
     <>
       {/* Add / Edit Modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="bg-[#0a101d] border border-white/10 rounded-2xl p-6 w-full max-w-md space-y-4 shadow-2xl">
+        <Portal>
+        <div className="fixed inset-0 bg-black/70 z-[80] flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-[#0a101d] border border-white/10 rounded-2xl p-6 w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto space-y-4 shadow-2xl">
             <div className="flex items-center justify-between border-b border-white/10 pb-3">
               <div>
                 <span className="font-mono text-[10px] text-cyan-500 uppercase tracking-widest">
@@ -159,7 +161,7 @@ export function StudentsModule() {
                   disabled={!!editId} placeholder="student@licet.ac.in"
                   className="w-full h-10 px-3 bg-white/5 border border-white/10 rounded text-white font-mono text-sm focus:border-cyan-500/50 focus:outline-none transition-colors disabled:opacity-40" />
                 {!editId && (
-                  <p className="font-mono text-[10px] text-slate-500">Default password: email prefix + '123'</p>
+                  <p className="font-mono text-[10px] text-slate-500">First password: the email before @ without dots, then @licet</p>
                 )}
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -197,6 +199,7 @@ export function StudentsModule() {
             </div>
           </div>
         </div>
+        </Portal>
       )}
 
       {/* Header */}

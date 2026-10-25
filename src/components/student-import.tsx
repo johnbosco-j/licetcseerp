@@ -9,6 +9,7 @@ import { normalizeMobile, graduationYear, needsVertical } from "@/lib/utils"
 import { SECTIONS } from "@/lib/dashboard"
 import { toast } from "@/components/toaster"
 import { AiPaste } from "@/components/ai-paste"
+import { Portal } from "@/components/ui/portal"
 
 // Bulk admission from an Excel / CSV sheet. Columns are matched by header name,
 // so the order does not matter. Nothing is written until the HOD confirms.
@@ -130,9 +131,10 @@ export function StudentImport({ onClose, onDone, existingEmails }: { onClose: ()
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-licet-indigo/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={running ? undefined : onClose}>
+    <Portal>
+    <div className="fixed inset-0 z-[80] bg-licet-indigo/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={running ? undefined : onClose}>
       <div role="dialog" aria-modal="true" aria-label="Import students" onClick={e => e.stopPropagation()}
-        className="w-full max-w-4xl max-h-[90vh] flex flex-col bg-white rounded-2xl shadow-2xl border-t-[3px] border-licet-gold">
+        className="w-full max-w-4xl max-h-[90dvh] flex flex-col bg-white rounded-2xl shadow-2xl border-t-[3px] border-licet-gold">
         <div className="flex items-start justify-between gap-4 px-6 pt-5 pb-4 border-b border-border">
           <div>
             <p className="eyebrow">Bulk admission</p>
@@ -209,5 +211,6 @@ export function StudentImport({ onClose, onDone, existingEmails }: { onClose: ()
         </div>
       </div>
     </div>
+    </Portal>
   )
 }

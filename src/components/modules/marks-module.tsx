@@ -10,6 +10,7 @@ import { getActiveSemester } from '@/lib/semester';
 import type { Database } from "@/lib/supabase"
 import { Save, Loader2, BarChart3, Download, Lock, Unlock } from "lucide-react"
 import * as XLSX from "xlsx"
+import { Portal } from "@/components/ui/portal"
 
 type Profile = Database['public']['Tables']['profiles']['Row']
 type Subject = Database['public']['Tables']['subjects']['Row']
@@ -564,8 +565,9 @@ export function MarksModule() {
 
           {/* Lock modal */}
           {showLockModal && (
-            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-              <div className="bg-[#0a101d]/60 backdrop-blur-xl border border-white/10 rounded-lg p-6 w-full max-w-md space-y-4">
+            <Portal>
+            <div className="fixed inset-0 bg-black/50 z-[80] flex items-center justify-center p-4">
+              <div className="bg-[#0a101d]/60 backdrop-blur-xl border border-white/10 rounded-lg p-6 w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto space-y-4">
                 <div>
                   <span className="font-mono text-xs text-cyan-400">// LOCK MARKS</span>
                   <h2 className="font-bold text-sm mt-1">Lock {selectedSubject?.name}</h2>
@@ -589,6 +591,7 @@ export function MarksModule() {
                 </div>
               </div>
             </div>
+            </Portal>
           )}
 
           {selectedSubject && (

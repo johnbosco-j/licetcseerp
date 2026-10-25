@@ -9,6 +9,7 @@ import { parseCalendarWorkbook } from "@/lib/calendar-import"
 import { SECTIONS, type Term, yearOf } from "@/lib/academic"
 import { inputCls, btnCls, ghostCls } from "./terms-tab"
 import { applyElectivePlan } from "@/lib/electives"
+import { Portal } from "@/components/ui/portal"
 
 /** Upload the college's academic-calendar workbook into a term (dates outside the term are ignored). */
 export async function importCalendarFile(file: File, term: Term): Promise<number> {
@@ -166,8 +167,9 @@ export function NextTermWizard({ terms, onClose, onDone }: { terms: Term[]; onCl
   const Icon = ({ s }: { s: Step['state'] }) => s === 'ok' ? <CheckCircle2 className="w-4 h-4 text-green-700" /> : s === 'err' ? <AlertTriangle className="w-4 h-4 text-red-700" /> : s === 'run' ? <Loader2 className="w-4 h-4 animate-spin text-licet-violet" /> : <span className="w-4 h-4 rounded-full border border-border inline-block" />
 
   return (
+    <Portal>
     <div className="fixed inset-0 z-[80] bg-black/40 flex items-center justify-center p-4" onClick={running ? undefined : onClose}>
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[92vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[92dvh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         <div className="px-5 py-4 border-b border-border flex items-center justify-between">
           <div><p className="eyebrow">Semester increment</p><h2 className="font-display text-xl font-bold text-licet-indigo mt-1">Start the next term</h2></div>
           <button onClick={onClose} disabled={running} className="p-2 rounded-md hover:bg-muted"><X className="w-5 h-5" /></button>
@@ -212,5 +214,6 @@ export function NextTermWizard({ terms, onClose, onDone }: { terms: Term[]; onCl
         </div>
       </div>
     </div>
+    </Portal>
   )
 }

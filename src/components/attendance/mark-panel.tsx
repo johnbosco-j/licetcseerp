@@ -7,6 +7,7 @@ import { toast, reportResult } from "@/components/toaster"
 import {
   type AttSession, type ClassBlock, type RosterStudent, loadRosterStudents, entryTitle, audienceLabel, DAY_NAMES,
 } from "@/lib/academic"
+import { Portal } from "@/components/ui/portal"
 
 // Unsaved marks are kept in this browser too, so a closed tab or a dropped
 // connection does not lose a half-marked register.
@@ -239,8 +240,9 @@ export function MarkPanel({ date, block, dayOrder, isHod, onClose, onSaved }: {
   const multiSection = sessions[0] && sessions[0].section === null
 
   return (
+    <Portal>
     <div className="fixed inset-0 z-[80] flex items-stretch sm:items-center justify-center bg-black/40 sm:p-4" onClick={close}>
-      <div className="bg-white w-full sm:max-w-2xl sm:rounded-xl shadow-2xl flex flex-col max-h-full sm:max-h-[92vh]" onClick={ev => ev.stopPropagation()}>
+      <div className="bg-white w-full sm:max-w-2xl sm:rounded-xl shadow-2xl flex flex-col max-h-full sm:max-h-[92dvh]" onClick={ev => ev.stopPropagation()}>
         <div className="px-5 pt-4 pb-3 border-b border-border">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
@@ -369,5 +371,6 @@ export function MarkPanel({ date, block, dayOrder, isHod, onClose, onSaved }: {
         )}
       </div>
     </div>
+    </Portal>
   )
 }

@@ -13,6 +13,7 @@ import { guessComponent, headerMax } from "@/lib/marks-columns"
 import { examType, SP_KEY, SP_MAX, type Scheme } from "@/lib/cia-scheme"
 import { courseType, internalSplit } from "@/lib/regulations"
 import { AiPaste } from "@/components/ai-paste"
+import { Portal } from "@/components/ui/portal"
 
 type Student = { id: string; full_name: string; register_number: string | null; roll_number: string | null }
 
@@ -100,8 +101,9 @@ export function MarksImport({ subjectId, code, students, scheme, onDone }: { sub
       <AiPaste label="Paste marks (AI)" columns={AI_COLS} hint="Internal assessment marks of one course; register numbers are 12 digits; AB means absent"
         onRows={rows => read(new File([toCsv(AI_COLS, rows)], 'pasted-with-ai.csv', { type: 'text/csv' })).catch(() => toast.error('Could not read those rows'))} />
       {rows && (
+        <Portal>
         <div className="fixed inset-0 z-[80] bg-black/40 flex items-center justify-center p-4" onClick={() => setRows(null)}>
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[90dvh] flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="px-5 py-4 border-b border-border flex items-center justify-between">
               <div><p className="eyebrow">Review before saving</p><h2 className="font-display text-xl font-bold text-licet-indigo mt-1">Import marks · {fileName}</h2></div>
               <button onClick={() => setRows(null)} className="p-2 rounded-md hover:bg-muted"><X className="w-5 h-5" /></button>
@@ -139,6 +141,7 @@ export function MarksImport({ subjectId, code, students, scheme, onDone }: { sub
             </div>
           </div>
         </div>
+        </Portal>
       )}
     </>
   )

@@ -10,6 +10,7 @@ import { resetPassword } from "@/app/actions"
 import { AddStaff } from "@/components/add-staff"
 import { canResetPassword, defaultStudentPassword, MIN_PASSWORD_LENGTH } from "@/lib/passwords"
 import { PageHeader, Card, CardHeader, Badge, EmptyState, btn, field } from "@/components/ui/page"
+import { Portal } from "@/components/ui/portal"
 
 type Profile = Database['public']['Tables']['profiles']['Row']
 
@@ -180,7 +181,7 @@ export default function AccountsPage() {
           <EmptyState icon={Users} title="Nobody found">Try a different search or section.</EmptyState>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-[13.5px]">
+            <table className="w-full min-w-[760px] text-[13.5px]">
               <thead>
                 <tr className="text-left">
                   <th className="px-5 py-2.5">Name</th>
@@ -244,9 +245,10 @@ export default function AccountsPage() {
       </Card>
 
       {target && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-licet-indigo/40 backdrop-blur-[2px] p-4" onClick={() => !busy && setTarget(null)}>
+        <Portal>
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-licet-indigo/40 backdrop-blur-[2px] p-4" onClick={() => !busy && setTarget(null)}>
           <div role="dialog" aria-modal="true" aria-labelledby="reset-title" onClick={e => e.stopPropagation()}
-            className="w-full max-w-md bg-white rounded-xl shadow-2xl border-t-[3px] border-licet-gold overflow-hidden">
+            className="w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto bg-white rounded-xl shadow-2xl border-t-[3px] border-licet-gold">
             <div className="px-6 pt-5 pb-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
@@ -289,6 +291,7 @@ export default function AccountsPage() {
             </div>
           </div>
         </div>
+        </Portal>
       )}
 
       {isAdmin && tab === 'PROFESSOR' && (

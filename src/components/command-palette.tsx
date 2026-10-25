@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Search, CornerDownLeft, UserRound, type LucideIcon } from "lucide-react"
 import { supabase } from "@/lib/supabase"
+import { Portal } from "@/components/ui/portal"
 
 // Quick search (Ctrl/⌘ K or "/"): jump to any module, and for staff, to any
 // student's record by name, roll number or register number.
@@ -55,6 +56,7 @@ export function CommandPalette({ open, onClose, modules, searchStudents }: {
 
   if (!open) return null
   return (
+    <Portal>
     <div className="fixed inset-0 z-[85] bg-licet-indigo/40 backdrop-blur-sm flex items-start justify-center p-4 pt-[12vh]" onClick={onClose}>
       <div role="dialog" aria-modal="true" aria-label="Quick search" onClick={e => e.stopPropagation()}
         className="w-full max-w-xl rounded-2xl bg-white shadow-2xl shadow-licet-indigo/30 border border-border overflow-hidden font-nav">
@@ -91,5 +93,6 @@ export function CommandPalette({ open, onClose, modules, searchStudents }: {
         <p className="px-4 py-2 border-t border-border text-[11px] text-muted-foreground">↑ ↓ to move · Enter to open · Ctrl K to search from anywhere</p>
       </div>
     </div>
+    </Portal>
   )
 }

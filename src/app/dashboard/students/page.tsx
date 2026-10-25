@@ -12,6 +12,7 @@ import type { Database } from "@/lib/supabase"
 import { Phone, Plus, X, Search, Edit2, Trash2, Loader2, Users, AlertTriangle, Check, KeyRound, FileSpreadsheet, ChevronRight } from "lucide-react"
 import { addStudentAdmin, deleteStudentAdmin, resetPassword } from "@/app/actions"
 import { getAccessToken } from "@/lib/auth"
+import { Portal } from "@/components/ui/portal"
 
 type Profile = Database['public']['Tables']['profiles']['Row']
 
@@ -197,8 +198,9 @@ export default function StudentsPage() {
 
       {/* Form Modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-card border border-border rounded-lg p-6 w-full max-w-md space-y-4 shadow-xl">
+        <Portal>
+        <div className="fixed inset-0 bg-black/50 z-[80] flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-lg p-6 w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto space-y-4 shadow-xl">
             <div className="flex items-center justify-between border-b border-border pb-3">
               <div>
                 <span className="eyebrow">{editId ? 'EDIT' : 'ADD'} STUDENT</span>
@@ -217,7 +219,7 @@ export default function StudentsPage() {
                 <label className="font-mono text-xs text-muted-foreground">Email Address *</label>
                 <input value={form.email} onChange={e => setForm({...form, email: e.target.value})} disabled={!!editId}
                   className="w-full h-10 px-3 bg-white border border-input rounded-md text-[13.5px] focus:border-licet-violet focus:outline-none disabled:opacity-50" />
-                {!editId && <p className="font-mono text-[10px] text-muted-foreground">Default password will be email prefix + '123'</p>}
+                {!editId && <p className="text-[11px] text-muted-foreground">First password: the email before @ without dots, then @licet (e.g. ravi.k.28csa → ravik28csa@licet). The student must change it at first sign-in.</p>}
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
@@ -297,6 +299,7 @@ export default function StudentsPage() {
             </div>
           </div>
         </div>
+        </Portal>
       )}
 
       {/* Directory Table */}

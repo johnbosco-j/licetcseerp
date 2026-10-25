@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase"
 import { reportResult } from "@/components/toaster"
 import { notifyClassHandover } from "@/lib/send-notification"
 import { isoToday } from "@/lib/academic"
+import { Portal } from "@/components/ui/portal"
 
 export interface Delegation {
   id: string; from_faculty: string; to_faculty: string; subject_id: string | null
@@ -75,8 +76,9 @@ export function DelegationsButton({ me, termId }: { me: string; termId: string }
         <UserPlus className="w-4 h-4" /> Hand over my class
       </button>
       {open && (
+        <Portal>
         <div className="fixed inset-0 z-[80] bg-black/40 flex items-center justify-center p-4" onClick={() => setOpen(false)}>
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[calc(100dvh-2rem)] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="px-5 py-4 border-b border-border flex items-center justify-between">
               <div><p className="eyebrow">Substitution</p><h2 className="font-display text-xl font-bold text-licet-indigo mt-1">Hand over my class</h2></div>
               <button onClick={() => setOpen(false)} className="p-2 rounded-md hover:bg-muted"><X className="w-5 h-5" /></button>
@@ -113,6 +115,7 @@ export function DelegationsButton({ me, termId }: { me: string; termId: string }
             </div>
           </div>
         </div>
+        </Portal>
       )}
     </>
   )

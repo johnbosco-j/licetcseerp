@@ -13,6 +13,7 @@ import type { AuthUser } from "@/lib/auth"
 import type { Database } from "@/lib/supabase"
 import { Plus, X, Award, Building, Loader2, ExternalLink, Pencil, Trash2, Download, Search, Users, TrendingUp, IndianRupee, Trophy, Briefcase } from "lucide-react"
 import { toast, reportResult } from "@/components/toaster"
+import { Portal } from "@/components/ui/portal"
 
 type Placement = Database['public']['Tables']['placements']['Row']
 type Offer = Database['public']['Tables']['placement_offers']['Row']
@@ -474,9 +475,10 @@ function OfferDialog({ drives, existing, onClose, onSaved }: { drives: Placement
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-licet-indigo/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
+    <Portal>
+    <div className="fixed inset-0 z-[80] bg-licet-indigo/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
       <div role="dialog" aria-modal="true" aria-label="Record placement offers" onClick={e => e.stopPropagation()}
-        className="w-full max-w-4xl max-h-[92vh] overflow-y-auto bg-white rounded-2xl shadow-2xl border-t-[3px] border-licet-gold">
+        className="w-full max-w-4xl max-h-[92dvh] overflow-y-auto bg-white rounded-2xl shadow-2xl border-t-[3px] border-licet-gold">
         <div className="flex items-start justify-between gap-4 px-6 pt-5 pb-4 border-b border-border">
           <div>
             <p className="eyebrow">Placement record</p>
@@ -548,5 +550,6 @@ function OfferDialog({ drives, existing, onClose, onSaved }: { drives: Placement
         </div>
       </div>
     </div>
+    </Portal>
   )
 }

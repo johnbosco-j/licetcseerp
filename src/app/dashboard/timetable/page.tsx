@@ -14,6 +14,7 @@ import {
   SECTIONS, DAY_NAMES, type Offering, type PeriodSlot, type Term, type TimetableEntry, type Vertical, type StudentGroup, type Audience,
   loadTerms, loadPeriods, loadTimetable, loadVerticals, loadGroups, entryTitle, fmtTime, shortAudience, audienceLabel,
 } from "@/lib/academic"
+import { Portal } from "@/components/ui/portal"
 
 type Staff = { id: string; full_name: string }
 const PALETTE = ['bg-sky-50 border-sky-200', 'bg-emerald-50 border-emerald-200', 'bg-amber-50 border-amber-200', 'bg-rose-50 border-rose-200',
@@ -275,8 +276,9 @@ function CellEditor({ term, section, day, period, entries, dayEntries, offerings
   }
 
   return (
+    <Portal>
     <div className="fixed inset-0 z-[80] bg-black/40 flex items-center justify-center p-4" onClick={close}>
-      <div {...guard.bind} className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+      <div {...guard.bind} className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90dvh] flex flex-col" onClick={e => e.stopPropagation()}>
         <div className="px-5 py-4 border-b border-border flex items-center justify-between">
           <div>
             <p className="eyebrow">{section} · {DAY_NAMES[day]} · Period {period}</p>
@@ -359,5 +361,6 @@ function CellEditor({ term, section, day, period, entries, dayEntries, offerings
         </div>
       </div>
     </div>
+    </Portal>
   )
 }

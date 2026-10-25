@@ -287,7 +287,8 @@
 
 /* Content entrance: a short, calm rise (disabled by the reduced-motion rule above). */
 @keyframes licet-rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-#scroll-container > div > * { animation: licet-rise .35s ease-out both; }
+/* "backwards", not "both": a finished animation must not stay on the page, or fixed overlays inside it are framed by the page instead of the screen */
+#scroll-container > div > * { animation: licet-rise .35s ease-out backwards; }
 
 /* Thin themed scrollbars */
 #scroll-container, #scroll-container .overflow-y-auto, #scroll-container .overflow-x-auto { scrollbar-width: thin; scrollbar-color: var(--licet-gold) transparent; }

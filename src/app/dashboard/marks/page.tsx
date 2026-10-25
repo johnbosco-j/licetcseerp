@@ -17,6 +17,7 @@ import { SchemeEditor } from "@/components/marks/scheme-editor"
 import { courseResult, courseType as regulationCourseType, internalSplit, type CourseType } from "@/lib/regulations"
 import { schemeOf, computeInternal, examType, SP_KEY, SP_MAX, type Scheme, type MarkRow } from "@/lib/cia-scheme"
 import { getActiveSemester } from "@/lib/semester"
+import { Portal } from "@/components/ui/portal"
 
 type Profile = Database['public']['Tables']['profiles']['Row']
 type Subject = Database['public']['Tables']['subjects']['Row'] & { cia_scheme?: unknown }
@@ -407,8 +408,9 @@ export default function MarksPage() {
           </div>
 
           {showLockModal && (
-            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-              <div className="bg-card border border-border rounded-lg p-6 w-full max-w-md space-y-4">
+            <Portal>
+            <div className="fixed inset-0 bg-black/50 z-[80] flex items-center justify-center p-4">
+              <div className="bg-card border border-border rounded-lg p-6 w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto space-y-4">
                 <div>
                   <span className="eyebrow">LOCK MARKS</span>
                   <h2 className="font-serif text-[19px] font-semibold text-licet-indigo mt-1">Lock {selectedSubject?.name}</h2>
@@ -422,6 +424,7 @@ export default function MarksPage() {
                 </div>
               </div>
             </div>
+            </Portal>
           )}
 
           {selectedSubject && scheme && (

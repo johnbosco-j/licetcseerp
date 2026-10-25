@@ -3,6 +3,7 @@
 import { useState, useRef } from "react"
 import { supabase } from "@/lib/supabase"
 import { Upload, X, FileText, Loader2, Eye, Download, Trash2 } from "lucide-react"
+import { Portal } from "@/components/ui/portal"
 
 export interface UploadedFile {
   id:         string
@@ -180,7 +181,8 @@ export function FileList({ files, onDelete, canDelete = false }: FileViewerProps
 
       {/* PDF Viewer Modal */}
       {viewing && viewUrl && (
-        <div className="fixed inset-0 bg-black/80 z-50 flex flex-col">
+        <Portal>
+        <div className="fixed inset-0 bg-black/80 z-[80] flex flex-col">
           <div className="flex items-center justify-between px-4 py-3 bg-card border-b border-border">
             <span className="font-mono text-sm font-bold">Document Viewer</span>
             <button onClick={() => { setViewing(null); setViewUrl('') }}
@@ -196,6 +198,7 @@ export function FileList({ files, onDelete, canDelete = false }: FileViewerProps
             />
           </div>
         </div>
+        </Portal>
       )}
     </>
   )
